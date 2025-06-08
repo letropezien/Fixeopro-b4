@@ -1,3 +1,87 @@
-// Réexportation du service de stockage depuis lib/storage.ts
-export { StorageService } from "../lib/storage"
+import { StorageService as BaseStorageService } from "../lib/storage"
+import type { User, RepairRequest } from "../lib/storage"
+
+// Extension du service de base avec des méthodes supplémentaires pour l'admin
+export class StorageService extends BaseStorageService {
+  // Méthodes pour sauvegarder les données (utilisées dans l'admin)
+  static saveUsers(users: User[]): void {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("fixeopro_users", JSON.stringify(users))
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des utilisateurs:", error)
+      }
+    }
+  }
+
+  static saveRepairRequests(requests: RepairRequest[]): void {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("fixeopro_repair_requests", JSON.stringify(requests))
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des demandes:", error)
+      }
+    }
+  }
+
+  // Méthodes pour supprimer des éléments spécifiques
+  static deleteUser(userId: string): boolean {
+    try {
+      const users = this.getUsers()
+      const updatedUsers = users.filter((user) => user.id !== userId)
+      this.saveUsers(updatedUsers)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la suppression de l'utilisateur:", error)
+      return false
+    }
+  }
+
+  static deleteRepairRequest(requestId: string): boolean {
+    try {
+      const requests = this.getRepairRequests()
+      const updatedRequests = requests.filter((request) => request.id !== requestId)
+      this.saveRepairRequests(updatedRequests)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la suppression de la demande:", error)
+      return false
+    }
+  }
+
+  // Méthodes pour obtenir des statistiques
+  static getStats() {
+    try {
+      const users = this.getUsers()
+      const requests = this.getRepairRequests()
+
+      const clients = users.filter((user) => user.userType === "client")
+      const reparateurs = users.filter((user) => user.userType === "reparateur")
+
+      return {
+        totalUsers: users.length,
+        totalClients: clients.length,
+        totalReparateurs: reparateurs.length,
+        totalRequests: requests.length,
+        activeSubscriptions: reparateurs.filter((rep) => rep.subscription?.status === "active").length,
+        trialUsers: reparateurs.filter((rep) => rep.subscription?.status === "trial").length,
+      }
+    } catch (error) {
+      console.error("Erreur lors du calcul des statistiques:", error)
+      return {
+        totalUsers: 0,
+        totalClients: 0,
+        totalReparateurs: 0,
+        totalRequests: 0,
+        activeSubscriptions: 0,
+        trialUsers: 0,
+      }
+    }
+  }
+}
+
+// Réexportation des types
 export type { User, RepairRequest } from "../lib/storage"
+
+// Export par défaut pour compatibilité
+export default StorageService
