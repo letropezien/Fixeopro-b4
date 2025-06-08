@@ -13,6 +13,7 @@ export default function HomePage() {
     { name: "Chauffage", icon: "🔥", count: "90+ réparateurs" },
     { name: "Serrurerie", icon: "🔑", count: "110+ réparateurs" },
     { name: "Multimédia", icon: "📱", count: "80+ réparateurs" },
+    { name: "Téléphonie", icon: "📞", count: "95+ réparateurs" },
     { name: "Climatisation", icon: "❄️", count: "70+ réparateurs" },
   ]
 

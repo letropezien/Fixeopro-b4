@@ -149,4 +149,18 @@ export class StorageService {
   static generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).substr(2)
   }
+
+  // Ajouter une fonction pour vérifier si un utilisateur est en période d'essai
+  static isInTrialPeriod(user: User): boolean {
+    if (!user.subscription || user.subscription.status !== "trial") return false
+    const expiresAt = new Date(user.subscription.expiresAt)
+    return expiresAt > new Date()
+  }
+
+  // Ajouter une fonction pour vérifier si un utilisateur peut contacter des clients
+  static canContactClients(user: User): boolean {
+    if (user.userType !== "reparateur") return false
+    if (user.subscription?.status === "active") return true
+    return this.isInTrialPeriod(user)
+  }
 }

@@ -1,16 +1,42 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Menu, Wrench, User, Settings, LogOut, Bell } from "lucide-react"
+import { StorageService } from "@/lib/storage"
+import { useRouter } from "next/navigation"
 
 export default function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true) // Simuler un utilisateur connecté
-  const [userType, setUserType] = useState<"client" | "reparateur" | null>("reparateur") // Simuler un réparateur connecté
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userType, setUserType] = useState<"client" | "reparateur" | null>(null)
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
+  const router = useRouter()
+
+  useEffect(() => {
+    // Vérifier l'état de connexion à chaque rendu
+    const user = StorageService.getCurrentUser()
+    setCurrentUser(user)
+    setIsLoggedIn(!!user)
+    if (user) {
+      setUserType(user.userType)
+    } else {
+      setUserType(null)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    StorageService.logout()
+    setIsLoggedIn(false)
+    setUserType(null)
+    setCurrentUser(null)
+    router.push("/")
+    // Forcer un rechargement pour mettre à jour tous les composants
+    window.location.reload()
+  }
 
   const categories = [
     "Électroménager",
@@ -20,6 +46,7 @@ export default function Header() {
     "Chauffage",
     "Serrurerie",
     "Multimédia",
+    "Téléphonie",
     "Climatisation",
   ]
 
@@ -49,6 +76,9 @@ export default function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <Link href="/carte" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            Carte
+          </Link>
           <Link href="/comment-ca-marche" className="text-sm font-medium hover:text-blue-600 transition-colors">
             Comment ça marche
           </Link>
@@ -87,11 +117,13 @@ export default function Header() {
           ) : (
             <>
               {/* Boutons pour utilisateurs connectés */}
-              <Link href="/demande-reparation">
-                <Button variant="outline" size="sm" className="hidden sm:inline-flex">
-                  Nouvelle demande
-                </Button>
-              </Link>
+              {userType === "client" && (
+                <Link href="/demande-reparation">
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                    Nouvelle demande
+                  </Button>
+                </Link>
+              )}
 
               {userType === "reparateur" && (
                 <Link href="/demandes-disponibles">
@@ -112,35 +144,28 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder-avatar.jpg" alt="Profile" />
+                      <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} alt="Profile" />
                       <AvatarFallback>
-                        <User className="h-4 w-4" />
+                        {currentUser?.firstName?.[0] || ""}
+                        {currentUser?.lastName?.[0] || ""}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
                   <DropdownMenuItem asChild>
-                    <Link href="/profil" className="flex items-center">
+                    <Link href={userType === "client" ? "/profil" : "/profil-pro"} className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
-                      Mon profil
+                      {userType === "client" ? "Mon profil" : "Profil professionnel"}
                     </Link>
                   </DropdownMenuItem>
-                  {userType === "reparateur" && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/profil-pro" className="flex items-center">
-                        <Wrench className="mr-2 h-4 w-4" />
-                        Profil professionnel
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
                     <Link href="/parametres" className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
                       Paramètres
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
                   </DropdownMenuItem>
@@ -182,14 +207,34 @@ export default function Header() {
                 </div>
 
                 <div className="border-t pt-4 space-y-3">
-                  <Link href="/demande-reparation">
-                    <Button variant="outline" className="w-full">
-                      Demande de dépannage
-                    </Button>
-                  </Link>
-                  <Link href="/devenir-reparateur">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700">Devenir réparateur</Button>
-                  </Link>
+                  {isLoggedIn ? (
+                    <>
+                      <Link href={userType === "client" ? "/profil" : "/profil-pro"}>
+                        <Button variant="outline" className="w-full">
+                          Mon profil
+                        </Button>
+                      </Link>
+                      <Button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700">
+                        Déconnexion
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/demande-reparation">
+                        <Button variant="outline" className="w-full">
+                          Demande de dépannage
+                        </Button>
+                      </Link>
+                      <Link href="/devenir-reparateur">
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700">Devenir réparateur</Button>
+                      </Link>
+                      <Link href="/connexion">
+                        <Button variant="ghost" className="w-full">
+                          Connexion
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </SheetContent>

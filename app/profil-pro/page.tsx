@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,30 +8,32 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Building, Camera, Star, Globe, Facebook, Instagram, Linkedin, Award } from "lucide-react"
+import { StorageService } from "@/lib/storage"
+import PhotoUpload from "@/components/photo-upload"
 
 export default function ProfilProPage() {
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
   const [proProfile, setProProfile] = useState({
-    companyName: "Réparations Express",
-    siret: "12345678901234",
-    description:
-      "Spécialiste en réparation d'électroménager depuis 15 ans. Intervention rapide et garantie sur tous nos services.",
-    specialties: ["Électroménager", "Plomberie", "Électricité"],
-    website: "https://reparations-express.fr",
+    companyName: currentUser?.professional?.companyName || "",
+    siret: currentUser?.professional?.siret || "",
+    description: currentUser?.professional?.description || "",
+    specialties: currentUser?.professional?.specialties || [],
+    website: currentUser?.professional?.website || "",
     socialMedia: {
-      facebook: "https://facebook.com/reparations-express",
-      instagram: "@reparations_express",
-      linkedin: "https://linkedin.com/company/reparations-express",
+      facebook: "",
+      instagram: "",
+      linkedin: "",
     },
-    address: "123 Avenue des Artisans",
-    city: "Paris",
-    postalCode: "75015",
-    phone: "01 23 45 67 89",
-    email: "contact@reparations-express.fr",
+    address: currentUser?.address || "",
+    city: currentUser?.city || "",
+    postalCode: currentUser?.postalCode || "",
+    phone: currentUser?.phone || "",
+    email: currentUser?.email || "",
     photos: [],
     certifications: ["Qualibat", "RGE"],
-    experience: "15+ ans",
+    experience: currentUser?.professional?.experience || "",
+    avatar: currentUser?.avatar || "",
   })
 
   const stats = {
@@ -59,6 +61,71 @@ export default function ProfilProPage() {
       service: "Dépannage électrique",
     },
   ]
+
+  // Vérifier si l'utilisateur est un réparateur
+  useEffect(() => {
+    if (currentUser && currentUser.userType !== "reparateur") {
+      window.location.href = "/profil"
+    }
+  }, [currentUser])
+
+  const handleSaveProfile = () => {
+    if (!currentUser) return
+
+    // Mettre à jour les informations professionnelles
+    const updatedUser = {
+      ...currentUser,
+      professional: {
+        ...currentUser.professional,
+        companyName: proProfile.companyName,
+        siret: proProfile.siret,
+        description: proProfile.description,
+        specialties: proProfile.specialties,
+        website: proProfile.website,
+      },
+      address: proProfile.address,
+      city: proProfile.city,
+      postalCode: proProfile.postalCode,
+      phone: proProfile.phone,
+      email: proProfile.email,
+      avatar: proProfile.avatar,
+    }
+
+    StorageService.saveUser(updatedUser)
+    StorageService.setCurrentUser(updatedUser)
+    setCurrentUser(updatedUser)
+
+    alert("Profil professionnel mis à jour avec succès !")
+  }
+
+  const handlePhotoChange = (photoUrl: string) => {
+    setProProfile({ ...proProfile, avatar: photoUrl })
+  }
+
+  // Vérifier si l'utilisateur est connecté
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Connexion requise</h2>
+            <p className="text-gray-600 mb-4">Vous devez être connecté pour accéder à votre profil professionnel.</p>
+            <Button asChild className="w-full">
+              <a href="/connexion">Se connecter</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Vérifier le statut de l'abonnement
+  const subscriptionStatus = currentUser.subscription?.status || "inactive"
+  const isInTrial = StorageService.isInTrialPeriod(currentUser)
+  const trialEndsAt = currentUser.subscription?.expiresAt
+    ? new Date(currentUser.subscription.expiresAt).toLocaleDateString("fr-FR")
+    : "N/A"
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -109,6 +176,19 @@ export default function ProfilProPage() {
 
           <TabsContent value="profile">
             <div className="space-y-6">
+              {/* Photo de profil */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Camera className="h-5 w-5 mr-2" />
+                    Photo de profil
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PhotoUpload currentPhoto={proProfile.avatar} onPhotoChange={handlePhotoChange} size="lg" />
+                </CardContent>
+              </Card>
+
               {/* Informations de l'entreprise */}
               <Card>
                 <CardHeader>
@@ -275,7 +355,9 @@ export default function ProfilProPage() {
                 </CardContent>
               </Card>
 
-              <Button className="bg-blue-600 hover:bg-blue-700">Sauvegarder les modifications</Button>
+              <Button onClick={handleSaveProfile} className="bg-blue-600 hover:bg-blue-700">
+                Sauvegarder les modifications
+              </Button>
             </div>
           </TabsContent>
 
@@ -325,9 +407,9 @@ export default function ProfilProPage() {
                     <div key={review.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center space-x-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback>{review.client[0]}</AvatarFallback>
-                          </Avatar>
+                          <div className="bg-blue-100 text-blue-800 rounded-full w-8 h-8 flex items-center justify-center font-medium">
+                            {review.client[0]}
+                          </div>
                           <div>
                             <p className="font-medium">{review.client}</p>
                             <div className="flex items-center">
@@ -358,12 +440,34 @@ export default function ProfilProPage() {
                 <CardDescription>Gérez votre abonnement FixeoPro</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className={`p-4 rounded-lg ${isInTrial ? "bg-green-50" : "bg-blue-50"}`}>
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-semibold text-blue-900">Abonnement Professionnel</h3>
-                    <Badge className="bg-blue-600">Actif</Badge>
+                    <h3 className="font-semibold text-blue-900">
+                      {isInTrial
+                        ? "Période d'essai gratuite"
+                        : subscriptionStatus === "active"
+                          ? "Abonnement Professionnel"
+                          : "Aucun abonnement actif"}
+                    </h3>
+                    <Badge
+                      className={
+                        isInTrial ? "bg-green-600" : subscriptionStatus === "active" ? "bg-blue-600" : "bg-red-600"
+                      }
+                    >
+                      {isInTrial ? "Essai gratuit" : subscriptionStatus === "active" ? "Actif" : "Inactif"}
+                    </Badge>
                   </div>
-                  <p className="text-blue-800 text-sm mb-3">59€/mois - Renouvelé le 15 de chaque mois</p>
+                  {isInTrial ? (
+                    <p className="text-green-800 text-sm mb-3">
+                      Votre période d'essai gratuite se termine le {trialEndsAt}
+                    </p>
+                  ) : subscriptionStatus === "active" ? (
+                    <p className="text-blue-800 text-sm mb-3">59€/mois - Renouvelé le 15 de chaque mois</p>
+                  ) : (
+                    <p className="text-red-800 text-sm mb-3">
+                      Vous n'avez pas d'abonnement actif. Souscrivez pour accéder aux coordonnées des clients.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="font-medium">Demandes consultées ce mois :</p>
@@ -379,7 +483,7 @@ export default function ProfilProPage() {
                 <div className="flex space-x-4">
                   <Button variant="outline">Changer d'abonnement</Button>
                   <Button variant="outline">Gérer le paiement</Button>
-                  <Button variant="destructive">Résilier</Button>
+                  {(isInTrial || subscriptionStatus === "active") && <Button variant="destructive">Résilier</Button>}
                 </div>
               </CardContent>
             </Card>

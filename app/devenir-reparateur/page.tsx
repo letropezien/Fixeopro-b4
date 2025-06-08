@@ -1,18 +1,18 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
+import { StorageService } from "@/lib/storage"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle, Star, Euro, Users, Building } from "lucide-react"
-import { StorageService } from "@/lib/storage"
 
 export default function DevenirReparateurPage() {
   const [formData, setFormData] = useState({
@@ -39,10 +39,12 @@ export default function DevenirReparateurPage() {
       },
     },
     subscription: "pro",
+    avatar: "",
   })
 
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
 
   const specialties = [
     "Électroménager",
@@ -52,6 +54,7 @@ export default function DevenirReparateurPage() {
     "Chauffage",
     "Serrurerie",
     "Multimédia",
+    "Téléphonie",
     "Climatisation",
   ]
 
@@ -99,56 +102,67 @@ export default function DevenirReparateurPage() {
       // Validation des champs requis
       if (!formData.personal.firstName.trim()) {
         alert("Veuillez indiquer votre prénom")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.lastName.trim()) {
         alert("Veuillez indiquer votre nom")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.email.trim()) {
         alert("Veuillez indiquer votre email")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.phone.trim()) {
         alert("Veuillez indiquer votre téléphone")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.address.trim()) {
         alert("Veuillez indiquer votre adresse")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.city.trim()) {
         alert("Veuillez indiquer votre ville")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.personal.postalCode.trim()) {
         alert("Veuillez indiquer votre code postal")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.professional.experience) {
         alert("Veuillez indiquer votre expérience")
+        setIsSubmitting(false)
         return
       }
 
       if (formData.professional.specialties.length === 0) {
         alert("Veuillez sélectionner au moins une spécialité")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.professional.description.trim()) {
         alert("Veuillez décrire votre activité")
+        setIsSubmitting(false)
         return
       }
 
       if (!termsAccepted) {
         alert("Veuillez accepter les conditions d'utilisation")
+        setIsSubmitting(false)
         return
       }
 
@@ -166,10 +180,11 @@ export default function DevenirReparateurPage() {
         userType: "reparateur" as const,
         isEmailVerified: false,
         createdAt: new Date().toISOString(),
+        avatar: formData.avatar,
         subscription: {
           plan: formData.subscription,
-          status: "trial" as const, // 7 jours d'essai gratuit
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          status: "trial" as const, // 15 jours d'essai gratuit
+          expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
         },
         professional: {
           companyName: formData.professional.companyName,
@@ -189,7 +204,7 @@ export default function DevenirReparateurPage() {
 
       console.log("Inscription réparateur:", newUser)
       alert(
-        "Votre inscription a été enregistrée avec succès ! Un email de confirmation vous a été envoyé. Vous bénéficiez de 7 jours d'essai gratuit.",
+        "Votre inscription a été enregistrée avec succès ! Un email de confirmation vous a été envoyé. Vous bénéficiez de 15 jours d'essai gratuit.",
       )
 
       // Redirection vers le profil professionnel
@@ -222,6 +237,18 @@ export default function DevenirReparateurPage() {
     }
   }
 
+  const handlePhotoChange = (photoUrl: string) => {
+    setFormData({ ...formData, avatar: photoUrl })
+  }
+
+  const nextStep = () => {
+    setCurrentStep(currentStep + 1)
+  }
+
+  const prevStep = () => {
+    setCurrentStep(currentStep - 1)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -229,354 +256,464 @@ export default function DevenirReparateurPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Rejoignez FixeoPro en tant que réparateur</h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            Développez votre activité en rejoignant la première plateforme de mise en relation entre clients et
-            professionnels de la réparation
+            Développez votre activité en rejoignant notre réseau de professionnels qualifiés. Accédez à des demandes de
+            réparation ciblées et augmentez votre visibilité.
           </p>
         </div>
 
-        {/* Benefits */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Plus de clients</h3>
-              <p className="text-sm text-gray-600">Accédez à des milliers de demandes de réparation chaque mois</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <Euro className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Revenus supplémentaires</h3>
-              <p className="text-sm text-gray-600">Augmentez votre chiffre d'affaires avec des missions régulières</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-6">
-              <Star className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Réputation en ligne</h3>
-              <p className="text-sm text-gray-600">Construisez votre réputation grâce aux avis clients</p>
-            </CardContent>
-          </Card>
+        {/* Progress Steps */}
+        <div className="flex justify-center mb-8">
+          <div className="flex items-center">
+            <div
+              className={`rounded-full h-10 w-10 flex items-center justify-center ${
+                currentStep >= 1 ? "bg-green-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              1
+            </div>
+            <div className={`h-1 w-12 ${currentStep >= 2 ? "bg-green-500" : "bg-gray-200"}`}></div>
+            <div
+              className={`rounded-full h-10 w-10 flex items-center justify-center ${
+                currentStep >= 2 ? "bg-green-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              2
+            </div>
+            <div className={`h-1 w-12 ${currentStep >= 3 ? "bg-green-500" : "bg-gray-200"}`}></div>
+            <div
+              className={`rounded-full h-10 w-10 flex items-center justify-center ${
+                currentStep >= 3 ? "bg-green-500 text-white" : "bg-gray-200"
+              }`}
+            >
+              3
+            </div>
+          </div>
         </div>
 
-        <Tabs defaultValue="inscription" className="space-y-8">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="inscription">Inscription</TabsTrigger>
-            <TabsTrigger value="abonnements">Choisir un abonnement</TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Step 1: Informations personnelles */}
+          {currentStep === 1 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">Informations personnelles</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="firstName">Prénom *</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.personal.firstName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, firstName: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Nom *</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.personal.lastName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, lastName: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.personal.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, email: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Téléphone *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.personal.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, phone: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="address">Adresse *</Label>
+                  <Input
+                    id="address"
+                    value={formData.personal.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, address: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="city">Ville *</Label>
+                  <Input
+                    id="city"
+                    value={formData.personal.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, city: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="postalCode">Code postal *</Label>
+                  <Input
+                    id="postalCode"
+                    value={formData.personal.postalCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, postalCode: e.target.value } })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <Button type="button" onClick={nextStep}>
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          )}
 
-          <TabsContent value="inscription">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Informations personnelles */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                      1
-                    </span>
-                    Informations personnelles
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Prénom *</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.personal.firstName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, firstName: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Nom *</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.personal.lastName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, lastName: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.personal.email}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, email: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Téléphone *</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={formData.personal.phone}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, phone: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="address">Adresse *</Label>
-                    <Input
-                      id="address"
-                      value={formData.personal.address}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          personal: { ...formData.personal, address: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city">Ville *</Label>
-                      <Input
-                        id="city"
-                        value={formData.personal.city}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, city: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="postalCode">Code postal *</Label>
-                      <Input
-                        id="postalCode"
-                        value={formData.personal.postalCode}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            personal: { ...formData.personal, postalCode: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Informations professionnelles */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                      2
-                    </span>
-                    <Building className="h-5 w-5 mr-2" />
-                    Informations professionnelles
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="companyName">Nom de l'entreprise</Label>
-                      <Input
-                        id="companyName"
-                        placeholder="Ex: Réparations Express SARL"
-                        value={formData.professional.companyName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            professional: { ...formData.professional, companyName: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="siret">SIRET</Label>
-                      <Input
-                        id="siret"
-                        placeholder="Ex: 12345678901234"
-                        value={formData.professional.siret}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            professional: { ...formData.professional, siret: e.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="experience">Années d'expérience *</Label>
-                    <Select
-                      value={formData.professional.experience}
-                      onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          professional: { ...formData.professional, experience: value },
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez votre expérience" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0-2">Moins de 2 ans</SelectItem>
-                        <SelectItem value="2-5">2 à 5 ans</SelectItem>
-                        <SelectItem value="5-10">5 à 10 ans</SelectItem>
-                        <SelectItem value="10+">Plus de 10 ans</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Spécialités *</Label>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {specialties.map((specialty) => (
-                        <div key={specialty} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={specialty}
-                            checked={formData.professional.specialties.includes(specialty)}
-                            onCheckedChange={(checked) => handleSpecialtyChange(specialty, checked as boolean)}
-                          />
-                          <Label htmlFor={specialty} className="text-sm">
-                            {specialty}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                    {formData.professional.specialties.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.professional.specialties.map((specialty) => (
-                          <Badge key={specialty} variant="secondary">
-                            {specialty}
-                          </Badge>
-                        ))}
+          {/* Step 2: Informations professionnelles */}
+          {currentStep === 2 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">Informations professionnelles</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="companyName">Nom de l'entreprise</Label>
+                  <Input
+                    id="companyName"
+                    value={formData.professional.companyName}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        professional: { ...formData.professional, companyName: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="siret">Numéro SIRET</Label>
+                  <Input
+                    id="siret"
+                    value={formData.professional.siret}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        professional: { ...formData.professional, siret: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="experience">Années d'expérience *</Label>
+                  <Select
+                    value={formData.professional.experience}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        professional: { ...formData.professional, experience: value },
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0-2">0-2 ans</SelectItem>
+                      <SelectItem value="3-5">3-5 ans</SelectItem>
+                      <SelectItem value="6-10">6-10 ans</SelectItem>
+                      <SelectItem value="10+">Plus de 10 ans</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="website">Site web</Label>
+                  <Input
+                    id="website"
+                    type="url"
+                    value={formData.professional.website}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        professional: { ...formData.professional, website: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Spécialités *</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                    {specialties.map((specialty) => (
+                      <div key={specialty} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`specialty-${specialty}`}
+                          checked={formData.professional.specialties.includes(specialty)}
+                          onCheckedChange={(checked) => handleSpecialtyChange(specialty, checked === true)}
+                        />
+                        <Label htmlFor={`specialty-${specialty}`} className="cursor-pointer">
+                          {specialty}
+                        </Label>
                       </div>
-                    )}
+                    ))}
                   </div>
-
-                  <div>
-                    <Label htmlFor="description">Description de votre activité *</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Décrivez votre expertise, vos services, votre zone d'intervention..."
-                      value={formData.professional.description}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          professional: { ...formData.professional, description: e.target.value },
-                        })
-                      }
-                      className="min-h-[120px]"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="website">Site web</Label>
-                    <Input
-                      id="website"
-                      placeholder="https://votre-site.fr"
-                      value={formData.professional.website}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          professional: { ...formData.professional, website: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                />
-                <Label htmlFor="terms" className="text-sm">
-                  J'accepte les conditions d'utilisation et la politique de confidentialité
-                </Label>
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="description">Description de votre activité *</Label>
+                  <Textarea
+                    id="description"
+                    rows={4}
+                    value={formData.professional.description}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        professional: { ...formData.professional, description: e.target.value },
+                      })
+                    }
+                    required
+                  />
+                </div>
               </div>
-
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                {isSubmitting ? "Création en cours..." : "Créer mon compte réparateur"}
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="abonnements">
-            <div className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Choisissez votre abonnement</h2>
-                <p className="text-gray-600">Sélectionnez l'offre qui correspond le mieux à vos besoins</p>
+              <div className="mt-6 flex justify-between">
+                <Button type="button" variant="outline" onClick={prevStep}>
+                  Précédent
+                </Button>
+                <Button type="button" onClick={nextStep}>
+                  Suivant
+                </Button>
               </div>
+            </div>
+          )}
 
-              <div className="grid md:grid-cols-3 gap-6">
+          {/* Step 3: Abonnement et finalisation */}
+          {currentStep === 3 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">Choisissez votre abonnement</h2>
+              <p className="text-green-600 font-medium mb-4">
+                Profitez de 15 jours d'essai gratuit avec toutes les fonctionnalités !
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {subscriptionPlans.map((plan) => (
-                  <Card key={plan.id} className={`relative ${plan.popular ? "border-blue-500 shadow-lg" : ""}`}>
-                    {plan.popular && (
-                      <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-600">
-                        Le plus populaire
-                      </Badge>
-                    )}
-                    <CardHeader className="text-center">
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
-                      <div className="text-3xl font-bold text-blue-600">{plan.price}</div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <ul className="space-y-2">
+                  <Card
+                    key={plan.id}
+                    className={`relative ${
+                      formData.subscription === plan.id ? "ring-2 ring-green-500" : "hover:shadow-lg transition-shadow"
+                    }`}
+                  >
+                    {plan.popular && <Badge className="absolute top-2 right-2 bg-green-500">Recommandé</Badge>}
+                    <CardContent className="pt-6">
+                      <div className="text-center mb-4">
+                        <h3 className="text-lg font-bold">{plan.name}</h3>
+                        <div className="text-2xl font-bold mt-2">{plan.price}</div>
+                      </div>
+                      <ul className="space-y-2 mb-6">
                         {plan.features.map((feature, index) => (
-                          <li key={index} className="flex items-center text-sm">
-                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
+                          <li key={index} className="flex items-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5 text-green-500 mr-2"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                             {feature}
                           </li>
                         ))}
                       </ul>
-                      <Button
-                        className={`w-full ${plan.popular ? "bg-blue-600 hover:bg-blue-700" : "variant-outline"}`}
-                        onClick={() => setFormData({ ...formData, subscription: plan.id })}
+                      <RadioGroup
+                        value={formData.subscription}
+                        onValueChange={(value) => setFormData({ ...formData, subscription: value })}
+                        className="flex justify-center"
                       >
-                        {formData.subscription === plan.id ? "Sélectionné" : "Choisir cette offre"}
-                      </Button>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value={plan.id} id={`plan-${plan.id}`} />
+                          <Label htmlFor={`plan-${plan.id}`}>Sélectionner</Label>
+                        </div>
+                      </RadioGroup>
                     </CardContent>
                   </Card>
                 ))}
               </div>
 
-              <div className="bg-blue-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">💡 Pourquoi un abonnement ?</h3>
-                <p className="text-blue-800 text-sm mb-4">
-                  L'abonnement nous permet de maintenir une plateforme de qualité et de protéger les données des
-                  clients. Seuls les réparateurs abonnés peuvent accéder aux coordonnées complètes des demandeurs.
-                </p>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Pas d'engagement, résiliable à tout moment</li>
-                  <li>• 7 jours d'essai gratuit pour tous les nouveaux membres</li>
-                  <li>• Facturation mensuelle, pas de frais cachés</li>
-                </ul>
+              <div className="flex items-center space-x-2 mb-6">
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                />
+                <Label htmlFor="terms" className="text-sm">
+                  J'accepte les{" "}
+                  <a href="#" className="text-green-600 hover:underline">
+                    conditions d'utilisation
+                  </a>{" "}
+                  et la{" "}
+                  <a href="#" className="text-green-600 hover:underline">
+                    politique de confidentialité
+                  </a>
+                </Label>
+              </div>
+
+              <div className="mt-6 flex justify-between">
+                <Button type="button" variant="outline" onClick={prevStep}>
+                  Précédent
+                </Button>
+                <Button type="submit" disabled={isSubmitting || !termsAccepted}>
+                  {isSubmitting ? "Inscription en cours..." : "Finaliser l'inscription"}
+                </Button>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </form>
+
+        {/* Avantages */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-center mb-8">Pourquoi rejoindre FixeoPro ?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow-md text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Clients qualifiés</h3>
+              <p className="text-gray-600">
+                Accédez à des demandes de réparation ciblées et qualifiées dans votre zone géographique.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Gagnez du temps</h3>
+              <p className="text-gray-600">
+                Moins de temps passé à chercher des clients, plus de temps pour développer votre activité.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8 text-green-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Développez votre activité</h3>
+              <p className="text-gray-600">
+                Augmentez votre visibilité et votre chiffre d'affaires grâce à notre plateforme.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Témoignages */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-center mb-8">Ce que disent nos réparateurs</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
+                <div>
+                  <h3 className="font-semibold">Thomas D.</h3>
+                  <p className="text-sm text-gray-600">Électricien, Paris</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                "Depuis que j'ai rejoint FixeoPro, j'ai augmenté mon nombre de clients de 30%. La plateforme est
+                intuitive et les demandes sont vraiment qualifiées."
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
+                <div>
+                  <h3 className="font-semibold">Sophie M.</h3>
+                  <p className="text-sm text-gray-600">Réparatrice informatique, Lyon</p>
+                </div>
+              </div>
+              <p className="text-gray-600">
+                "FixeoPro m'a permis de développer mon activité dans de nouveaux quartiers. Le système de mise en
+                relation est efficace et les clients sont satisfaits."
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQ */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-center mb-8">Questions fréquentes</h2>
+          <div className="space-y-4">
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="font-semibold mb-2">Comment fonctionne la période d'essai ?</h3>
+              <p className="text-gray-600">
+                Vous bénéficiez de 15 jours d'essai gratuit avec toutes les fonctionnalités du plan que vous avez
+                choisi. Aucun prélèvement n'est effectué pendant cette période.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="font-semibold mb-2">Puis-je changer de formule d'abonnement ?</h3>
+              <p className="text-gray-600">
+                Oui, vous pouvez changer de formule à tout moment depuis votre espace professionnel. Le changement prend
+                effet à la prochaine période de facturation.
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="font-semibold mb-2">Comment sont attribuées les demandes de réparation ?</h3>
+              <p className="text-gray-600">
+                Les demandes sont affichées en fonction de votre zone géographique et de vos spécialités. Vous
+                choisissez librement les demandes auxquelles vous souhaitez répondre.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

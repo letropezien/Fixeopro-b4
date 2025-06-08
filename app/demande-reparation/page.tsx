@@ -47,6 +47,7 @@ export default function DemandeReparationPage() {
     "Chauffage",
     "Serrurerie",
     "Multimédia",
+    "Téléphonie",
     "Climatisation",
   ]
 

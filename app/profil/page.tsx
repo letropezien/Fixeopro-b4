@@ -241,8 +241,8 @@ export default function ProfilPage() {
                             </span>
                           </div>
                           <div className="mt-3 flex space-x-2">
-                            <Button variant="outline" size="sm">
-                              Voir les détails
+                            <Button asChild variant="outline" size="sm">
+                              <a href={`/demande/${request.id}`}>Voir les détails</a>
                             </Button>
                             {request.status === "completed" && (
                               <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
