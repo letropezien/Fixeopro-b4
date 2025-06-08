@@ -162,7 +162,7 @@ export default function ListesDemandesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-2 block">Recherche</label>
                 <div className="relative">
