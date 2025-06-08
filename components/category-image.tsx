@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { CategoryImagesService } from "@/lib/category-images"
 
 interface CategoryImageProps {
   category: string
@@ -15,13 +16,24 @@ interface CategoryImageProps {
 export function CategoryImage({ category, alt, className, fill, width, height }: CategoryImageProps) {
   const [imageError, setImageError] = useState(false)
 
-  const imageSrc = imageError
-    ? `/placeholder.svg?height=${height || 200}&width=${width || 300}&text=${category}`
-    : `/images/categories/${category.toLowerCase().replace(/é/g, "e").replace(/è/g, "e")}.png`
+  // Utiliser le service pour obtenir l'image personnalisée ou par défaut
+  const getImageSrc = () => {
+    if (imageError) {
+      return `/placeholder.svg?height=${height || 200}&width=${width || 300}&text=${category}`
+    }
+
+    const customImage = CategoryImagesService.getCategoryImage(category.toLowerCase())
+    if (customImage?.imageUrl) {
+      return customImage.imageUrl
+    }
+
+    // Image par défaut basée sur le nom de la catégorie
+    return `/images/categories/${category.toLowerCase().replace(/é/g, "e").replace(/è/g, "e")}.png`
+  }
 
   return (
     <Image
-      src={imageSrc || "/placeholder.svg"}
+      src={getImageSrc() || "/placeholder.svg"}
       alt={alt}
       fill={fill}
       width={!fill ? width : undefined}
