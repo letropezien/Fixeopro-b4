@@ -29,6 +29,7 @@ export interface User {
     specialties: string[]
     description: string
     website?: string
+    companyPhotos?: string[] // Ajout des photos d'entreprise
   }
   avatar?: string
 }
@@ -59,6 +60,7 @@ export interface RepairRequest {
     lat: number
     lng: number
   }
+  photos?: string[] // Photos du problème
 }
 
 export class StorageService {
@@ -471,6 +473,7 @@ export class StorageService {
               experience: "10 ans",
               specialties: ["électroménager", "électricité"],
               description: "Spécialiste en réparation électroménager depuis 10 ans",
+              companyPhotos: [],
             },
             // Période d'essai automatique de 15 jours
             subscription: {
@@ -508,6 +511,7 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 48.8566, lng: 2.3522 },
+            photos: [],
           },
           {
             id: "demo_request_2",
@@ -529,6 +533,7 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 45.764, lng: 4.8357 },
+            photos: [],
           },
           {
             id: "demo_request_3",
@@ -550,6 +555,7 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 43.2965, lng: 5.3698 },
+            photos: [],
           },
           {
             id: "demo_request_4",
@@ -571,6 +577,7 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 43.6047, lng: 1.4442 },
+            photos: [],
           },
           {
             id: "demo_request_5",
@@ -592,6 +599,7 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 43.7102, lng: 7.262 },
+            photos: [],
           },
         ]
 

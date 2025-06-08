@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { GeocodingService } from "@/lib/geocoding"
+import { PhotoUpload } from "@/components/photo-upload"
 
 export default function DemandeReparationPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
@@ -34,7 +35,7 @@ export default function DemandeReparationPage() {
     },
     budget: "",
     availability: [],
-    photos: [],
+    photos: [] as string[], // Ajout des photos
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -372,6 +373,18 @@ export default function DemandeReparationPage() {
                     <SelectItem value="500+">Plus de 500€</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label>Photos du problème (optionnel)</Label>
+                <PhotoUpload
+                  currentPhotos={formData.photos}
+                  onPhotosChange={(photos) => setFormData({ ...formData, photos })}
+                  multiple={true}
+                  maxPhotos={2}
+                  label=""
+                  description="Ajoutez jusqu'à 2 photos pour illustrer votre problème"
+                />
               </div>
             </CardContent>
           </Card>
