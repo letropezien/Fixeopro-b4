@@ -34,6 +34,23 @@ export interface User {
   avatar?: string
 }
 
+export interface RepairResponse {
+  id: string
+  requestId: string
+  reparateurId: string
+  text: string
+  price?: string
+  estimatedTime?: string
+  createdAt: string
+  isSelected: boolean
+  reparateur: {
+    firstName: string
+    lastName: string
+    companyName?: string
+    avatar?: string
+  }
+}
+
 export interface RepairRequest {
   id: string
   clientId: string
@@ -49,7 +66,8 @@ export interface RepairRequest {
   address?: string
   createdAt: string
   status: "open" | "in_progress" | "completed" | "cancelled"
-  responses: number
+  responses: RepairResponse[] // Changé pour stocker les réponses complètes
+  selectedResponseId?: string // ID de la réponse sélectionnée
   client: {
     firstName: string
     lastName: string
@@ -62,6 +80,9 @@ export interface RepairRequest {
     lng: number
   }
   photos?: string[]
+  completedAt?: string // Date de fin des travaux
+  cancelledAt?: string // Date d'annulation
+  cancelReason?: string // Raison d'annulation
 }
 
 // Mock DepartmentService
@@ -254,6 +275,16 @@ export class StorageService {
         request.department = DepartmentService.getDepartmentFromPostalCode(request.postalCode)?.code
       }
 
+      // S'assurer que les réponses sont un tableau
+      if (!request.responses) {
+        request.responses = []
+      }
+
+      // Vérifier le statut en fonction des réponses
+      if (request.selectedResponseId && request.status === "open") {
+        request.status = "in_progress"
+      }
+
       const existingIndex = requests.findIndex((r) => r.id === request.id)
       if (existingIndex >= 0) {
         requests[existingIndex] = request
@@ -277,6 +308,109 @@ export class StorageService {
   static getRepairRequestById(id: string): RepairRequest | null {
     const requests = this.getRepairRequests()
     return requests.find((r) => r.id === id) || null
+  }
+
+  // Nouvelle méthode pour ajouter une réponse à une demande
+  static addResponseToRequest(requestId: string, response: Partial<RepairResponse>): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Créer une nouvelle réponse
+      const newResponse: RepairResponse = {
+        id: `response_${this.generateId()}`,
+        requestId,
+        reparateurId: response.reparateurId || "",
+        text: response.text || "",
+        price: response.price,
+        estimatedTime: response.estimatedTime,
+        createdAt: new Date().toISOString(),
+        isSelected: false,
+        reparateur: response.reparateur || {
+          firstName: "Réparateur",
+          lastName: "",
+        },
+      }
+
+      // Ajouter la réponse à la demande
+      if (!request.responses) {
+        request.responses = []
+      }
+      request.responses.push(newResponse)
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de la réponse:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour sélectionner une réponse
+  static selectResponse(requestId: string, responseId: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Mettre à jour le statut de la demande
+      request.status = "in_progress"
+      request.selectedResponseId = responseId
+
+      // Marquer la réponse comme sélectionnée
+      request.responses = request.responses.map((r) => ({
+        ...r,
+        isSelected: r.id === responseId,
+      }))
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la sélection de la réponse:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour marquer une demande comme terminée
+  static completeRequest(requestId: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Mettre à jour le statut de la demande
+      request.status = "completed"
+      request.completedAt = new Date().toISOString()
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la complétion de la demande:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour annuler une demande
+  static cancelRequest(requestId: string, reason?: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Mettre à jour le statut de la demande
+      request.status = "cancelled"
+      request.cancelledAt = new Date().toISOString()
+      if (reason) {
+        request.cancelReason = reason
+      }
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'annulation de la demande:", error)
+      return false
+    }
   }
 
   // Géolocalisation automatique
@@ -530,6 +664,33 @@ export class StorageService {
               endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
             },
           },
+          {
+            id: "demo_reparateur_2",
+            email: "reparateur2@demo.com",
+            password: "demo123",
+            firstName: "Marie",
+            lastName: "Dubois",
+            userType: "reparateur",
+            city: "Paris",
+            postalCode: "75002",
+            phone: "0123456787",
+            isEmailVerified: true,
+            createdAt: new Date().toISOString(),
+            professional: {
+              companyName: "ElectroFix",
+              siret: "98765432101234",
+              experience: "5 ans",
+              specialties: ["électroménager", "informatique"],
+              description: "Spécialiste en réparation d'appareils électroniques",
+              companyPhotos: [],
+            },
+            subscription: {
+              plan: "trial",
+              status: "trial",
+              startDate: new Date().toISOString(),
+              endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          },
         ]
 
         demoUsers.forEach((user) => this.saveUser(user))
@@ -550,7 +711,7 @@ export class StorageService {
             city: "Paris",
             postalCode: "75001",
             status: "open",
-            responses: 0,
+            responses: [],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -572,7 +733,7 @@ export class StorageService {
             city: "Lyon",
             postalCode: "69001",
             status: "open",
-            responses: 0,
+            responses: [],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -594,7 +755,7 @@ export class StorageService {
             city: "Marseille",
             postalCode: "13001",
             status: "open",
-            responses: 0,
+            responses: [],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -616,7 +777,7 @@ export class StorageService {
             city: "Toulouse",
             postalCode: "31000",
             status: "open",
-            responses: 0,
+            responses: [],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -638,7 +799,7 @@ export class StorageService {
             city: "Nice",
             postalCode: "06000",
             status: "open",
-            responses: 0,
+            responses: [],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -646,6 +807,166 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 43.7102, lng: 7.262 },
+            photos: [],
+          },
+          // Ajouter une demande avec des réponses
+          {
+            id: "demo_request_6",
+            clientId: "demo_client_1",
+            title: "Installation climatisation",
+            description: "J'ai besoin d'installer une climatisation dans mon salon",
+            category: "climatisation",
+            urgency: "this-week",
+            urgencyLabel: "Cette semaine",
+            budget: "300-500€",
+            city: "Paris",
+            postalCode: "75001",
+            status: "open",
+            responses: [
+              {
+                id: "response_1",
+                requestId: "demo_request_6",
+                reparateurId: "demo_reparateur_1",
+                text: "Je peux vous proposer l'installation d'une climatisation réversible pour 400€ tout compris. Je suis disponible dès jeudi.",
+                price: "400€",
+                estimatedTime: "3 heures",
+                createdAt: new Date().toISOString(),
+                isSelected: false,
+                reparateur: {
+                  firstName: "Thomas",
+                  lastName: "Martin",
+                  companyName: "Répar'Tout",
+                },
+              },
+              {
+                id: "response_2",
+                requestId: "demo_request_6",
+                reparateurId: "demo_reparateur_2",
+                text: "Bonjour, je peux vous installer une climatisation de qualité pour 450€ avec garantie 2 ans. Disponible lundi prochain.",
+                price: "450€",
+                estimatedTime: "4 heures",
+                createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+                isSelected: false,
+                reparateur: {
+                  firstName: "Marie",
+                  lastName: "Dubois",
+                  companyName: "ElectroFix",
+                },
+              },
+            ],
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+            coordinates: { lat: 48.8566, lng: 2.3522 },
+            photos: [],
+          },
+          // Ajouter une demande en cours
+          {
+            id: "demo_request_7",
+            clientId: "demo_client_1",
+            title: "Réparation lave-vaisselle",
+            description: "Mon lave-vaisselle fait un bruit étrange et ne lave plus correctement",
+            category: "électroménager",
+            urgency: "same-day",
+            urgencyLabel: "Aujourd'hui",
+            budget: "100-200€",
+            city: "Paris",
+            postalCode: "75001",
+            status: "in_progress",
+            selectedResponseId: "response_3",
+            responses: [
+              {
+                id: "response_3",
+                requestId: "demo_request_7",
+                reparateurId: "demo_reparateur_1",
+                text: "Je peux intervenir aujourd'hui pour diagnostiquer et réparer votre lave-vaisselle. Tarif : 120€ incluant le déplacement.",
+                price: "120€",
+                estimatedTime: "1 heure",
+                createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+                isSelected: true,
+                reparateur: {
+                  firstName: "Thomas",
+                  lastName: "Martin",
+                  companyName: "Répar'Tout",
+                },
+              },
+            ],
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+            coordinates: { lat: 48.8566, lng: 2.3522 },
+            photos: [],
+          },
+          // Ajouter une demande terminée
+          {
+            id: "demo_request_8",
+            clientId: "demo_client_1",
+            title: "Réparation télévision",
+            description: "Ma télévision s'allume mais n'affiche pas d'image",
+            category: "électronique",
+            urgency: "this-week",
+            urgencyLabel: "Cette semaine",
+            budget: "100-150€",
+            city: "Paris",
+            postalCode: "75001",
+            status: "completed",
+            selectedResponseId: "response_4",
+            responses: [
+              {
+                id: "response_4",
+                requestId: "demo_request_8",
+                reparateurId: "demo_reparateur_2",
+                text: "Je peux réparer votre télévision. Il s'agit probablement d'un problème de carte T-CON. Prix estimé : 130€.",
+                price: "130€",
+                estimatedTime: "2 heures",
+                createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                isSelected: true,
+                reparateur: {
+                  firstName: "Marie",
+                  lastName: "Dubois",
+                  companyName: "ElectroFix",
+                },
+              },
+            ],
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            coordinates: { lat: 48.8566, lng: 2.3522 },
+            photos: [],
+          },
+          // Ajouter une demande annulée
+          {
+            id: "demo_request_9",
+            clientId: "demo_client_1",
+            title: "Réparation vélo électrique",
+            description: "Mon vélo électrique ne s'allume plus",
+            category: "autres",
+            urgency: "flexible",
+            urgencyLabel: "Flexible",
+            budget: "50-100€",
+            city: "Paris",
+            postalCode: "75001",
+            status: "cancelled",
+            responses: [],
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+            cancelledAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+            cancelReason: "J'ai trouvé une autre solution",
+            coordinates: { lat: 48.8566, lng: 2.3522 },
             photos: [],
           },
         ]

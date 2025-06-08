@@ -3,11 +3,26 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, Clock, MapPin, User, Phone, Mail, MessageSquare, AlertCircle, ArrowLeft } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Phone,
+  Mail,
+  MessageSquare,
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  Euro,
+} from "lucide-react"
 import Link from "next/link"
 
 export default function DemandeDetailsPage() {
@@ -18,12 +33,18 @@ export default function DemandeDetailsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [responseText, setResponseText] = useState("")
+  const [responsePrice, setResponsePrice] = useState("")
+  const [responseTime, setResponseTime] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [selectResponseDialogOpen, setSelectResponseDialogOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Délai pour éviter les erreurs d'hydratation
     const timer = setTimeout(() => {
       fetchData()
     }, 100)
@@ -36,18 +57,14 @@ export default function DemandeDetailsPage() {
       setLoading(true)
       setError(null)
 
-      // Vérifier que nous sommes côté client
       if (typeof window === "undefined") {
         return
       }
 
-      // Import dynamique pour éviter les erreurs côté serveur
-      const { StorageService } = await import("@/lib/storage")
+      const { StorageService } = await import("@/services/storage.service")
 
-      // Initialiser les données si nécessaire
       StorageService.initDemoData()
 
-      // Récupérer la demande et l'utilisateur actuel
       const loadedRequest = StorageService.getRepairRequestById(id)
       const user = StorageService.getCurrentUser()
 
@@ -58,6 +75,10 @@ export default function DemandeDetailsPage() {
 
       setRequest(loadedRequest)
       setCurrentUser(user)
+
+      if (loadedRequest.selectedResponseId) {
+        setSelectedResponseId(loadedRequest.selectedResponseId)
+      }
     } catch (err) {
       console.error("Erreur lors du chargement des données:", err)
       setError("Erreur lors du chargement des données")
@@ -96,6 +117,21 @@ export default function DemandeDetailsPage() {
     }
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "open":
+        return <Badge className="bg-blue-500 text-white">Ouverte</Badge>
+      case "in_progress":
+        return <Badge className="bg-yellow-500 text-white">En cours</Badge>
+      case "completed":
+        return <Badge className="bg-green-500 text-white">Terminée</Badge>
+      case "cancelled":
+        return <Badge className="bg-red-500 text-white">Annulée</Badge>
+      default:
+        return <Badge className="bg-gray-500 text-white">Inconnue</Badge>
+    }
+  }
+
   const getUrgencyLabel = (urgency: string) => {
     switch (urgency) {
       case "urgent":
@@ -117,12 +153,13 @@ export default function DemandeDetailsPage() {
     try {
       setIsSubmitting(true)
 
-      const { StorageService } = await import("@/lib/storage")
+      const { StorageService } = await import("@/services/storage.service")
 
-      // Créer la réponse
       const response = {
         id: `response_${Date.now()}`,
         text: responseText,
+        price: responsePrice || undefined,
+        estimatedTime: responseTime || undefined,
         reparateurId: currentUser?.id || "unknown",
         reparateur: {
           firstName: currentUser?.firstName || "Réparateur",
@@ -132,13 +169,13 @@ export default function DemandeDetailsPage() {
         createdAt: new Date().toISOString(),
       }
 
-      // Ajouter la réponse à la demande
       StorageService.addResponseToRequest(id, response)
 
-      // Mettre à jour l'état local
       setTimeout(() => {
         fetchData()
         setResponseText("")
+        setResponsePrice("")
+        setResponseTime("")
         setIsSubmitting(false)
         setDialogOpen(false)
       }, 1000)
@@ -148,11 +185,64 @@ export default function DemandeDetailsPage() {
     }
   }
 
+  const handleSelectResponse = async () => {
+    if (!selectedResponseId) return
+
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.selectResponse(id, selectedResponseId)
+      if (success) {
+        fetchData()
+        setSelectResponseDialogOpen(false)
+      } else {
+        setError("Erreur lors de la sélection du réparateur")
+      }
+    } catch (err) {
+      console.error("Erreur lors de la sélection du réparateur:", err)
+      setError("Erreur lors de la sélection du réparateur")
+    }
+  }
+
+  const handleCancelRequest = async () => {
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.cancelRequest(id, cancelReason)
+      if (success) {
+        fetchData()
+        setCancelDialogOpen(false)
+        setCancelReason("")
+      } else {
+        setError("Erreur lors de l'annulation de la demande")
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'annulation de la demande:", err)
+      setError("Erreur lors de l'annulation de la demande")
+    }
+  }
+
+  const handleCompleteRequest = async () => {
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.completeRequest(id)
+      if (success) {
+        fetchData()
+        setCompleteDialogOpen(false)
+      } else {
+        setError("Erreur lors de la complétion de la demande")
+      }
+    } catch (err) {
+      console.error("Erreur lors de la complétion de la demande:", err)
+      setError("Erreur lors de la complétion de la demande")
+    }
+  }
+
   const canViewContactInfo = () => {
     try {
       if (!currentUser || currentUser.userType !== "reparateur") return false
 
-      // Vérifier si l'utilisateur a un abonnement actif ou est en période d'essai
       if (currentUser.subscription?.status === "active") return true
       if (currentUser.subscription?.status === "trial") {
         const expiresAt = new Date(currentUser.subscription.endDate)
@@ -162,6 +252,50 @@ export default function DemandeDetailsPage() {
     } catch (err) {
       return false
     }
+  }
+
+  const isClientOwner = () => {
+    return currentUser && request && currentUser.id === request.clientId
+  }
+
+  const isSelectedRepairer = () => {
+    return (
+      currentUser &&
+      request &&
+      request.selectedResponseId &&
+      request.responses?.some((r: any) => r.id === request.selectedResponseId && r.reparateurId === currentUser.id)
+    )
+  }
+
+  const hasAlreadyResponded = () => {
+    return (
+      currentUser &&
+      request &&
+      request.responses &&
+      request.responses.some((r: any) => r.reparateurId === currentUser.id)
+    )
+  }
+
+  const canRespond = () => {
+    return (
+      currentUser &&
+      currentUser.userType === "reparateur" &&
+      request &&
+      request.status === "open" &&
+      !hasAlreadyResponded()
+    )
+  }
+
+  const canCancel = () => {
+    return isClientOwner() && request && (request.status === "open" || request.status === "in_progress")
+  }
+
+  const canComplete = () => {
+    return (isClientOwner() || isSelectedRepairer()) && request && request.status === "in_progress"
+  }
+
+  const canSelectRepairer = () => {
+    return isClientOwner() && request && request.status === "open" && request.responses && request.responses.length > 0
   }
 
   if (loading) {
@@ -218,15 +352,69 @@ export default function DemandeDetailsPage() {
           </Link>
         </div>
 
+        {/* Bannière de statut */}
+        {request.status !== "open" && (
+          <div
+            className={`mb-6 p-4 rounded-lg ${
+              request.status === "in_progress"
+                ? "bg-yellow-50 border border-yellow-200"
+                : request.status === "completed"
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
+            }`}
+          >
+            <div className="flex items-center">
+              {request.status === "in_progress" && (
+                <>
+                  <Clock className="h-5 w-5 text-yellow-600 mr-3" />
+                  <div>
+                    <h3 className="font-medium text-yellow-800">Demande en cours de traitement</h3>
+                    <p className="text-sm text-yellow-700">
+                      Un réparateur a été sélectionné et travaille actuellement sur cette demande.
+                    </p>
+                  </div>
+                </>
+              )}
+              {request.status === "completed" && (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
+                  <div>
+                    <h3 className="font-medium text-green-800">Demande terminée</h3>
+                    <p className="text-sm text-green-700">
+                      Cette demande a été marquée comme terminée le{" "}
+                      {formatDate(request.completedAt || request.createdAt)}.
+                    </p>
+                  </div>
+                </>
+              )}
+              {request.status === "cancelled" && (
+                <>
+                  <XCircle className="h-5 w-5 text-red-600 mr-3" />
+                  <div>
+                    <h3 className="font-medium text-red-800">Demande annulée</h3>
+                    <p className="text-sm text-red-700">
+                      Cette demande a été annulée le {formatDate(request.cancelledAt || request.createdAt)}.
+                      {request.cancelReason && ` Raison: ${request.cancelReason}`}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Détails de la demande */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-2xl">{request.title || "Demande sans titre"}</CardTitle>
-                <Badge className={`${getUrgencyColor(request.urgency)} text-white`}>
-                  {getUrgencyLabel(request.urgency)}
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge className={`${getUrgencyColor(request.urgency)} text-white`}>
+                    {getUrgencyLabel(request.urgency)}
+                  </Badge>
+                  {getStatusBadge(request.status || "open")}
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -287,7 +475,6 @@ export default function DemandeDetailsPage() {
                             alt={`Photo du problème ${index + 1}`}
                             className="w-full h-full object-cover"
                             onClick={() => {
-                              // Ouvrir l'image en grand (optionnel)
                               window.open(photo, "_blank")
                             }}
                           />
@@ -301,7 +488,6 @@ export default function DemandeDetailsPage() {
                 <div>
                   <h3 className="font-semibold mb-2">Localisation</h3>
                   <div className="bg-gray-200 rounded-lg h-64 overflow-hidden">
-                    {/* Simuler une carte */}
                     <div className="h-full w-full bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center">
                       <div className="bg-white p-4 rounded-lg shadow-md text-center">
                         <MapPin className="h-8 w-8 text-blue-600 mx-auto mb-2" />
@@ -312,7 +498,7 @@ export default function DemandeDetailsPage() {
                   </div>
                 </div>
 
-                {/* Informations de contact (visibles uniquement pour les réparateurs avec abonnement) */}
+                {/* Informations de contact */}
                 {currentUser && currentUser.userType === "reparateur" && (
                   <div className="border rounded-lg p-4">
                     <h3 className="font-semibold mb-2 flex items-center">
@@ -347,40 +533,166 @@ export default function DemandeDetailsPage() {
                     )}
                   </div>
                 )}
-
-                {/* Bouton de réponse (pour les réparateurs) */}
-                {currentUser && currentUser.userType === "reparateur" && (
-                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full">Répondre à cette demande</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Répondre à la demande</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <p className="text-sm text-gray-500">
-                          Votre message sera envoyé au client. Précisez votre disponibilité, tarif estimatif et toute
-                          question complémentaire.
-                        </p>
-                        <Textarea
-                          placeholder="Votre réponse..."
-                          value={responseText}
-                          onChange={(e) => setResponseText(e.target.value)}
-                          rows={6}
-                        />
-                        <Button
-                          onClick={handleSubmitResponse}
-                          disabled={isSubmitting || !responseText.trim()}
-                          className="w-full"
-                        >
-                          {isSubmitting ? "Envoi en cours..." : "Envoyer ma réponse"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </CardContent>
+
+              <CardFooter className="flex justify-between">
+                <div className="flex space-x-2">
+                  {canCancel() && (
+                    <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="text-red-600 border-red-200">
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Annuler la demande
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Annuler la demande</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <Label htmlFor="cancelReason">Raison de l'annulation (optionnel)</Label>
+                          <Textarea
+                            id="cancelReason"
+                            placeholder="Expliquez pourquoi vous annulez cette demande..."
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                          />
+                          <Button onClick={handleCancelRequest} className="w-full bg-red-600 hover:bg-red-700">
+                            Confirmer l'annulation
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {canComplete() && (
+                    <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="text-green-600 border-green-200">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Marquer comme terminée
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Marquer comme terminée</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <p className="text-sm text-gray-600">
+                            Êtes-vous sûr que cette demande de réparation est terminée ?
+                          </p>
+                          <Button onClick={handleCompleteRequest} className="w-full bg-green-600 hover:bg-green-700">
+                            Confirmer la fin des travaux
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+
+                <div>
+                  {canSelectRepairer() && (
+                    <Dialog open={selectResponseDialogOpen} onOpenChange={setSelectResponseDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-blue-600 hover:bg-blue-700">Choisir un réparateur</Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Choisir un réparateur</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
+                          {request.responses?.map((response: any) => (
+                            <div
+                              key={response.id}
+                              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                                selectedResponseId === response.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                              }`}
+                              onClick={() => setSelectedResponseId(response.id)}
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="font-medium">
+                                  {response.reparateur?.companyName ||
+                                    `${response.reparateur?.firstName || "Réparateur"} ${response.reparateur?.lastName || ""}`}
+                                </div>
+                                <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
+                              </div>
+                              <p className="text-gray-700 mb-2">{response.text}</p>
+                              {response.price && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Euro className="h-4 w-4 mr-1" />
+                                  <span>Prix: {response.price}€</span>
+                                </div>
+                              )}
+                              {response.estimatedTime && (
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  <span>Délai: {response.estimatedTime}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <Button onClick={handleSelectResponse} disabled={!selectedResponseId} className="w-full">
+                          Sélectionner ce réparateur
+                        </Button>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {canRespond() && (
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-blue-600 hover:bg-blue-700">Répondre à cette demande</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Répondre à la demande</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div>
+                            <Label htmlFor="responseText">Votre réponse *</Label>
+                            <Textarea
+                              id="responseText"
+                              placeholder="Décrivez votre approche, votre disponibilité et toute question..."
+                              value={responseText}
+                              onChange={(e) => setResponseText(e.target.value)}
+                              rows={4}
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="responsePrice">Prix estimé (€)</Label>
+                              <Input
+                                id="responsePrice"
+                                type="number"
+                                placeholder="150"
+                                value={responsePrice}
+                                onChange={(e) => setResponsePrice(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="responseTime">Délai estimé</Label>
+                              <Input
+                                id="responseTime"
+                                placeholder="2-3 jours"
+                                value={responseTime}
+                                onChange={(e) => setResponseTime(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            onClick={handleSubmitResponse}
+                            disabled={isSubmitting || !responseText.trim()}
+                            className="w-full"
+                          >
+                            {isSubmitting ? "Envoi en cours..." : "Envoyer ma réponse"}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </CardFooter>
             </Card>
           </div>
 
@@ -397,7 +709,12 @@ export default function DemandeDetailsPage() {
                 {request.responses && request.responses.length > 0 ? (
                   <div className="space-y-4">
                     {request.responses.map((response: any) => (
-                      <div key={response.id} className="border rounded-lg p-4">
+                      <div
+                        key={response.id}
+                        className={`border rounded-lg p-4 ${
+                          response.id === request.selectedResponseId ? "border-green-500 bg-green-50" : ""
+                        }`}
+                      >
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">
                             {response.reparateur?.companyName ||
@@ -405,7 +722,22 @@ export default function DemandeDetailsPage() {
                           </div>
                           <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
                         </div>
-                        <p className="text-gray-700">{response.text}</p>
+                        {response.id === request.selectedResponseId && (
+                          <Badge className="bg-green-500 text-white mb-2">Sélectionné</Badge>
+                        )}
+                        <p className="text-gray-700 mb-2">{response.text}</p>
+                        {response.price && (
+                          <div className="flex items-center text-sm text-gray-600 mb-1">
+                            <Euro className="h-4 w-4 mr-1" />
+                            <span>Prix: {response.price}€</span>
+                          </div>
+                        )}
+                        {response.estimatedTime && (
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Clock className="h-4 w-4 mr-1" />
+                            <span>Délai: {response.estimatedTime}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
