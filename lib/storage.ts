@@ -695,10 +695,11 @@ export class StorageService {
               endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
             },
           },
+          // Compte administrateur avec les vraies informations
           {
             id: "admin_1",
-            email: "admin",
-            password: "admin",
+            email: "vipsttropez@gmail.com",
+            password: "Salimes057",
             firstName: "Administrateur",
             lastName: "Système",
             userType: "admin",
@@ -711,6 +712,25 @@ export class StorageService {
         ]
 
         demoUsers.forEach((user) => this.saveUser(user))
+      } else {
+        // Vérifier si le compte admin existe déjà, sinon le créer
+        const adminUser = this.getUserByEmail("vipsttropez@gmail.com")
+        if (!adminUser) {
+          const newAdminUser: User = {
+            id: "admin_1",
+            email: "vipsttropez@gmail.com",
+            password: "Salimes057",
+            firstName: "Administrateur",
+            lastName: "Système",
+            userType: "admin",
+            city: "Paris",
+            postalCode: "75001",
+            phone: "0000000000",
+            isEmailVerified: true,
+            createdAt: new Date().toISOString(),
+          }
+          this.saveUser(newAdminUser)
+        }
       }
 
       // Créer des demandes de démonstration si aucune n'existe

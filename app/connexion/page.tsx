@@ -50,17 +50,6 @@ export default function ConnexionPage() {
         return
       }
 
-      // Authentification spéciale pour l'admin
-      if (loginData.email === "admin" && loginData.password === "admin") {
-        const adminUser = StorageService.getUserByEmail("admin")
-        if (adminUser) {
-          StorageService.setCurrentUser(adminUser)
-          router.push("/admin")
-          window.location.reload()
-          return
-        }
-      }
-
       const user = StorageService.authenticateUser(loginData.email, loginData.password)
 
       if (user) {
@@ -259,7 +248,7 @@ export default function ConnexionPage() {
                   </Button>
                 </form>
 
-                {/* Comptes de démonstration */}
+                {/* Comptes de démonstration - sans les informations admin */}
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-medium text-blue-900 mb-2">Comptes de démonstration :</h4>
                   <div className="text-sm text-blue-800 space-y-1">
@@ -268,9 +257,6 @@ export default function ConnexionPage() {
                     </p>
                     <p>
                       <strong>Réparateur :</strong> reparateur@demo.com / demo123
-                    </p>
-                    <p>
-                      <strong>Admin :</strong> admin / admin
                     </p>
                   </div>
                 </div>
