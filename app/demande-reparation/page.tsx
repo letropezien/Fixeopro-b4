@@ -1,628 +1,149 @@
 "use client"
 
-import Link from "next/link"
 import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react"
-import { StorageService } from "@/lib/storage"
-import { GeocodingService } from "@/lib/geocoding"
-import { PhotoUpload } from "@/components/photo-upload"
-import { DepartmentSelector } from "@/components/department-selector"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import PhotoUpload from "@/components/PhotoUpload"
 
-export default function DemandeReparationPage() {
-  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
-  const [formData, setFormData] = useState({
-    category: "",
-    urgency: "",
+interface FormData {
+  typeAppareil: string
+  marque: string
+  modele: string
+  description: string
+  photos: string[]
+}
+
+const DemandeReparationPage = () => {
+  const [formData, setFormData] = useState<FormData>({
+    typeAppareil: "",
+    marque: "",
+    modele: "",
     description: "",
-    location: "",
-    department: "", // Ajouter cette ligne
-    coordinates: null as { lat: number; lng: number } | null,
-    contact: {
-      firstName: currentUser?.firstName || "",
-      lastName: currentUser?.lastName || "",
-      email: currentUser?.email || "",
-      phone: currentUser?.phone || "",
-      address: currentUser?.address || "",
-      city: currentUser?.city || "",
-      postalCode: currentUser?.postalCode || "",
-    },
-    budget: "",
-    availability: [],
-    photos: [] as string[], // Ajout des photos
+    photos: [],
   })
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [termsAccepted, setTermsAccepted] = useState(false)
-  const [needsRegistration, setNeedsRegistration] = useState(!currentUser)
-  const [isGeolocating, setIsGeolocating] = useState(false)
-  const [geoError, setGeoError] = useState<string | null>(null)
-  const [geoSuccess, setGeoSuccess] = useState<string | null>(null)
+  const router = useRouter()
 
-  const categories = [
-    "Électroménager",
-    "Informatique",
-    "Plomberie",
-    "Électricité",
-    "Chauffage",
-    "Serrurerie",
-    "Multimédia",
-    "Téléphonie",
-    "Climatisation",
-  ]
-
-  const urgencyLevels = [
-    { value: "urgent", label: "Urgent (dans les 2h)", icon: "🚨" },
-    { value: "same-day", label: "Aujourd'hui", icon: "⏰" },
-    { value: "this-week", label: "Cette semaine", icon: "📅" },
-    { value: "flexible", label: "Flexible", icon: "🗓️" },
-  ]
-
-  // Fonction pour géolocaliser l'utilisateur et remplir automatiquement l'adresse
-  const handleGeolocation = async () => {
-    setIsGeolocating(true)
-    setGeoError(null)
-    setGeoSuccess(null)
-
-    try {
-      console.log("Début de la géolocalisation...")
-
-      // Obtenir l'adresse complète via géolocalisation
-      const address = await GeocodingService.geolocateAndGetAddress()
-
-      console.log("Adresse trouvée:", address)
-
-      // Mettre à jour le formulaire avec l'adresse trouvée
-      setFormData((prev) => ({
-        ...prev,
-        contact: {
-          ...prev.contact,
-          address: address.street || prev.contact.address,
-          city: address.city,
-          postalCode: address.postalCode,
-        },
-        coordinates: {
-          lat: 0, // Sera mis à jour par la géolocalisation
-          lng: 0,
-        },
-      }))
-
-      // Obtenir aussi les coordonnées GPS pour la carte
-      try {
-        const coordinates = await GeocodingService.getCurrentPosition()
-        setFormData((prev) => ({
-          ...prev,
-          coordinates: coordinates,
-        }))
-      } catch (coordError) {
-        console.warn("Impossible d'obtenir les coordonnées précises:", coordError)
-        // Utiliser les coordonnées approximatives de la ville
-        const cityCoords = StorageService.generateCoordinatesForCity(address.city)
-        setFormData((prev) => ({
-          ...prev,
-          coordinates: cityCoords,
-        }))
-      }
-
-      setGeoSuccess(`Adresse trouvée : ${address.city}, ${address.postalCode}`)
-    } catch (error) {
-      console.error("Erreur de géolocalisation:", error)
-      setGeoError(error instanceof Error ? error.message : "Erreur de géolocalisation")
-    } finally {
-      setIsGeolocating(false)
+  useEffect(() => {
+    // Load data from localStorage on component mount
+    const storedData = localStorage.getItem("reparationFormData")
+    if (storedData) {
+      setFormData(JSON.parse(storedData))
     }
+  }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+
+    // Save data to localStorage
+    localStorage.setItem("reparationFormData", JSON.stringify(formData))
+
+    // Basic form validation
+    if (!formData.typeAppareil || !formData.marque || !formData.modele || !formData.description) {
+      alert("Veuillez remplir tous les champs obligatoires.")
+      return
+    }
 
     try {
-      // Validation des champs requis
-      if (!formData.category) {
-        alert("Veuillez sélectionner une catégorie")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.urgency) {
-        alert("Veuillez sélectionner un niveau d'urgence")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.description.trim()) {
-        alert("Veuillez décrire votre problème")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.department) {
-        alert("Veuillez sélectionner votre département")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.city.trim()) {
-        alert("Veuillez indiquer votre ville")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.postalCode.trim()) {
-        alert("Veuillez indiquer votre code postal")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.firstName.trim()) {
-        alert("Veuillez indiquer votre prénom")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.lastName.trim()) {
-        alert("Veuillez indiquer votre nom")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.email.trim()) {
-        alert("Veuillez indiquer votre email")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!formData.contact.phone.trim()) {
-        alert("Veuillez indiquer votre téléphone")
-        setIsSubmitting(false)
-        return
-      }
-
-      if (!termsAccepted) {
-        alert("Veuillez accepter les conditions d'utilisation")
-        setIsSubmitting(false)
-        return
-      }
-
-      // Générer des coordonnées si elles n'existent pas
-      if (!formData.coordinates) {
-        const coordinates = StorageService.generateCoordinatesForCity(formData.contact.city)
-        setFormData((prev) => ({ ...prev, coordinates }))
-      }
-
-      let userId = currentUser?.id
-
-      // Si l'utilisateur n'est pas connecté, créer un compte automatiquement
-      if (!currentUser) {
-        const newUser = {
-          id: StorageService.generateId(),
-          email: formData.contact.email,
-          password: "temp_password", // Mot de passe temporaire
-          firstName: formData.contact.firstName,
-          lastName: formData.contact.lastName,
-          phone: formData.contact.phone,
-          address: formData.contact.address,
-          city: formData.contact.city,
-          postalCode: formData.contact.postalCode,
-          userType: "client" as const,
-          isEmailVerified: false,
-          createdAt: new Date().toISOString(),
-        }
-
-        StorageService.saveUser(newUser)
-        StorageService.setCurrentUser(newUser)
-        userId = newUser.id
-
-        // Envoyer email de vérification
-        await StorageService.sendVerificationEmail(newUser.email, newUser.firstName)
-
-        setCurrentUser(newUser)
-        setNeedsRegistration(false)
-      }
-
-      // Créer la demande de réparation
-      const urgencyLevel = urgencyLevels.find((level) => level.value === formData.urgency)
-
-      const repairRequest = {
-        id: StorageService.generateId(),
-        clientId: userId!,
-        category: formData.category,
-        urgency: formData.urgency,
-        urgencyLabel: urgencyLevel?.label || formData.urgency,
-        title: `Réparation ${formData.category.toLowerCase()}`,
-        description: formData.description,
-        budget: formData.budget,
-        city: formData.contact.city,
-        postalCode: formData.contact.postalCode,
-        address: formData.contact.address,
-        createdAt: new Date().toISOString(),
-        status: "open" as const,
-        responses: 0,
-        client: {
-          firstName: formData.contact.firstName,
-          lastName: formData.contact.lastName,
-          initials: `${formData.contact.firstName[0]}${formData.contact.lastName[0]}`,
-          email: formData.contact.email,
-          phone: formData.contact.phone,
-        },
-        coordinates: formData.coordinates || StorageService.generateCoordinatesForCity(formData.contact.city),
-      }
-
-      StorageService.saveRepairRequest(repairRequest)
-
-      console.log("Demande soumise avec succès:", repairRequest)
-
-      // Rediriger vers la page de confirmation
-      window.location.href = "/confirmation"
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      alert("Demande de réparation soumise avec succès!")
+      router.push("/") // Redirect to home page
     } catch (error) {
-      console.error("Erreur lors de la soumission:", error)
-      alert("Une erreur est survenue. Veuillez réessayer.")
-    } finally {
-      setIsSubmitting(false)
+      console.error("Error submitting form:", error)
+      alert("Une erreur est survenue lors de la soumission de la demande.")
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Demande de réparation</h1>
-          <p className="text-lg text-gray-600">
-            Décrivez votre problème et trouvez rapidement un expert près de chez vous
-          </p>
-          {needsRegistration && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <p className="text-blue-800 text-sm">
-                💡 Un compte sera automatiquement créé pour vous permettre de suivre votre demande
-              </p>
-            </div>
-          )}
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Demande de Réparation</h1>
+      <form onSubmit={handleSubmit} className="max-w-lg">
+        <div className="mb-4">
+          <label htmlFor="typeAppareil" className="block text-gray-700 text-sm font-bold mb-2">
+            Type d'appareil:
+          </label>
+          <select
+            id="typeAppareil"
+            name="typeAppareil"
+            value={formData.typeAppareil}
+            onChange={handleChange}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          >
+            <option value="">Sélectionner...</option>
+            <option value="smartphone">Smartphone</option>
+            <option value="tablette">Tablette</option>
+            <option value="ordinateur">Ordinateur</option>
+          </select>
+        </div>
+        <div className="mb-4">
+          <label htmlFor="marque" className="block text-gray-700 text-sm font-bold mb-2">
+            Marque:
+          </label>
+          <input
+            type="text"
+            id="marque"
+            name="marque"
+            value={formData.marque}
+            onChange={handleChange}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="modele" className="block text-gray-700 text-sm font-bold mb-2">
+            Modèle:
+          </label>
+          <input
+            type="text"
+            id="modele"
+            name="modele"
+            value={formData.modele}
+            onChange={handleChange}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="description" className="block text-gray-700 text-sm font-bold mb-2">
+            Description du problème:
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Catégorie et urgence */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                  1
-                </span>
-                Type de réparation
-              </CardTitle>
-              <CardDescription>Sélectionnez la catégorie qui correspond à votre problème</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label htmlFor="category">Catégorie *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisissez une catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category.toLowerCase()}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="mb-4">
+          <div>
+            <PhotoUpload
+              currentPhotos={formData.photos || []}
+              onPhotosChange={(photos) => setFormData((prev) => ({ ...prev, photos }))}
+              multiple={true}
+              maxPhotos={2}
+              label="Photos du problème"
+              description="Ajoutez jusqu'à 2 photos pour illustrer votre problème (optionnel)"
+            />
+          </div>
+        </div>
 
-              <div>
-                <Label>Niveau d'urgence *</Label>
-                <RadioGroup
-                  value={formData.urgency}
-                  onValueChange={(value) => setFormData({ ...formData, urgency: value })}
-                  className="grid grid-cols-2 gap-4 mt-2"
-                >
-                  {urgencyLevels.map((level) => (
-                    <div
-                      key={level.value}
-                      className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50"
-                    >
-                      <RadioGroupItem value={level.value} id={level.value} />
-                      <Label htmlFor={level.value} className="flex items-center cursor-pointer">
-                        <span className="mr-2">{level.icon}</span>
-                        {level.label}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description du problème */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                  2
-                </span>
-                Description du problème
-              </CardTitle>
-              <CardDescription>Plus vous êtes précis, mieux nous pourrons vous aider</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="description">Décrivez votre problème en détail *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Ex: Mon lave-linge ne démarre plus depuis ce matin. Le voyant rouge clignote et il fait un bruit étrange..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="min-h-[120px]"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="budget">Budget approximatif</Label>
-                <Select value={formData.budget} onValueChange={(value) => setFormData({ ...formData, budget: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez votre budget" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0-50">Moins de 50€</SelectItem>
-                    <SelectItem value="50-100">50€ - 100€</SelectItem>
-                    <SelectItem value="100-200">100€ - 200€</SelectItem>
-                    <SelectItem value="200-500">200€ - 500€</SelectItem>
-                    <SelectItem value="500+">Plus de 500€</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Photos du problème (optionnel)</Label>
-                <PhotoUpload
-                  currentPhotos={formData.photos}
-                  onPhotosChange={(photos) => setFormData({ ...formData, photos })}
-                  multiple={true}
-                  maxPhotos={2}
-                  label=""
-                  description="Ajoutez jusqu'à 2 photos pour illustrer votre problème"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Localisation */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                  3
-                </span>
-                <MapPin className="h-5 w-5 mr-2" />
-                Localisation
-              </CardTitle>
-              <CardDescription>
-                Cliquez sur "Géolocaliser mon adresse" pour remplir automatiquement votre ville et code postal
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Bouton de géolocalisation en premier */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-blue-900">📍 Géolocalisation automatique</h4>
-                    <p className="text-sm text-blue-800">Trouvez automatiquement votre ville et code postal</p>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleGeolocation}
-                    disabled={isGeolocating}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isGeolocating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Localisation...
-                      </>
-                    ) : (
-                      <>
-                        <MapPin className="h-4 w-4 mr-2" />
-                        Géolocaliser mon adresse
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Messages de statut */}
-                {geoSuccess && (
-                  <div className="flex items-center text-green-600 text-sm">
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {geoSuccess}
-                  </div>
-                )}
-
-                {geoError && (
-                  <div className="flex items-center text-red-600 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    {geoError}
-                  </div>
-                )}
-              </div>
-
-              {/* Champs d'adresse */}
-              <div className="space-y-4">
-                <DepartmentSelector
-                  value={formData.department}
-                  onValueChange={(value) => setFormData({ ...formData, department: value })}
-                  label="Département *"
-                  required
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="city">Ville *</Label>
-                    <Input
-                      id="city"
-                      placeholder="Ex: Paris"
-                      value={formData.contact.city}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          contact: { ...formData.contact, city: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="postalCode">Code postal *</Label>
-                    <Input
-                      id="postalCode"
-                      placeholder="Ex: 75001"
-                      value={formData.contact.postalCode}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          contact: { ...formData.contact, postalCode: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="address">Adresse complète</Label>
-                <Input
-                  id="address"
-                  placeholder="Ex: 123 rue de la République"
-                  value={formData.contact.address}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact: { ...formData.contact, address: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Informations de contact */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <span className="bg-blue-100 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                  4
-                </span>
-                Vos coordonnées
-              </CardTitle>
-              <CardDescription>
-                {needsRegistration
-                  ? "Un compte sera créé automatiquement avec ces informations"
-                  : "Ces informations restent confidentielles jusqu'à ce qu'un réparateur accepte votre demande"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">Prénom *</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.contact.firstName}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contact: { ...formData.contact, firstName: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Nom *</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.contact.lastName}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contact: { ...formData.contact, lastName: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.contact.email}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact: { ...formData.contact, email: e.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Téléphone *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.contact.phone}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      contact: { ...formData.contact, phone: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Conditions et soumission */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <Checkbox
-                  id="terms"
-                  checked={termsAccepted}
-                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                />
-                <Label htmlFor="terms" className="text-sm">
-                  J'accepte les{" "}
-                  <Link href="/conditions" className="text-blue-600 hover:underline">
-                    conditions d'utilisation
-                  </Link>{" "}
-                  et la{" "}
-                  <Link href="/confidentialite" className="text-blue-600 hover:underline">
-                    politique de confidentialité
-                  </Link>
-                </Label>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                <h4 className="font-semibold text-blue-900 mb-2">🔒 Vos données sont protégées</h4>
-                <p className="text-sm text-blue-800">
-                  Vos coordonnées ne seront visibles que par les réparateurs abonnés qui acceptent votre demande. Votre
-                  demande reste anonyme jusqu'à ce qu'un professionnel s'engage.
-                </p>
-              </div>
-
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
-                {isSubmitting ? "Envoi en cours..." : "Publier ma demande gratuitement"}
-              </Button>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
+        <div className="flex items-center justify-between">
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            type="submit"
+          >
+            Soumettre
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
+
+export default DemandeReparationPage

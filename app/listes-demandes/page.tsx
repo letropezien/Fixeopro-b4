@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock, MessageSquare, Search } from "lucide-react"
+import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock, MessageSquare, Search, MapIcon } from "lucide-react"
 import { StorageService } from "@/lib/storage"
+import { DepartmentService } from "@/lib/departments"
+import { DepartmentSelector } from "@/components/department-selector"
 import Link from "next/link"
 
 export default function ListesDemandesPage() {
@@ -18,6 +20,7 @@ export default function ListesDemandesPage() {
     category: "",
     urgency: "",
     city: "",
+    department: "",
     search: "",
   })
 
@@ -42,6 +45,18 @@ export default function ListesDemandesPage() {
 
     if (filters.city) {
       filtered = filtered.filter((request) => request.city.toLowerCase().includes(filters.city.toLowerCase()))
+    }
+
+    if (filters.department) {
+      filtered = filtered.filter((request) => {
+        // Filtrer par département en utilisant le code postal ou le département stocké
+        if (request.department) {
+          return request.department === filters.department
+        }
+        // Fallback : détecter le département à partir du code postal
+        const dept = DepartmentService.getDepartmentFromPostalCode(request.postalCode)
+        return dept?.code === filters.department
+      })
     }
 
     if (filters.search) {
@@ -105,9 +120,30 @@ export default function ListesDemandesPage() {
       category: "",
       urgency: "",
       city: "",
+      department: "",
       search: "",
     })
   }
+
+  const getDepartmentName = (postalCode: string, departmentCode?: string) => {
+    if (departmentCode) {
+      const dept = DepartmentService.getDepartmentByCode(departmentCode)
+      return dept ? `${dept.code} - ${dept.name}` : departmentCode
+    }
+    const dept = DepartmentService.getDepartmentFromPostalCode(postalCode)
+    return dept ? `${dept.code} - ${dept.name}` : "Non défini"
+  }
+
+  // Statistiques par département
+  const departmentStats = filteredRequests.reduce(
+    (acc, request) => {
+      const deptCode =
+        request.department || DepartmentService.getDepartmentFromPostalCode(request.postalCode)?.code || "unknown"
+      acc[deptCode] = (acc[deptCode] || 0) + 1
+      return acc
+    },
+    {} as Record<string, number>,
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -126,7 +162,7 @@ export default function ListesDemandesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-2 block">Recherche</label>
                 <div className="relative">
@@ -139,6 +175,17 @@ export default function ListesDemandesPage() {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Département</label>
+                <DepartmentSelector
+                  value={filters.department}
+                  onValueChange={(value) => setFilters({ ...filters, department: value })}
+                  placeholder="Tous les départements"
+                  showSearch={false}
+                />
+              </div>
+
               <div>
                 <label className="text-sm font-medium mb-2 block">Catégorie</label>
                 <Select value={filters.category} onValueChange={(value) => setFilters({ ...filters, category: value })}>
@@ -146,16 +193,19 @@ export default function ListesDemandesPage() {
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="electromenager">Toutes les catégories</SelectItem>
                     <SelectItem value="electromenager">Électroménager</SelectItem>
                     <SelectItem value="informatique">Informatique</SelectItem>
                     <SelectItem value="plomberie">Plomberie</SelectItem>
                     <SelectItem value="electricite">Électricité</SelectItem>
                     <SelectItem value="chauffage">Chauffage</SelectItem>
                     <SelectItem value="telephonie">Téléphonie</SelectItem>
+                    <SelectItem value="serrurerie">Serrurerie</SelectItem>
+                    <SelectItem value="multimedia">Multimédia</SelectItem>
+                    <SelectItem value="climatisation">Climatisation</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <label className="text-sm font-medium mb-2 block">Urgence</label>
                 <Select value={filters.urgency} onValueChange={(value) => setFilters({ ...filters, urgency: value })}>
@@ -163,7 +213,6 @@ export default function ListesDemandesPage() {
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="urgent">Toutes les urgences</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                     <SelectItem value="same-day">Aujourd'hui</SelectItem>
                     <SelectItem value="this-week">Cette semaine</SelectItem>
@@ -171,6 +220,7 @@ export default function ListesDemandesPage() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="flex items-end">
                 <Button variant="outline" onClick={resetFilters} className="w-full">
                   Réinitialiser
@@ -181,7 +231,7 @@ export default function ListesDemandesPage() {
         </Card>
 
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{filteredRequests.length}</div>
@@ -206,13 +256,44 @@ export default function ListesDemandesPage() {
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-purple-600">{Object.keys(departmentStats).length}</div>
+              <p className="text-sm text-gray-600">Départements</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-orange-600">
                 {new Set(filteredRequests.map((r) => r.city)).size}
               </div>
               <p className="text-sm text-gray-600">Villes couvertes</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Répartition par département (si filtre département actif) */}
+        {filters.department && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MapIcon className="h-5 w-5 mr-2" />
+                Répartition dans le département {filters.department}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Object.entries(departmentStats).map(([deptCode, count]) => {
+                  const dept = DepartmentService.getDepartmentByCode(deptCode)
+                  return (
+                    <div key={deptCode} className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-lg font-bold text-blue-600">{count}</div>
+                      <div className="text-xs text-gray-600">{dept ? `${dept.code} - ${dept.name}` : deptCode}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Message d'information pour les non-réparateurs */}
         {(!currentUser || currentUser.userType !== "reparateur") && (
@@ -250,6 +331,9 @@ export default function ListesDemandesPage() {
                     <div className="flex items-center space-x-3 mb-2">
                       <Badge variant="outline">{request.category}</Badge>
                       <Badge className={getUrgencyColor(request.urgency)}>{request.urgencyLabel}</Badge>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        {getDepartmentName(request.postalCode, request.department)}
+                      </Badge>
                       <span className="text-sm text-gray-500">{getTimeAgo(request.createdAt)}</span>
                     </div>
                     <CardTitle className="text-xl">{request.title}</CardTitle>
@@ -270,6 +354,32 @@ export default function ListesDemandesPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-700 mb-4">{request.description}</p>
+
+                {/* Affichage des photos si disponibles */}
+                {request.photos && request.photos.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Photos du problème :</p>
+                    <div className="flex space-x-2">
+                      {request.photos.slice(0, 3).map((photo, index) => (
+                        <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                          <img
+                            src={photo || "/placeholder.svg"}
+                            alt={`Photo ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg?height=64&width=64&text=Photo"
+                            }}
+                          />
+                        </div>
+                      ))}
+                      {request.photos.length > 3 && (
+                        <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                          <span className="text-xs text-gray-600">+{request.photos.length - 3}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4">
@@ -324,7 +434,11 @@ export default function ListesDemandesPage() {
             <CardContent>
               <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Aucune demande trouvée</h3>
-              <p className="text-gray-600 mb-4">Essayez de modifier vos critères de recherche ou vos filtres</p>
+              <p className="text-gray-600 mb-4">
+                {filters.department
+                  ? `Aucune demande trouvée dans le département ${filters.department}`
+                  : "Essayez de modifier vos critères de recherche ou vos filtres"}
+              </p>
               <Button onClick={resetFilters}>Réinitialiser les filtres</Button>
             </CardContent>
           </Card>

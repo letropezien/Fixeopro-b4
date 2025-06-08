@@ -18,7 +18,7 @@ interface PhotoUploadProps {
   description?: string
 }
 
-function PhotoUpload({
+export function PhotoUpload({
   currentPhoto,
   currentPhotos = [],
   onPhotoChange,
@@ -250,8 +250,5 @@ function PhotoUpload({
   )
 }
 
-// Export nommé requis
-export { PhotoUpload }
-
-// Export par défaut
+// Export par défaut requis
 export default PhotoUpload

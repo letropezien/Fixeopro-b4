@@ -24,6 +24,8 @@ export const FRENCH_DEPARTMENTS: Department[] = [
   { code: "17", name: "Charente-Maritime", region: "Nouvelle-Aquitaine" },
   { code: "18", name: "Cher", region: "Centre-Val de Loire" },
   { code: "19", name: "Corrèze", region: "Nouvelle-Aquitaine" },
+  { code: "2A", name: "Corse-du-Sud", region: "Corse" },
+  { code: "2B", name: "Haute-Corse", region: "Corse" },
   { code: "21", name: "Côte-d'Or", region: "Bourgogne-Franche-Comté" },
   { code: "22", name: "Côtes-d'Armor", region: "Bretagne" },
   { code: "23", name: "Creuse", region: "Nouvelle-Aquitaine" },
@@ -133,11 +135,16 @@ export class DepartmentService {
     // Cas spéciaux
     if (postalCode.startsWith("20")) {
       // Corse
-      if (postalCode.startsWith("200") || postalCode.startsWith("201")) {
+      if (postalCode >= "20000" && postalCode <= "20199") {
         deptCode = "2A" // Corse-du-Sud
-      } else {
+      } else if (postalCode >= "20200" && postalCode <= "20999") {
         deptCode = "2B" // Haute-Corse
       }
+    }
+
+    // DOM-TOM
+    if (postalCode.startsWith("97")) {
+      deptCode = postalCode.substring(0, 3)
     }
 
     return this.getDepartmentByCode(deptCode)
@@ -146,4 +153,17 @@ export class DepartmentService {
   static formatDepartmentDisplay(department: Department): string {
     return `${department.code} - ${department.name}`
   }
+
+  static searchDepartments(query: string): Department[] {
+    const searchTerm = query.toLowerCase()
+    return FRENCH_DEPARTMENTS.filter(
+      (dept) =>
+        dept.name.toLowerCase().includes(searchTerm) ||
+        dept.code.includes(searchTerm) ||
+        dept.region.toLowerCase().includes(searchTerm),
+    )
+  }
 }
+
+// Export par défaut pour compatibilité
+export default DepartmentService

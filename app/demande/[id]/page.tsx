@@ -275,14 +275,21 @@ export default function DemandeDetailsPage() {
                 {/* Photos si disponibles */}
                 {request.photos && request.photos.length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-2">Photos</h3>
+                    <h3 className="font-semibold mb-2">Photos du problème</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       {request.photos.map((photo: string, index: number) => (
-                        <div key={index} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
+                        <div
+                          key={index}
+                          className="aspect-square bg-gray-200 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        >
                           <img
-                            src={photo || "/placeholder.svg?height=200&width=200"}
-                            alt={`Photo ${index + 1}`}
+                            src={photo || "/placeholder.svg"}
+                            alt={`Photo du problème ${index + 1}`}
                             className="w-full h-full object-cover"
+                            onClick={() => {
+                              // Ouvrir l'image en grand (optionnel)
+                              window.open(photo, "_blank")
+                            }}
                           />
                         </div>
                       ))}

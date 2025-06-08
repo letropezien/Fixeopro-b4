@@ -45,6 +45,7 @@ export interface RepairRequest {
   budget: string
   city: string
   postalCode: string
+  department?: string // Ajout du département
   address?: string
   createdAt: string
   status: "open" | "in_progress" | "completed" | "cancelled"
@@ -60,7 +61,42 @@ export interface RepairRequest {
     lat: number
     lng: number
   }
-  photos?: string[] // Photos du problème
+  photos?: string[]
+}
+
+// Mock DepartmentService
+const DepartmentService = {
+  getDepartmentFromPostalCode: (postalCode: string) => {
+    const departments: { [key: string]: { code: string } } = {
+      "75": { code: "75" },
+      "75001": { code: "75" },
+      "75002": { code: "75" },
+      "75003": { code: "75" },
+      "75004": { code: "75" },
+      "75005": { code: "75" },
+      "75006": { code: "75" },
+      "75007": { code: "75" },
+      "75008": { code: "75" },
+      "75009": { code: "75" },
+      "75010": { code: "75" },
+      "75011": { code: "75" },
+      "75012": { code: "75" },
+      "75013": { code: "75" },
+      "75014": { code: "75" },
+      "75015": { code: "75" },
+      "75016": { code: "75" },
+      "75017": { code: "75" },
+      "75018": { code: "75" },
+      "75019": { code: "75" },
+      "75020": { code: "75" },
+      "69001": { code: "69" },
+      "13001": { code: "13" },
+      "31000": { code: "31" },
+      "06000": { code: "06" },
+    }
+    const postalCodePrefix = postalCode.substring(0, 2)
+    return departments[postalCode] || departments[postalCodePrefix] || null
+  },
 }
 
 export class StorageService {
@@ -197,6 +233,12 @@ export class StorageService {
         request.id = `request_${StorageService.generateId()}`
       }
 
+      // S'assurer que les photos sont bien conservées
+      if (request.photos && Array.isArray(request.photos)) {
+        // Filtrer les photos vides ou invalides
+        request.photos = request.photos.filter((photo) => photo && typeof photo === "string" && photo.trim() !== "")
+      }
+
       // Ajouter la date de création si elle n'existe pas
       if (!request.createdAt) {
         request.createdAt = new Date().toISOString()
@@ -205,6 +247,11 @@ export class StorageService {
       // Ajouter des coordonnées simulées si elles n'existent pas
       if (!request.coordinates) {
         request.coordinates = this.generateCoordinatesForCity(request.city)
+      }
+
+      // Ajouter la détection automatique du département si pas fourni
+      if (!request.department && request.postalCode) {
+        request.department = DepartmentService.getDepartmentFromPostalCode(request.postalCode)?.code
       }
 
       const existingIndex = requests.findIndex((r) => r.id === request.id)
