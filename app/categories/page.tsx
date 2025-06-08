@@ -1,9 +1,11 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, MapPin, Users, Clock } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
+import { CategoryImage } from "@/components/category-image"
 
 export default function CategoriesPage() {
   const categories = [
@@ -144,8 +146,8 @@ export default function CategoriesPage() {
                 <div className={`grid md:grid-cols-2 gap-0 ${index % 2 === 1 ? "md:grid-flow-col-dense" : ""}`}>
                   {/* Image */}
                   <div className={`relative h-64 md:h-80 ${index % 2 === 1 ? "md:order-2" : ""}`}>
-                    <Image
-                      src={`/images/categories/${category.slug}.jpg`}
+                    <CategoryImage
+                      category={category.slug}
                       alt={`Réparation ${category.name}`}
                       fill
                       className="object-cover"

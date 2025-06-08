@@ -1,10 +1,12 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Wrench, Clock, Shield, Star, MapPin, CheckCircle } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowRight } from "lucide-react"
+import { CategoryImage } from "@/components/category-image"
 
 export default function HomePage() {
   const categories = [
@@ -178,15 +180,11 @@ export default function HomePage() {
               <Link key={index} href={`/categories/${category.slug}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
-                    <Image
-                      src={`/images/categories/${category.slug}.png`}
+                    <CategoryImage
+                      category={category.slug}
                       alt={`Réparation ${category.name}`}
                       fill
                       className="object-cover hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        // Fallback vers placeholder si l'image n'existe pas
-                        e.currentTarget.src = `/placeholder.svg?height=200&width=300&text=${category.name}`
-                      }}
                     />
                     <div className="absolute inset-0 bg-black/20" />
                   </div>
