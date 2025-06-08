@@ -8,15 +8,15 @@ import { ArrowRight } from "lucide-react"
 
 export default function HomePage() {
   const categories = [
-    { name: "Électroménager", icon: "🔌", count: "150+ réparateurs" },
-    { name: "Informatique", icon: "💻", count: "120+ réparateurs" },
-    { name: "Plomberie", icon: "🔧", count: "200+ réparateurs" },
-    { name: "Électricité", icon: "⚡", count: "180+ réparateurs" },
-    { name: "Chauffage", icon: "🔥", count: "90+ réparateurs" },
-    { name: "Serrurerie", icon: "🔑", count: "110+ réparateurs" },
-    { name: "Multimédia", icon: "📱", count: "80+ réparateurs" },
-    { name: "Téléphonie", icon: "📞", count: "95+ réparateurs" },
-    { name: "Climatisation", icon: "❄️", count: "70+ réparateurs" },
+    { name: "Électroménager", slug: "electromenager", count: "150+ réparateurs" },
+    { name: "Informatique", slug: "informatique", count: "120+ réparateurs" },
+    { name: "Plomberie", slug: "plomberie", count: "200+ réparateurs" },
+    { name: "Électricité", slug: "electricite", count: "180+ réparateurs" },
+    { name: "Chauffage", slug: "chauffage", count: "90+ réparateurs" },
+    { name: "Serrurerie", slug: "serrurerie", count: "110+ réparateurs" },
+    { name: "Multimédia", slug: "multimedia", count: "80+ réparateurs" },
+    { name: "Téléphonie", slug: "telephonie", count: "95+ réparateurs" },
+    { name: "Climatisation", slug: "climatisation", count: "70+ réparateurs" },
   ]
 
   const features = [
@@ -175,14 +175,18 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold text-center mb-12">🛠️ Tous les domaines de réparation couverts</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((category, index) => (
-              <Link key={index} href={`/categories/${category.name.toLowerCase()}`}>
+              <Link key={index} href={`/categories/${category.slug}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
                     <Image
-                      src={`/images/categories/${category.name.toLowerCase().replace(/é/g, "e").replace(/è/g, "e")}.jpg`}
+                      src={`/images/categories/${category.slug}.png`}
                       alt={`Réparation ${category.name}`}
                       fill
                       className="object-cover hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        // Fallback vers placeholder si l'image n'existe pas
+                        e.currentTarget.src = `/placeholder.svg?height=200&width=300&text=${category.name}`
+                      }}
                     />
                     <div className="absolute inset-0 bg-black/20" />
                   </div>

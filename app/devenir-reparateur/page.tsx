@@ -17,6 +17,7 @@ import { MapPin, Loader2, AlertCircle } from "lucide-react"
 // Importer le nouveau composant de paiement
 import PaymentIntegration from "@/components/payment-integration"
 import { GeocodingService } from "@/lib/geocoding"
+import { DepartmentSelector } from "@/components/department-selector"
 
 export default function DevenirReparateurPage() {
   const router = useRouter()
@@ -29,6 +30,7 @@ export default function DevenirReparateurPage() {
       address: "",
       city: "",
       postalCode: "",
+      department: "", // Ajouter cette ligne
     },
     professional: {
       companyName: "",
@@ -237,6 +239,12 @@ export default function DevenirReparateurPage() {
         return
       }
 
+      if (!formData.personal.department) {
+        alert("Veuillez sélectionner votre département")
+        setIsSubmitting(false)
+        return
+      }
+
       if (!formData.professional.experience) {
         alert("Veuillez indiquer votre expérience")
         setIsSubmitting(false)
@@ -279,6 +287,7 @@ export default function DevenirReparateurPage() {
         address: formData.personal.address,
         city: formData.personal.city,
         postalCode: formData.personal.postalCode,
+        department: formData.personal.department,
         userType: "reparateur" as const,
         isEmailVerified: false,
         createdAt: new Date().toISOString(),
@@ -488,6 +497,17 @@ export default function DevenirReparateurPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, personal: { ...formData.personal, postalCode: e.target.value } })
                     }
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <DepartmentSelector
+                    value={formData.personal.department}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, personal: { ...formData.personal, department: value } })
+                    }
+                    label="Département *"
                     required
                   />
                 </div>

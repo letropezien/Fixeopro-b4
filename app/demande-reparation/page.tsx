@@ -15,6 +15,7 @@ import { MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { GeocodingService } from "@/lib/geocoding"
 import { PhotoUpload } from "@/components/photo-upload"
+import { DepartmentSelector } from "@/components/department-selector"
 
 export default function DemandeReparationPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
@@ -23,6 +24,7 @@ export default function DemandeReparationPage() {
     urgency: "",
     description: "",
     location: "",
+    department: "", // Ajouter cette ligne
     coordinates: null as { lat: number; lng: number } | null,
     contact: {
       firstName: currentUser?.firstName || "",
@@ -139,6 +141,12 @@ export default function DemandeReparationPage() {
 
       if (!formData.description.trim()) {
         alert("Veuillez décrire votre problème")
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!formData.department) {
+        alert("Veuillez sélectionner votre département")
         setIsSubmitting(false)
         return
       }
@@ -448,34 +456,43 @@ export default function DemandeReparationPage() {
               </div>
 
               {/* Champs d'adresse */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">Ville *</Label>
-                  <Input
-                    id="city"
-                    placeholder="Ex: Paris"
-                    value={formData.contact.city}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contact: { ...formData.contact, city: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="postalCode">Code postal *</Label>
-                  <Input
-                    id="postalCode"
-                    placeholder="Ex: 75001"
-                    value={formData.contact.postalCode}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        contact: { ...formData.contact, postalCode: e.target.value },
-                      })
-                    }
-                  />
+              <div className="space-y-4">
+                <DepartmentSelector
+                  value={formData.department}
+                  onValueChange={(value) => setFormData({ ...formData, department: value })}
+                  label="Département *"
+                  required
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="city">Ville *</Label>
+                    <Input
+                      id="city"
+                      placeholder="Ex: Paris"
+                      value={formData.contact.city}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contact: { ...formData.contact, city: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="postalCode">Code postal *</Label>
+                    <Input
+                      id="postalCode"
+                      placeholder="Ex: 75001"
+                      value={formData.contact.postalCode}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          contact: { ...formData.contact, postalCode: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
                 </div>
               </div>
               <div>
