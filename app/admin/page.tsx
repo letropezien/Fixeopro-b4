@@ -38,6 +38,7 @@ interface UserType {
     status: "active" | "trial" | "inactive"
     plan?: string
     endDate: string
+    startDate?: string
   }
   professional?: {
     companyName?: string
@@ -232,11 +233,15 @@ export default function AdminPage() {
     if (user.subscription.status === "active") {
       return `Actif (${user.subscription.plan})`
     } else if (user.subscription.status === "trial") {
-      const endDate = new Date(user.subscription.endDate)
+      const subscriptionStart = new Date(user.subscription.startDate || user.createdAt)
+      const trialEndDate = new Date(subscriptionStart)
+      trialEndDate.setDate(trialEndDate.getDate() + 15)
+
       const now = new Date()
-      if (endDate > now) {
-        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-        return `Essai (${daysLeft} jours restants)`
+      if (trialEndDate > now) {
+        const daysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        const endDateFormatted = trialEndDate.toLocaleDateString("fr-FR")
+        return `Essai (${daysLeft} jours restants - fin le ${endDateFormatted})`
       } else {
         return "Essai expiré"
       }

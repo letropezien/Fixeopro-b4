@@ -5,6 +5,7 @@ import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import QuickActionWidget from "@/components/quick-action-widget"
+import { SessionProvider } from "@/components/auth-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,10 +25,12 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className}>
-        <Header />
-        <main>{children}</main>
-        <Footer />
-        <QuickActionWidget />
+        <SessionProvider>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+          <QuickActionWidget />
+        </SessionProvider>
       </body>
     </html>
   )

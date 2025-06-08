@@ -95,13 +95,14 @@ export class StorageService {
 
       // Pour les réparateurs, ajouter automatiquement une période d'essai de 15 jours
       if (user.userType === "reparateur" && !user.subscription) {
-        const trialEndDate = new Date()
+        const trialStartDate = new Date()
+        const trialEndDate = new Date(trialStartDate)
         trialEndDate.setDate(trialEndDate.getDate() + 15)
 
         user.subscription = {
           plan: "trial",
           status: "trial",
-          startDate: new Date().toISOString(),
+          startDate: trialStartDate.toISOString(),
           endDate: trialEndDate.toISOString(),
         }
       }
@@ -357,8 +358,39 @@ export class StorageService {
   // Vérification des abonnements avec période d'essai de 15 jours
   static isInTrialPeriod(user: User): boolean {
     if (!user.subscription || user.subscription.status !== "trial") return false
-    const expiresAt = new Date(user.subscription.endDate)
-    return expiresAt > new Date()
+
+    // Calculer la date de fin d'essai basée sur la date d'inscription + 15 jours
+    const subscriptionStart = new Date(user.subscription.startDate || user.createdAt)
+    const trialEndDate = new Date(subscriptionStart)
+    trialEndDate.setDate(trialEndDate.getDate() + 15)
+
+    return trialEndDate > new Date()
+  }
+
+  // Ajouter une nouvelle méthode pour obtenir les jours restants
+  static getTrialDaysRemaining(user: User): number {
+    if (!user.subscription || user.subscription.status !== "trial") return 0
+
+    const subscriptionStart = new Date(user.subscription.startDate || user.createdAt)
+    const trialEndDate = new Date(subscriptionStart)
+    trialEndDate.setDate(trialEndDate.getDate() + 15)
+
+    const now = new Date()
+    const diffTime = trialEndDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    return Math.max(0, diffDays)
+  }
+
+  // Ajouter une méthode pour obtenir la date de fin d'essai formatée
+  static getTrialEndDate(user: User): string {
+    if (!user.subscription || user.subscription.status !== "trial") return ""
+
+    const subscriptionStart = new Date(user.subscription.startDate || user.createdAt)
+    const trialEndDate = new Date(subscriptionStart)
+    trialEndDate.setDate(trialEndDate.getDate() + 15)
+
+    return trialEndDate.toLocaleDateString("fr-FR")
   }
 
   static canContactClients(user: User): boolean {
