@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { StorageService } from "@/lib/storage"
-import { Calendar, Clock, MapPin, User, Phone, Mail, MessageSquare, AlertCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, User, Phone, Mail, MessageSquare, AlertCircle, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function DemandeDetailsPage() {
@@ -21,30 +20,65 @@ export default function DemandeDetailsPage() {
   const [responseText, setResponseText] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Récupérer la demande et l'utilisateur actuel
-    const fetchData = async () => {
+    // Délai pour éviter les erreurs d'hydratation
+    const timer = setTimeout(() => {
+      fetchData()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [id])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Vérifier que nous sommes côté client
+      if (typeof window === "undefined") {
+        return
+      }
+
+      // Import dynamique pour éviter les erreurs côté serveur
+      const { StorageService } = await import("@/lib/storage")
+
+      // Initialiser les données si nécessaire
+      StorageService.initDemoData()
+
+      // Récupérer la demande et l'utilisateur actuel
       const loadedRequest = StorageService.getRepairRequestById(id)
       const user = StorageService.getCurrentUser()
 
+      if (!loadedRequest) {
+        setError("Demande non trouvée")
+        return
+      }
+
       setRequest(loadedRequest)
       setCurrentUser(user)
+    } catch (err) {
+      console.error("Erreur lors du chargement des données:", err)
+      setError("Erreur lors du chargement des données")
+    } finally {
       setLoading(false)
     }
-
-    fetchData()
-  }, [id])
+  }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
+    try {
+      const date = new Date(dateString)
+      return new Intl.DateTimeFormat("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date)
+    } catch (err) {
+      return "Date non disponible"
+    }
   }
 
   const getUrgencyColor = (urgency: string) => {
@@ -62,42 +96,72 @@ export default function DemandeDetailsPage() {
     }
   }
 
-  const handleSubmitResponse = () => {
+  const getUrgencyLabel = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return "Urgent"
+      case "same-day":
+        return "Aujourd'hui"
+      case "this-week":
+        return "Cette semaine"
+      case "flexible":
+        return "Flexible"
+      default:
+        return "Non spécifié"
+    }
+  }
+
+  const handleSubmitResponse = async () => {
     if (!responseText.trim()) return
 
-    setIsSubmitting(true)
+    try {
+      setIsSubmitting(true)
 
-    // Créer la réponse
-    const response = {
-      id: `response_${Date.now()}`,
-      text: responseText,
-      reparateurId: currentUser.id,
-      reparateur: {
-        firstName: currentUser.firstName,
-        lastName: currentUser.lastName,
-        companyName: currentUser.professional?.companyName,
-      },
-      createdAt: new Date().toISOString(),
-    }
+      const { StorageService } = await import("@/lib/storage")
 
-    // Ajouter la réponse à la demande
-    StorageService.addResponseToRequest(id, response)
+      // Créer la réponse
+      const response = {
+        id: `response_${Date.now()}`,
+        text: responseText,
+        reparateurId: currentUser?.id || "unknown",
+        reparateur: {
+          firstName: currentUser?.firstName || "Réparateur",
+          lastName: currentUser?.lastName || "",
+          companyName: currentUser?.professional?.companyName,
+        },
+        createdAt: new Date().toISOString(),
+      }
 
-    // Mettre à jour l'état local
-    setTimeout(() => {
-      const updatedRequest = StorageService.getRepairRequestById(id)
-      setRequest(updatedRequest)
-      setResponseText("")
+      // Ajouter la réponse à la demande
+      StorageService.addResponseToRequest(id, response)
+
+      // Mettre à jour l'état local
+      setTimeout(() => {
+        fetchData()
+        setResponseText("")
+        setIsSubmitting(false)
+        setDialogOpen(false)
+      }, 1000)
+    } catch (err) {
+      console.error("Erreur lors de l'envoi de la réponse:", err)
       setIsSubmitting(false)
-      setDialogOpen(false)
-    }, 1000)
+    }
   }
 
   const canViewContactInfo = () => {
-    if (!currentUser || currentUser.userType !== "reparateur") return false
+    try {
+      if (!currentUser || currentUser.userType !== "reparateur") return false
 
-    // Vérifier si l'utilisateur a un abonnement actif ou est en période d'essai
-    return StorageService.isSubscriptionActive(currentUser)
+      // Vérifier si l'utilisateur a un abonnement actif ou est en période d'essai
+      if (currentUser.subscription?.status === "active") return true
+      if (currentUser.subscription?.status === "trial") {
+        const expiresAt = new Date(currentUser.subscription.endDate)
+        return expiresAt > new Date()
+      }
+      return false
+    } catch (err) {
+      return false
+    }
   }
 
   if (loading) {
@@ -105,6 +169,7 @@ export default function DemandeDetailsPage() {
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-lg">Chargement des détails de la demande...</p>
           </div>
         </div>
@@ -112,16 +177,31 @@ export default function DemandeDetailsPage() {
     )
   }
 
-  if (!request) {
+  if (error || !request) {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Demande non trouvée</h1>
-            <p className="text-lg mb-6">La demande que vous recherchez n'existe pas ou a été supprimée.</p>
-            <Button asChild>
-              <Link href="/">Retour à l'accueil</Link>
-            </Button>
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-4">
+              {error === "Demande non trouvée" ? "Demande non trouvée" : "Erreur de chargement"}
+            </h1>
+            <p className="text-lg mb-6">
+              {error === "Demande non trouvée"
+                ? "La demande que vous recherchez n'existe pas ou a été supprimée."
+                : "Une erreur s'est produite lors du chargement des détails."}
+            </p>
+            <div className="space-x-4">
+              <Button asChild>
+                <Link href="/demandes-disponibles">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour aux demandes
+                </Link>
+              </Button>
+              <Button variant="outline" onClick={fetchData}>
+                Réessayer
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -133,7 +213,8 @@ export default function DemandeDetailsPage() {
       <div className="container mx-auto px-4">
         <div className="mb-8">
           <Link href="/demandes-disponibles" className="text-blue-600 hover:underline flex items-center">
-            ← Retour aux demandes disponibles
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour aux demandes disponibles
           </Link>
         </div>
 
@@ -142,15 +223,15 @@ export default function DemandeDetailsPage() {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-2xl">{request.title}</CardTitle>
+                <CardTitle className="text-2xl">{request.title || "Demande sans titre"}</CardTitle>
                 <Badge className={`${getUrgencyColor(request.urgency)} text-white`}>
-                  {request.urgencyLabel || "Non spécifié"}
+                  {getUrgencyLabel(request.urgency)}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
                   <h3 className="font-semibold mb-2">Description</h3>
-                  <p className="text-gray-700">{request.description}</p>
+                  <p className="text-gray-700">{request.description || "Aucune description disponible"}</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -167,7 +248,7 @@ export default function DemandeDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Localisation</p>
                       <p>
-                        {request.city} {request.postalCode && `(${request.postalCode})`}
+                        {request.city || "Ville non spécifiée"} {request.postalCode && `(${request.postalCode})`}
                       </p>
                     </div>
                   </div>
@@ -176,7 +257,7 @@ export default function DemandeDetailsPage() {
                     <Clock className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500">Urgence</p>
-                      <p>{request.urgencyLabel || "Non spécifié"}</p>
+                      <p>{getUrgencyLabel(request.urgency)}</p>
                     </div>
                   </div>
 
@@ -185,7 +266,7 @@ export default function DemandeDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Client</p>
                       <p>
-                        {request.client?.firstName} {request.client?.lastName}
+                        {request.client?.firstName || "Client"} {request.client?.lastName || ""}
                       </p>
                     </div>
                   </div>
@@ -199,7 +280,7 @@ export default function DemandeDetailsPage() {
                       {request.photos.map((photo: string, index: number) => (
                         <div key={index} className="aspect-square bg-gray-200 rounded-md overflow-hidden">
                           <img
-                            src={photo || "/placeholder.svg"}
+                            src={photo || "/placeholder.svg?height=200&width=200"}
                             alt={`Photo ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
@@ -217,8 +298,8 @@ export default function DemandeDetailsPage() {
                     <div className="h-full w-full bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center">
                       <div className="bg-white p-4 rounded-lg shadow-md text-center">
                         <MapPin className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <p className="font-medium">{request.city}</p>
-                        <p className="text-sm text-gray-600">{request.postalCode}</p>
+                        <p className="font-medium">{request.city || "Ville non spécifiée"}</p>
+                        <p className="text-sm text-gray-600">{request.postalCode || ""}</p>
                       </div>
                     </div>
                   </div>
@@ -236,7 +317,7 @@ export default function DemandeDetailsPage() {
                       <div className="space-y-3">
                         <div className="flex items-center">
                           <Phone className="h-5 w-5 text-gray-500 mr-2" />
-                          <span>06 12 34 56 78</span>
+                          <span>{request.client?.phone || "06 12 34 56 78"}</span>
                         </div>
                         <div className="flex items-center">
                           <Mail className="h-5 w-5 text-gray-500 mr-2" />
@@ -313,7 +394,7 @@ export default function DemandeDetailsPage() {
                         <div className="flex justify-between items-start mb-2">
                           <div className="font-medium">
                             {response.reparateur?.companyName ||
-                              `${response.reparateur?.firstName} ${response.reparateur?.lastName}`}
+                              `${response.reparateur?.firstName || "Réparateur"} ${response.reparateur?.lastName || ""}`}
                           </div>
                           <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
                         </div>

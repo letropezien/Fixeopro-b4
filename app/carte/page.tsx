@@ -7,20 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Filter, Search, Wrench, Clock, User, MapPin, Lock, AlertCircle, RefreshCw } from "lucide-react"
-import dynamic from "next/dynamic"
-
-// Import dynamique de LeafletMap pour éviter les erreurs côté serveur
-const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[700px] bg-gray-100 rounded-lg flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Chargement de la carte...</p>
-      </div>
-    </div>
-  ),
-})
+import SimpleMap from "@/components/simple-map"
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -36,30 +23,27 @@ export default function CartePage() {
     urgency: "",
   })
   const [mapMarkers, setMapMarkers] = useState<any[]>([])
-  const [isClient, setIsClient] = useState(false)
 
-  // Vérifier si nous sommes côté client
   useEffect(() => {
-    setIsClient(true)
+    // Délai pour éviter les erreurs d'hydratation
+    const timer = setTimeout(() => {
+      loadData()
+    }, 200)
+
+    return () => clearTimeout(timer)
   }, [])
-
-  useEffect(() => {
-    if (isClient) {
-      // Délai pour éviter les erreurs d'hydratation
-      const timer = setTimeout(() => {
-        loadData()
-      }, 200)
-
-      return () => clearTimeout(timer)
-    }
-  }, [isClient])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Import dynamique du service de stockage pour éviter les erreurs côté serveur
+      // Vérifier que nous sommes côté client
+      if (typeof window === "undefined") {
+        return
+      }
+
+      // Import dynamique pour éviter les erreurs côté serveur
       const { StorageService } = await import("@/lib/storage")
 
       // Initialiser les données de démonstration si nécessaire
@@ -152,10 +136,10 @@ export default function CartePage() {
 
   // Mettre à jour les marqueurs lorsque les filtres changent
   useEffect(() => {
-    if (isClient && requests.length > 0) {
+    if (requests.length > 0) {
       updateMapMarkers(requests, users, filters)
     }
-  }, [filters, isClient, requests, users])
+  }, [filters, requests, users])
 
   const canViewPersonalData = () => {
     try {
@@ -167,7 +151,6 @@ export default function CartePage() {
       }
       return false
     } catch (err) {
-      console.error("Erreur lors de la vérification des permissions:", err)
       return false
     }
   }
@@ -177,7 +160,6 @@ export default function CartePage() {
       if (canViewPersonalData()) return text
       return text.replace(/[a-zA-ZÀ-ÿ]/g, "*")
     } catch (err) {
-      console.error("Erreur lors du masquage des données:", err)
       return "***"
     }
   }
@@ -221,31 +203,12 @@ export default function CartePage() {
   }
 
   const resetFilters = () => {
-    try {
-      setFilters({ type: "all", category: "", city: "", urgency: "" })
-    } catch (err) {
-      console.error("Erreur lors de la réinitialisation des filtres:", err)
-    }
+    setFilters({ type: "all", category: "", city: "", urgency: "" })
   }
 
   // Calculer les statistiques
   const filteredRequests = mapMarkers.filter((marker) => marker.type === "request")
   const filteredReparateurs = mapMarkers.filter((marker) => marker.type === "reparateur")
-
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-center h-96">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Chargement de la carte des dépannages...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (
@@ -255,7 +218,6 @@ export default function CartePage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Chargement de la carte des dépannages...</p>
-              <p className="text-sm text-gray-500 mt-2">Initialisation des données...</p>
             </div>
           </div>
         </div>
@@ -335,7 +297,7 @@ export default function CartePage() {
                     onValueChange={(value) => setFilters({ ...filters, category: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Toutes" />
+                      <SelectValue placeholder={filters.category ? filters.category : "Toutes"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Toutes les catégories</SelectItem>
@@ -405,38 +367,11 @@ export default function CartePage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Informations sur l'accès aux données */}
-            {currentUser?.userType === "reparateur" && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="text-sm">Accès aux données</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {canViewPersonalData() ? (
-                    <div className="text-sm text-green-700 bg-green-50 p-3 rounded-lg">
-                      <p className="font-medium">✓ Accès complet</p>
-                      <p>Vous pouvez voir toutes les informations des clients.</p>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-orange-700 bg-orange-50 p-3 rounded-lg">
-                      <p className="font-medium">⚠ Accès limité</p>
-                      <p>Les noms sont masqués. Souscrivez pour un accès complet.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Carte */}
           <div className="lg:col-span-3">
-            <LeafletMap
-              markers={mapMarkers}
-              onMarkerClick={handleMarkerClick}
-              height="700px"
-              center={{ lat: 46.603354, lng: 1.888334 }}
-            />
+            <SimpleMap markers={mapMarkers} onMarkerClick={handleMarkerClick} height="700px" />
 
             {/* Détails de l'élément sélectionné */}
             {selectedItem && (
