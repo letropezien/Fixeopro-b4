@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { StorageService } from "@/lib/storage"
+import { MapPin, Loader2, AlertCircle } from "lucide-react"
 // Importer le nouveau composant de paiement
 import PaymentIntegration from "@/components/payment-integration"
 
@@ -36,6 +37,7 @@ export default function DevenirReparateurPage() {
       description: "",
       website: "",
     },
+    coordinates: null as { lat: number; lng: number } | null,
     subscription: "pro",
     avatar: "",
   })
@@ -45,6 +47,10 @@ export default function DevenirReparateurPage() {
   const [currentStep, setCurrentStep] = useState(1)
   // Ajouter l'état pour le modal de paiement
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  // États pour la géolocalisation
+  const [isGeolocating, setIsGeolocating] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const [isGeolocated, setIsGeolocated] = useState(false)
 
   const specialties = [
     "Électroménager",
@@ -93,6 +99,79 @@ export default function DevenirReparateurPage() {
       ],
     },
   ]
+
+  // Fonction pour géolocaliser l'adresse
+  const geolocateAddress = async () => {
+    setIsGeolocating(true)
+    setGeoError(null)
+
+    try {
+      // Vérifier si les champs d'adresse sont remplis
+      if (!formData.personal.city) {
+        setGeoError("Veuillez indiquer votre ville pour la géolocalisation")
+        setIsGeolocating(false)
+        return
+      }
+
+      // Construire l'adresse complète pour la géolocalisation
+      const address = [formData.personal.address, formData.personal.postalCode, formData.personal.city, "France"]
+        .filter(Boolean)
+        .join(", ")
+
+      // Utiliser les coordonnées de la ville si l'adresse n'est pas complète
+      const coordinates = StorageService.generateCoordinatesForCity(formData.personal.city)
+
+      // Mettre à jour les coordonnées dans le formulaire
+      setFormData((prev) => ({
+        ...prev,
+        coordinates: coordinates,
+      }))
+
+      setIsGeolocated(true)
+    } catch (error) {
+      console.error("Erreur de géolocalisation:", error)
+      setGeoError("Impossible de géolocaliser votre adresse. Veuillez vérifier les informations.")
+    } finally {
+      setIsGeolocating(false)
+    }
+  }
+
+  // Géolocaliser automatiquement lorsque l'adresse change
+  useEffect(() => {
+    if (formData.personal.city && formData.personal.postalCode) {
+      geolocateAddress()
+    }
+  }, [formData.personal.city, formData.personal.postalCode])
+
+  // Géolocaliser l'utilisateur au chargement de la page
+  useEffect(() => {
+    const getCurrentLocation = async () => {
+      try {
+        setIsGeolocating(true)
+        const location = await StorageService.getCurrentLocation()
+        if (location) {
+          const city = await StorageService.getCityFromCoordinates(location.lat, location.lng)
+          setFormData((prev) => ({
+            ...prev,
+            personal: {
+              ...prev.personal,
+              city: city,
+            },
+            coordinates: location,
+          }))
+          setIsGeolocated(true)
+        }
+      } catch (error) {
+        console.error("Erreur de géolocalisation:", error)
+      } finally {
+        setIsGeolocating(false)
+      }
+    }
+
+    if (!formData.personal.city) {
+      getCurrentLocation()
+    }
+  }, [])
 
   // Modifier la fonction handleSubmit pour ne pas créer l'abonnement immédiatement
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,6 +246,13 @@ export default function DevenirReparateurPage() {
         return
       }
 
+      // Vérifier que la géolocalisation a été effectuée
+      if (!formData.coordinates) {
+        alert("La géolocalisation est nécessaire pour créer votre compte réparateur")
+        setIsSubmitting(false)
+        return
+      }
+
       // Créer le compte réparateur SANS abonnement payant
       const newUser = {
         id: StorageService.generateId(),
@@ -182,6 +268,7 @@ export default function DevenirReparateurPage() {
         isEmailVerified: false,
         createdAt: new Date().toISOString(),
         avatar: formData.avatar,
+        coordinates: formData.coordinates,
         professional: {
           companyName: formData.professional.companyName,
           siret: formData.professional.siret,
@@ -233,11 +320,8 @@ export default function DevenirReparateurPage() {
       setFormData({
         ...formData,
         professional: {
-          ...formData,
-          professional: {
-            ...formData.professional,
-            specialties: formData.professional.specialties.filter((s) => s !== specialty),
-          },
+          ...formData.professional,
+          specialties: formData.professional.specialties.filter((s) => s !== specialty),
         },
       })
     }
@@ -248,6 +332,12 @@ export default function DevenirReparateurPage() {
   }
 
   const nextStep = () => {
+    // Vérifier si la géolocalisation est nécessaire pour passer à l'étape suivante
+    if (currentStep === 1 && !isGeolocated) {
+      alert("La géolocalisation est nécessaire pour continuer. Veuillez vérifier votre adresse.")
+      return
+    }
+
     setCurrentStep(currentStep + 1)
     window.scrollTo(0, 0)
   }
@@ -262,7 +352,7 @@ export default function DevenirReparateurPage() {
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Rejoignez FixeoPro en tant que réparateur</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Rejoignez Fixeo.pro en tant que réparateur</h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
             Développez votre activité en rejoignant notre réseau de professionnels qualifiés. Accédez à des demandes de
             réparation ciblées et augmentez votre visibilité.
@@ -383,12 +473,80 @@ export default function DevenirReparateurPage() {
                     required
                   />
                 </div>
+
+                {/* Géolocalisation */}
+                <div className="md:col-span-2">
+                  <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h4 className="font-semibold text-blue-900 mb-2">📍 Géolocalisation requise</h4>
+                    <p className="text-sm text-blue-800 mb-2">
+                      La géolocalisation est nécessaire pour afficher votre position sur la carte des réparateurs et
+                      vous permettre de recevoir des demandes à proximité.
+                    </p>
+
+                    {/* Statut de géolocalisation */}
+                    <div className="mt-2">
+                      {isGeolocating ? (
+                        <div className="flex items-center text-blue-600">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Géolocalisation en cours...
+                        </div>
+                      ) : isGeolocated ? (
+                        <div className="flex items-center text-green-600">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 mr-2"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Adresse géolocalisée avec succès
+                        </div>
+                      ) : geoError ? (
+                        <div className="flex items-center text-red-600">
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          {geoError}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={geolocateAddress}
+                    disabled={isGeolocating || !formData.personal.city}
+                    className="w-full"
+                  >
+                    {isGeolocating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Géolocalisation...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Géolocaliser mon adresse
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="mt-6 flex justify-end">
-                <Button type="button" onClick={nextStep}>
+                <Button type="button" onClick={nextStep} disabled={!isGeolocated}>
                   Suivant
                 </Button>
               </div>
+
+              {!isGeolocated && (
+                <p className="text-red-500 text-sm mt-2 text-center">
+                  La géolocalisation est nécessaire pour continuer
+                </p>
+              )}
             </div>
           )}
 
@@ -595,7 +753,7 @@ export default function DevenirReparateurPage() {
 
         {/* Avantages */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-center mb-8">Pourquoi rejoindre FixeoPro ?</h2>
+          <h2 className="text-2xl font-bold text-center mb-8">Pourquoi rejoindre Fixeo.pro ?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">

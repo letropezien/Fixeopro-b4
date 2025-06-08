@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { MapPin } from "lucide-react"
+import { MapPin, Loader2, AlertCircle } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 
 export default function DemandeReparationPage() {
@@ -39,6 +39,9 @@ export default function DemandeReparationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [needsRegistration, setNeedsRegistration] = useState(!currentUser)
+  const [isGeolocating, setIsGeolocating] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const [isGeolocated, setIsGeolocated] = useState(false)
 
   const categories = [
     "Électroménager",
@@ -59,10 +62,54 @@ export default function DemandeReparationPage() {
     { value: "flexible", label: "Flexible", icon: "🗓️" },
   ]
 
+  // Fonction pour géolocaliser l'adresse
+  const geolocateAddress = async () => {
+    setIsGeolocating(true)
+    setGeoError(null)
+
+    try {
+      // Vérifier si les champs d'adresse sont remplis
+      if (!formData.contact.city) {
+        setGeoError("Veuillez indiquer votre ville pour la géolocalisation")
+        setIsGeolocating(false)
+        return
+      }
+
+      // Construire l'adresse complète pour la géolocalisation
+      const address = [formData.contact.address, formData.contact.postalCode, formData.contact.city, "France"]
+        .filter(Boolean)
+        .join(", ")
+
+      // Utiliser les coordonnées de la ville si l'adresse n'est pas complète
+      const coordinates = StorageService.generateCoordinatesForCity(formData.contact.city)
+
+      // Mettre à jour les coordonnées dans le formulaire
+      setFormData((prev) => ({
+        ...prev,
+        coordinates: coordinates,
+      }))
+
+      setIsGeolocated(true)
+    } catch (error) {
+      console.error("Erreur de géolocalisation:", error)
+      setGeoError("Impossible de géolocaliser votre adresse. Veuillez vérifier les informations.")
+    } finally {
+      setIsGeolocating(false)
+    }
+  }
+
+  // Géolocaliser automatiquement lorsque l'adresse change
   useEffect(() => {
-    // Récupérer la position de l'utilisateur
+    if (formData.contact.city && formData.contact.postalCode) {
+      geolocateAddress()
+    }
+  }, [formData.contact.city, formData.contact.postalCode])
+
+  // Géolocaliser l'utilisateur au chargement de la page
+  useEffect(() => {
     const getCurrentLocation = async () => {
       try {
+        setIsGeolocating(true)
         const location = await StorageService.getCurrentLocation()
         if (location) {
           const city = await StorageService.getCityFromCoordinates(location.lat, location.lng)
@@ -74,13 +121,19 @@ export default function DemandeReparationPage() {
             },
             coordinates: location,
           }))
+          setIsGeolocated(true)
         }
       } catch (error) {
         console.error("Erreur de géolocalisation:", error)
+        setGeoError("Impossible de détecter votre position. Veuillez saisir votre adresse manuellement.")
+      } finally {
+        setIsGeolocating(false)
       }
     }
 
-    getCurrentLocation()
+    if (!formData.contact.city) {
+      getCurrentLocation()
+    }
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,51 +144,68 @@ export default function DemandeReparationPage() {
       // Validation des champs requis
       if (!formData.category) {
         alert("Veuillez sélectionner une catégorie")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.urgency) {
         alert("Veuillez sélectionner un niveau d'urgence")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.description.trim()) {
         alert("Veuillez décrire votre problème")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.city.trim()) {
         alert("Veuillez indiquer votre ville")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.postalCode.trim()) {
         alert("Veuillez indiquer votre code postal")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.firstName.trim()) {
         alert("Veuillez indiquer votre prénom")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.lastName.trim()) {
         alert("Veuillez indiquer votre nom")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.email.trim()) {
         alert("Veuillez indiquer votre email")
+        setIsSubmitting(false)
         return
       }
 
       if (!formData.contact.phone.trim()) {
         alert("Veuillez indiquer votre téléphone")
+        setIsSubmitting(false)
         return
       }
 
       if (!termsAccepted) {
         alert("Veuillez accepter les conditions d'utilisation")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Vérifier que la géolocalisation a été effectuée
+      if (!formData.coordinates) {
+        alert("La géolocalisation est nécessaire pour publier votre demande")
+        setIsSubmitting(false)
         return
       }
 
@@ -194,6 +264,7 @@ export default function DemandeReparationPage() {
           email: formData.contact.email,
           phone: formData.contact.phone,
         },
+        coordinates: formData.coordinates,
       }
 
       StorageService.saveRepairRequest(repairRequest)
@@ -334,7 +405,10 @@ export default function DemandeReparationPage() {
                 <MapPin className="h-5 w-5 mr-2" />
                 Localisation
               </CardTitle>
-              <CardDescription>Nous trouverons les réparateurs les plus proches de vous</CardDescription>
+              <CardDescription>
+                Nous trouverons les réparateurs les plus proches de vous. La géolocalisation est nécessaire pour
+                l'affichage sur la carte.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -381,6 +455,57 @@ export default function DemandeReparationPage() {
                   }
                 />
               </div>
+
+              {/* Statut de géolocalisation */}
+              <div className="mt-4">
+                {isGeolocating ? (
+                  <div className="flex items-center text-blue-600">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Géolocalisation en cours...
+                  </div>
+                ) : isGeolocated ? (
+                  <div className="flex items-center text-green-600">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-2"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Adresse géolocalisée avec succès
+                  </div>
+                ) : geoError ? (
+                  <div className="flex items-center text-red-600">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {geoError}
+                  </div>
+                ) : null}
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={geolocateAddress}
+                disabled={isGeolocating || !formData.contact.city}
+                className="mt-2"
+              >
+                {isGeolocating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Géolocalisation...
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="h-4 w-4 mr-2" />
+                    Géolocaliser mon adresse
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
 
@@ -488,9 +613,20 @@ export default function DemandeReparationPage() {
                 </p>
               </div>
 
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isSubmitting || !isGeolocated}
+              >
                 {isSubmitting ? "Envoi en cours..." : "Publier ma demande gratuitement"}
               </Button>
+
+              {!isGeolocated && (
+                <p className="text-red-500 text-sm mt-2 text-center">
+                  La géolocalisation est nécessaire pour publier votre demande
+                </p>
+              )}
             </CardContent>
           </Card>
         </form>
