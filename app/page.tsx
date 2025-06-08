@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Wrench, Clock, Shield, Star, MapPin, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { ArrowRight } from "lucide-react"
 
 export default function HomePage() {
   const categories = [
@@ -171,13 +173,21 @@ export default function HomePage() {
       <section className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">🛠️ Tous les domaines de réparation couverts</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {categories.map((category, index) => (
               <Link key={index} href={`/categories/${category.name.toLowerCase()}`}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <div className="relative h-48 overflow-hidden rounded-t-lg">
+                    <Image
+                      src={`/images/categories/${category.name.toLowerCase().replace("é", "e").replace("è", "e")}.jpg`}
+                      alt={`Réparation ${category.name}`}
+                      fill
+                      className="object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/20" />
+                  </div>
                   <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-3">{category.icon}</div>
-                    <h3 className="font-semibold mb-2">{category.name}</h3>
+                    <h3 className="font-semibold mb-2 text-lg">{category.name}</h3>
                     <Badge variant="secondary" className="text-xs">
                       {category.count}
                     </Badge>
@@ -185,6 +195,15 @@ export default function HomePage() {
                 </Card>
               </Link>
             ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Link href="/categories">
+              <Button variant="outline" size="lg" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                Voir toutes les catégories
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

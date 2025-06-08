@@ -85,18 +85,12 @@ export default function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="text-sm font-medium hover:text-blue-600 transition-colors flex items-center h-10">
-              Catégories
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48">
-              {categories.map((category) => (
-                <DropdownMenuItem key={category} asChild>
-                  <Link href={`/categories/${category.toLowerCase()}`}>{category}</Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Link
+            href="/categories"
+            className="text-sm font-medium hover:text-blue-600 transition-colors flex items-center h-10"
+          >
+            Catégories
+          </Link>
 
           <Link
             href="/carte"
@@ -248,6 +242,9 @@ export default function Header() {
                 ))}
 
                 <div className="border-t pt-4 space-y-3">
+                  <Link href="/categories" className="block text-sm hover:text-blue-600">
+                    Toutes les catégories
+                  </Link>
                   <Link href="/carte" className="block text-sm hover:text-blue-600">
                     Carte des Dépannages
                   </Link>
