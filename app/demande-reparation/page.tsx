@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import PhotoUpload from "@/components/PhotoUpload"
 import { StorageService } from "@/lib/storage"
 import { DepartmentSelector } from "@/components/department-selector"
+import { GeocodingService } from "@/lib/geocoding"
 import {
   MapPin,
   AlertCircle,
@@ -33,6 +34,7 @@ import {
   Car,
   Hammer,
   Settings,
+  Loader2,
 } from "lucide-react"
 
 interface FormData {
@@ -47,6 +49,7 @@ interface FormData {
   city: string
   postalCode: string
   department: string
+  coordinates?: { lat: number; lng: number }
 
   // Urgence et planning
   urgency: string
@@ -240,6 +243,8 @@ export default function DemandeReparationPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
+  const [isGeolocated, setIsGeolocated] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
 
   useEffect(() => {
     // Charger les données sauvegardées
@@ -248,6 +253,9 @@ export default function DemandeReparationPage() {
       try {
         const parsed = JSON.parse(savedData)
         setFormData((prev) => ({ ...prev, ...parsed }))
+        if (parsed.coordinates) {
+          setIsGeolocated(true)
+        }
       } catch (error) {
         console.error("Erreur lors du chargement des données sauvegardées:", error)
       }
@@ -285,6 +293,7 @@ export default function DemandeReparationPage() {
         if (!formData.city.trim()) newErrors.city = "Veuillez saisir votre ville"
         if (!formData.postalCode.trim()) newErrors.postalCode = "Veuillez saisir votre code postal"
         if (!formData.urgency) newErrors.urgency = "Veuillez sélectionner l'urgence"
+        if (!isGeolocated) newErrors.coordinates = "La géolocalisation est nécessaire pour continuer"
         break
       case 3:
         if (formData.budgetType === "range") {
@@ -312,14 +321,32 @@ export default function DemandeReparationPage() {
 
   const getCurrentLocation = async () => {
     setIsLoadingLocation(true)
+    setGeoError(null)
+
     try {
-      const position = await StorageService.getCurrentLocation()
-      if (position) {
-        const city = await StorageService.getCityFromCoordinates(position.lat, position.lng)
-        handleInputChange("city", city)
+      // Obtenir la position actuelle
+      const position = await GeocodingService.getCurrentPosition()
+      if (!position) {
+        throw new Error("Impossible d'obtenir votre position")
       }
+
+      // Obtenir l'adresse complète à partir des coordonnées
+      const address = await GeocodingService.geolocateAndGetAddress()
+
+      // Mettre à jour le formulaire avec les informations obtenues
+      setFormData((prev) => ({
+        ...prev,
+        address: address.street || prev.address,
+        city: address.city || prev.city,
+        postalCode: address.postalCode || prev.postalCode,
+        department: address.department || prev.department,
+        coordinates: position,
+      }))
+
+      setIsGeolocated(true)
     } catch (error) {
       console.error("Erreur de géolocalisation:", error)
+      setGeoError(error instanceof Error ? error.message : "Erreur lors de la géolocalisation")
     } finally {
       setIsLoadingLocation(false)
     }
@@ -354,6 +381,7 @@ export default function DemandeReparationPage() {
           phone: currentUser?.phone,
         },
         photos: formData.photos,
+        coordinates: formData.coordinates,
         // Informations supplémentaires
         details: {
           subCategory: formData.subCategory,
@@ -471,6 +499,54 @@ export default function DemandeReparationPage() {
     <div className="space-y-6">
       <h3 className="text-lg font-semibold mb-4">Localisation et urgence</h3>
 
+      {/* Géolocalisation */}
+      <div className="bg-blue-50 p-4 rounded-lg mb-4">
+        <h4 className="font-semibold text-blue-900 mb-2">📍 Géolocalisation requise</h4>
+        <p className="text-sm text-blue-800 mb-2">
+          La géolocalisation est nécessaire pour permettre aux réparateurs de trouver votre adresse et calculer leur
+          distance.
+        </p>
+
+        {/* Statut de géolocalisation */}
+        <div className="mt-2">
+          {isLoadingLocation ? (
+            <div className="flex items-center text-blue-600">
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Géolocalisation en cours...
+            </div>
+          ) : isGeolocated ? (
+            <div className="flex items-center text-green-600">
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Adresse géolocalisée avec succès
+            </div>
+          ) : geoError ? (
+            <div className="flex items-center text-red-600">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              {geoError}
+            </div>
+          ) : null}
+        </div>
+
+        <Button
+          type="button"
+          onClick={getCurrentLocation}
+          disabled={isLoadingLocation}
+          className="w-full mt-2 bg-blue-600 hover:bg-blue-700"
+        >
+          {isLoadingLocation ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Localisation...
+            </>
+          ) : (
+            <>
+              <MapPin className="h-4 w-4 mr-2" />
+              {isGeolocated ? "Actualiser ma position" : "Géolocaliser mon adresse"}
+            </>
+          )}
+        </Button>
+      </div>
+
       {/* Adresse */}
       <div>
         <Label htmlFor="address">Adresse complète</Label>
@@ -486,18 +562,13 @@ export default function DemandeReparationPage() {
         {/* Ville */}
         <div>
           <Label htmlFor="city">Ville *</Label>
-          <div className="flex space-x-2">
-            <Input
-              id="city"
-              value={formData.city}
-              onChange={(e) => handleInputChange("city", e.target.value)}
-              placeholder="Votre ville"
-              className={errors.city ? "border-red-500" : ""}
-            />
-            <Button type="button" variant="outline" onClick={getCurrentLocation} disabled={isLoadingLocation}>
-              <MapPin className="h-4 w-4" />
-            </Button>
-          </div>
+          <Input
+            id="city"
+            value={formData.city}
+            onChange={(e) => handleInputChange("city", e.target.value)}
+            placeholder="Votre ville"
+            className={errors.city ? "border-red-500" : ""}
+          />
           {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
         </div>
 
@@ -576,6 +647,15 @@ export default function DemandeReparationPage() {
           </Select>
         </div>
       </div>
+
+      {errors.coordinates && (
+        <div className="bg-red-50 border border-red-200 p-3 rounded-md">
+          <p className="text-red-600 text-sm flex items-center">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            {errors.coordinates}
+          </p>
+        </div>
+      )}
     </div>
   )
 

@@ -13,8 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { StorageService } from "@/lib/storage"
-import { MapPin, Loader2, AlertCircle } from "lucide-react"
-// Importer le nouveau composant de paiement
+import { MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import PaymentIntegration from "@/components/payment-integration"
 import { GeocodingService } from "@/lib/geocoding"
 import { DepartmentSelector } from "@/components/department-selector"
@@ -30,7 +29,7 @@ export default function DevenirReparateurPage() {
       address: "",
       city: "",
       postalCode: "",
-      department: "", // Ajouter cette ligne
+      department: "",
     },
     professional: {
       companyName: "",
@@ -48,9 +47,7 @@ export default function DevenirReparateurPage() {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
-  // Ajouter l'état pour le modal de paiement
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  // États pour la géolocalisation
   const [isGeolocating, setIsGeolocating] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [isGeolocated, setIsGeolocated] = useState(false)
@@ -103,7 +100,6 @@ export default function DevenirReparateurPage() {
     },
   ]
 
-  // Fonction pour géolocaliser l'adresse
   const handleGeolocation = async () => {
     setIsGeolocating(true)
     setGeoError(null)
@@ -111,38 +107,25 @@ export default function DevenirReparateurPage() {
     try {
       console.log("Début de la géolocalisation...")
 
-      // Obtenir l'adresse complète via géolocalisation
-      const address = await GeocodingService.geolocateAndGetAddress()
+      const coordinates = await GeocodingService.getCurrentPosition()
+      if (!coordinates) {
+        throw new Error("Impossible d'obtenir votre position")
+      }
 
+      const address = await GeocodingService.geolocateAndGetAddress()
       console.log("Adresse trouvée:", address)
 
-      // Mettre à jour le formulaire avec l'adresse trouvée
       setFormData((prev) => ({
         ...prev,
         personal: {
           ...prev.personal,
           address: address.street || prev.personal.address,
-          city: address.city,
-          postalCode: address.postalCode,
+          city: address.city || prev.personal.city,
+          postalCode: address.postalCode || prev.personal.postalCode,
+          department: address.department || prev.personal.department,
         },
+        coordinates: coordinates,
       }))
-
-      // Obtenir aussi les coordonnées GPS pour la carte
-      try {
-        const coordinates = await GeocodingService.getCurrentPosition()
-        setFormData((prev) => ({
-          ...prev,
-          coordinates: coordinates,
-        }))
-      } catch (coordError) {
-        console.warn("Impossible d'obtenir les coordonnées précises:", coordError)
-        // Utiliser les coordonnées approximatives de la ville
-        const cityCoords = StorageService.generateCoordinatesForCity(address.city)
-        setFormData((prev) => ({
-          ...prev,
-          coordinates: cityCoords,
-        }))
-      }
 
       setIsGeolocated(true)
     } catch (error) {
@@ -153,14 +136,12 @@ export default function DevenirReparateurPage() {
     }
   }
 
-  // Géolocaliser automatiquement lorsque l'adresse change
   useEffect(() => {
-    if (formData.personal.city && formData.personal.postalCode) {
+    if (formData.personal.city && formData.personal.postalCode && !isGeolocated) {
       handleGeolocation()
     }
-  }, [formData.personal.city, formData.personal.postalCode])
+  }, [formData.personal.city, formData.personal.postalCode, isGeolocated])
 
-  // Géolocaliser l'utilisateur au chargement de la page
   useEffect(() => {
     const getCurrentLocation = async () => {
       try {
@@ -190,13 +171,11 @@ export default function DevenirReparateurPage() {
     }
   }, [])
 
-  // Modifier la fonction handleSubmit pour ne pas créer l'abonnement immédiatement
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // Validation des champs requis (garder la validation existante)
       if (!formData.personal.firstName.trim()) {
         alert("Veuillez indiquer votre prénom")
         setIsSubmitting(false)
@@ -269,14 +248,12 @@ export default function DevenirReparateurPage() {
         return
       }
 
-      // Vérifier que la géolocalisation a été effectuée
       if (!formData.coordinates) {
         alert("La géolocalisation est nécessaire pour créer votre compte réparateur")
         setIsSubmitting(false)
         return
       }
 
-      // Créer le compte réparateur SANS abonnement payant
       const newUser = {
         id: StorageService.generateId(),
         email: formData.personal.email,
@@ -301,7 +278,6 @@ export default function DevenirReparateurPage() {
           description: formData.professional.description,
           website: formData.professional.website,
         },
-        // Période d'essai gratuit de 15 jours
         subscription: {
           plan: "trial",
           status: "trial",
@@ -314,8 +290,6 @@ export default function DevenirReparateurPage() {
       StorageService.setCurrentUser(newUser.id)
 
       console.log("Inscription réparateur:", newUser)
-
-      // Ouvrir le modal de paiement au lieu de rediriger
       setShowPaymentModal(true)
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error)
@@ -325,7 +299,6 @@ export default function DevenirReparateurPage() {
     }
   }
 
-  // Ajouter la fonction de succès de paiement
   const handlePaymentSuccess = () => {
     alert("Votre abonnement a été activé avec succès ! Bienvenue sur Fixeo.pro")
     router.push("/profil-pro")
@@ -344,22 +317,14 @@ export default function DevenirReparateurPage() {
       setFormData({
         ...formData,
         professional: {
-          ...formData,
-          professional: {
-            ...formData.professional,
-            specialties: formData.professional.specialties.filter((s) => s !== specialty),
-          },
+          ...formData.professional,
+          specialties: formData.professional.specialties.filter((s) => s !== specialty),
         },
       })
     }
   }
 
-  const handlePhotoChange = (photoUrl: string) => {
-    setFormData({ ...formData, avatar: photoUrl })
-  }
-
   const nextStep = () => {
-    // Vérifier si la géolocalisation est nécessaire pour passer à l'étape suivante
     if (currentStep === 1 && !isGeolocated) {
       alert("La géolocalisation est nécessaire pour continuer. Veuillez vérifier votre adresse.")
       return
@@ -377,7 +342,6 @@ export default function DevenirReparateurPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Rejoignez Fixeo.pro en tant que réparateur</h1>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
@@ -386,7 +350,6 @@ export default function DevenirReparateurPage() {
           </p>
         </div>
 
-        {/* Progress Steps */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center">
             <div
@@ -394,7 +357,7 @@ export default function DevenirReparateurPage() {
                 currentStep >= 1 ? "bg-green-500 text-white" : "bg-gray-200"
               }`}
             >
-              1
+              {currentStep > 1 ? <CheckCircle className="h-5 w-5" /> : 1}
             </div>
             <div className={`h-1 w-12 ${currentStep >= 2 ? "bg-green-500" : "bg-gray-200"}`}></div>
             <div
@@ -402,7 +365,7 @@ export default function DevenirReparateurPage() {
                 currentStep >= 2 ? "bg-green-500 text-white" : "bg-gray-200"
               }`}
             >
-              2
+              {currentStep > 2 ? <CheckCircle className="h-5 w-5" /> : 2}
             </div>
             <div className={`h-1 w-12 ${currentStep >= 3 ? "bg-green-500" : "bg-gray-200"}`}></div>
             <div
@@ -416,7 +379,6 @@ export default function DevenirReparateurPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Step 1: Informations personnelles */}
           {currentStep === 1 && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Informations personnelles</h2>
@@ -512,7 +474,6 @@ export default function DevenirReparateurPage() {
                   />
                 </div>
 
-                {/* Géolocalisation */}
                 <div className="md:col-span-2">
                   <div className="bg-blue-50 p-4 rounded-lg mb-4">
                     <h4 className="font-semibold text-blue-900 mb-2">📍 Géolocalisation requise</h4>
@@ -521,7 +482,6 @@ export default function DevenirReparateurPage() {
                       vous permettre de recevoir des demandes à proximité.
                     </p>
 
-                    {/* Statut de géolocalisation */}
                     <div className="mt-2">
                       {isGeolocating ? (
                         <div className="flex items-center text-blue-600">
@@ -530,18 +490,7 @@ export default function DevenirReparateurPage() {
                         </div>
                       ) : isGeolocated ? (
                         <div className="flex items-center text-green-600">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 mr-2"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
+                          <CheckCircle className="h-5 w-5 mr-2" />
                           Adresse géolocalisée avec succès
                         </div>
                       ) : geoError ? (
@@ -567,7 +516,7 @@ export default function DevenirReparateurPage() {
                     ) : (
                       <>
                         <MapPin className="h-4 w-4 mr-2" />
-                        Géolocaliser mon adresse
+                        {isGeolocated ? "Actualiser ma position" : "Géolocaliser mon adresse"}
                       </>
                     )}
                   </Button>
@@ -587,7 +536,6 @@ export default function DevenirReparateurPage() {
             </div>
           )}
 
-          {/* Step 2: Informations professionnelles */}
           {currentStep === 2 && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Informations professionnelles</h2>
@@ -698,7 +646,6 @@ export default function DevenirReparateurPage() {
             </div>
           )}
 
-          {/* Step 3: Abonnement et finalisation */}
           {currentStep === 3 && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Choisissez votre abonnement</h2>
@@ -727,18 +674,7 @@ export default function DevenirReparateurPage() {
                       <ul className="space-y-2 mb-6">
                         {plan.features.map((feature, index) => (
                           <li key={index} className="flex items-center">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-5 w-5 text-green-500 mr-2"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
+                            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
                             {feature}
                           </li>
                         ))}
@@ -788,7 +724,6 @@ export default function DevenirReparateurPage() {
           )}
         </form>
 
-        {/* Avantages */}
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-center mb-8">Pourquoi rejoindre Fixeo.pro ?</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -861,7 +796,6 @@ export default function DevenirReparateurPage() {
           </div>
         </div>
       </div>
-      {/* Ajouter le modal de paiement avant la fermeture du div principal */}
       {showPaymentModal && (
         <PaymentIntegration
           isOpen={showPaymentModal}
