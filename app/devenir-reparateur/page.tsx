@@ -16,6 +16,7 @@ import { StorageService } from "@/lib/storage"
 import { MapPin, Loader2, AlertCircle } from "lucide-react"
 // Importer le nouveau composant de paiement
 import PaymentIntegration from "@/components/payment-integration"
+import { GeocodingService } from "@/lib/geocoding"
 
 export default function DevenirReparateurPage() {
   const router = useRouter()
@@ -101,36 +102,50 @@ export default function DevenirReparateurPage() {
   ]
 
   // Fonction pour géolocaliser l'adresse
-  const geolocateAddress = async () => {
+  const handleGeolocation = async () => {
     setIsGeolocating(true)
     setGeoError(null)
 
     try {
-      // Vérifier si les champs d'adresse sont remplis
-      if (!formData.personal.city) {
-        setGeoError("Veuillez indiquer votre ville pour la géolocalisation")
-        setIsGeolocating(false)
-        return
-      }
+      console.log("Début de la géolocalisation...")
 
-      // Construire l'adresse complète pour la géolocalisation
-      const address = [formData.personal.address, formData.personal.postalCode, formData.personal.city, "France"]
-        .filter(Boolean)
-        .join(", ")
+      // Obtenir l'adresse complète via géolocalisation
+      const address = await GeocodingService.geolocateAndGetAddress()
 
-      // Utiliser les coordonnées de la ville si l'adresse n'est pas complète
-      const coordinates = StorageService.generateCoordinatesForCity(formData.personal.city)
+      console.log("Adresse trouvée:", address)
 
-      // Mettre à jour les coordonnées dans le formulaire
+      // Mettre à jour le formulaire avec l'adresse trouvée
       setFormData((prev) => ({
         ...prev,
-        coordinates: coordinates,
+        personal: {
+          ...prev.personal,
+          address: address.street || prev.personal.address,
+          city: address.city,
+          postalCode: address.postalCode,
+        },
       }))
+
+      // Obtenir aussi les coordonnées GPS pour la carte
+      try {
+        const coordinates = await GeocodingService.getCurrentPosition()
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: coordinates,
+        }))
+      } catch (coordError) {
+        console.warn("Impossible d'obtenir les coordonnées précises:", coordError)
+        // Utiliser les coordonnées approximatives de la ville
+        const cityCoords = StorageService.generateCoordinatesForCity(address.city)
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: cityCoords,
+        }))
+      }
 
       setIsGeolocated(true)
     } catch (error) {
       console.error("Erreur de géolocalisation:", error)
-      setGeoError("Impossible de géolocaliser votre adresse. Veuillez vérifier les informations.")
+      setGeoError(error instanceof Error ? error.message : "Erreur de géolocalisation")
     } finally {
       setIsGeolocating(false)
     }
@@ -139,7 +154,7 @@ export default function DevenirReparateurPage() {
   // Géolocaliser automatiquement lorsque l'adresse change
   useEffect(() => {
     if (formData.personal.city && formData.personal.postalCode) {
-      geolocateAddress()
+      handleGeolocation()
     }
   }, [formData.personal.city, formData.personal.postalCode])
 
@@ -320,8 +335,11 @@ export default function DevenirReparateurPage() {
       setFormData({
         ...formData,
         professional: {
-          ...formData.professional,
-          specialties: formData.professional.specialties.filter((s) => s !== specialty),
+          ...formData,
+          professional: {
+            ...formData.professional,
+            specialties: formData.professional.specialties.filter((s) => s !== specialty),
+          },
         },
       })
     }
@@ -517,15 +535,14 @@ export default function DevenirReparateurPage() {
 
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={geolocateAddress}
-                    disabled={isGeolocating || !formData.personal.city}
-                    className="w-full"
+                    onClick={handleGeolocation}
+                    disabled={isGeolocating}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
                   >
                     {isGeolocating ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Géolocalisation...
+                        Localisation...
                       </>
                     ) : (
                       <>

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { MapPin, Loader2, AlertCircle } from "lucide-react"
+import { MapPin, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import { StorageService } from "@/lib/storage"
+import { GeocodingService } from "@/lib/geocoding"
 
 export default function DemandeReparationPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
@@ -41,7 +42,7 @@ export default function DemandeReparationPage() {
   const [needsRegistration, setNeedsRegistration] = useState(!currentUser)
   const [isGeolocating, setIsGeolocating] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
-  const [isGeolocated, setIsGeolocated] = useState(false)
+  const [geoSuccess, setGeoSuccess] = useState<string | null>(null)
 
   const categories = [
     "Électroménager",
@@ -62,79 +63,60 @@ export default function DemandeReparationPage() {
     { value: "flexible", label: "Flexible", icon: "🗓️" },
   ]
 
-  // Fonction pour géolocaliser l'adresse
-  const geolocateAddress = async () => {
+  // Fonction pour géolocaliser l'utilisateur et remplir automatiquement l'adresse
+  const handleGeolocation = async () => {
     setIsGeolocating(true)
     setGeoError(null)
+    setGeoSuccess(null)
 
     try {
-      // Vérifier si les champs d'adresse sont remplis
-      if (!formData.contact.city) {
-        setGeoError("Veuillez indiquer votre ville pour la géolocalisation")
-        setIsGeolocating(false)
-        return
-      }
+      console.log("Début de la géolocalisation...")
 
-      // Construire l'adresse complète pour la géolocalisation
-      const address = [formData.contact.address, formData.contact.postalCode, formData.contact.city, "France"]
-        .filter(Boolean)
-        .join(", ")
+      // Obtenir l'adresse complète via géolocalisation
+      const address = await GeocodingService.geolocateAndGetAddress()
 
-      // Utiliser les coordonnées de la ville si l'adresse n'est pas complète
-      const coordinates = StorageService.generateCoordinatesForCity(formData.contact.city)
+      console.log("Adresse trouvée:", address)
 
-      // Mettre à jour les coordonnées dans le formulaire
+      // Mettre à jour le formulaire avec l'adresse trouvée
       setFormData((prev) => ({
         ...prev,
-        coordinates: coordinates,
+        contact: {
+          ...prev.contact,
+          address: address.street || prev.contact.address,
+          city: address.city,
+          postalCode: address.postalCode,
+        },
+        coordinates: {
+          lat: 0, // Sera mis à jour par la géolocalisation
+          lng: 0,
+        },
       }))
 
-      setIsGeolocated(true)
+      // Obtenir aussi les coordonnées GPS pour la carte
+      try {
+        const coordinates = await GeocodingService.getCurrentPosition()
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: coordinates,
+        }))
+      } catch (coordError) {
+        console.warn("Impossible d'obtenir les coordonnées précises:", coordError)
+        // Utiliser les coordonnées approximatives de la ville
+        const cityCoords = StorageService.generateCoordinatesForCity(address.city)
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: cityCoords,
+        }))
+      }
+
+      setGeoSuccess(`Adresse trouvée : ${address.city}, ${address.postalCode}`)
     } catch (error) {
       console.error("Erreur de géolocalisation:", error)
-      setGeoError("Impossible de géolocaliser votre adresse. Veuillez vérifier les informations.")
+      setGeoError(error instanceof Error ? error.message : "Erreur de géolocalisation")
     } finally {
       setIsGeolocating(false)
     }
   }
-
-  // Géolocaliser automatiquement lorsque l'adresse change
-  useEffect(() => {
-    if (formData.contact.city && formData.contact.postalCode) {
-      geolocateAddress()
-    }
-  }, [formData.contact.city, formData.contact.postalCode])
-
-  // Géolocaliser l'utilisateur au chargement de la page
-  useEffect(() => {
-    const getCurrentLocation = async () => {
-      try {
-        setIsGeolocating(true)
-        const location = await StorageService.getCurrentLocation()
-        if (location) {
-          const city = await StorageService.getCityFromCoordinates(location.lat, location.lng)
-          setFormData((prev) => ({
-            ...prev,
-            contact: {
-              ...prev.contact,
-              city: city,
-            },
-            coordinates: location,
-          }))
-          setIsGeolocated(true)
-        }
-      } catch (error) {
-        console.error("Erreur de géolocalisation:", error)
-        setGeoError("Impossible de détecter votre position. Veuillez saisir votre adresse manuellement.")
-      } finally {
-        setIsGeolocating(false)
-      }
-    }
-
-    if (!formData.contact.city) {
-      getCurrentLocation()
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -202,11 +184,10 @@ export default function DemandeReparationPage() {
         return
       }
 
-      // Vérifier que la géolocalisation a été effectuée
+      // Générer des coordonnées si elles n'existent pas
       if (!formData.coordinates) {
-        alert("La géolocalisation est nécessaire pour publier votre demande")
-        setIsSubmitting(false)
-        return
+        const coordinates = StorageService.generateCoordinatesForCity(formData.contact.city)
+        setFormData((prev) => ({ ...prev, coordinates }))
       }
 
       let userId = currentUser?.id
@@ -264,7 +245,7 @@ export default function DemandeReparationPage() {
           email: formData.contact.email,
           phone: formData.contact.phone,
         },
-        coordinates: formData.coordinates,
+        coordinates: formData.coordinates || StorageService.generateCoordinatesForCity(formData.contact.city),
       }
 
       StorageService.saveRepairRequest(repairRequest)
@@ -406,11 +387,54 @@ export default function DemandeReparationPage() {
                 Localisation
               </CardTitle>
               <CardDescription>
-                Nous trouverons les réparateurs les plus proches de vous. La géolocalisation est nécessaire pour
-                l'affichage sur la carte.
+                Cliquez sur "Géolocaliser mon adresse" pour remplir automatiquement votre ville et code postal
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Bouton de géolocalisation en premier */}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-semibold text-blue-900">📍 Géolocalisation automatique</h4>
+                    <p className="text-sm text-blue-800">Trouvez automatiquement votre ville et code postal</p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleGeolocation}
+                    disabled={isGeolocating}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isGeolocating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Localisation...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Géolocaliser mon adresse
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Messages de statut */}
+                {geoSuccess && (
+                  <div className="flex items-center text-green-600 text-sm">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {geoSuccess}
+                  </div>
+                )}
+
+                {geoError && (
+                  <div className="flex items-center text-red-600 text-sm">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {geoError}
+                  </div>
+                )}
+              </div>
+
+              {/* Champs d'adresse */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="city">Ville *</Label>
@@ -455,57 +479,6 @@ export default function DemandeReparationPage() {
                   }
                 />
               </div>
-
-              {/* Statut de géolocalisation */}
-              <div className="mt-4">
-                {isGeolocating ? (
-                  <div className="flex items-center text-blue-600">
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Géolocalisation en cours...
-                  </div>
-                ) : isGeolocated ? (
-                  <div className="flex items-center text-green-600">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 mr-2"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Adresse géolocalisée avec succès
-                  </div>
-                ) : geoError ? (
-                  <div className="flex items-center text-red-600">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    {geoError}
-                  </div>
-                ) : null}
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={geolocateAddress}
-                disabled={isGeolocating || !formData.contact.city}
-                className="mt-2"
-              >
-                {isGeolocating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Géolocalisation...
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Géolocaliser mon adresse
-                  </>
-                )}
-              </Button>
             </CardContent>
           </Card>
 
@@ -613,20 +586,9 @@ export default function DemandeReparationPage() {
                 </p>
               </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isSubmitting || !isGeolocated}
-              >
+              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
                 {isSubmitting ? "Envoi en cours..." : "Publier ma demande gratuitement"}
               </Button>
-
-              {!isGeolocated && (
-                <p className="text-red-500 text-sm mt-2 text-center">
-                  La géolocalisation est nécessaire pour publier votre demande
-                </p>
-              )}
             </CardContent>
           </Card>
         </form>
