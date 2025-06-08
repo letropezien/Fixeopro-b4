@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle, Star, Euro, Users, Building } from "lucide-react"
+import { StorageService } from "@/lib/storage"
 
 export default function DevenirReparateurPage() {
   const [formData, setFormData] = useState({
@@ -29,7 +29,7 @@ export default function DevenirReparateurPage() {
       companyName: "",
       siret: "",
       experience: "",
-      specialties: [],
+      specialties: [] as string[],
       description: "",
       website: "",
       socialMedia: {
@@ -38,7 +38,7 @@ export default function DevenirReparateurPage() {
         linkedin: "",
       },
     },
-    subscription: "basic",
+    subscription: "pro",
   })
 
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -91,86 +91,115 @@ export default function DevenirReparateurPage() {
     },
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Validation des champs requis
-    if (!formData.personal.firstName.trim()) {
-      alert("Veuillez indiquer votre prénom")
+    try {
+      // Validation des champs requis
+      if (!formData.personal.firstName.trim()) {
+        alert("Veuillez indiquer votre prénom")
+        return
+      }
+
+      if (!formData.personal.lastName.trim()) {
+        alert("Veuillez indiquer votre nom")
+        return
+      }
+
+      if (!formData.personal.email.trim()) {
+        alert("Veuillez indiquer votre email")
+        return
+      }
+
+      if (!formData.personal.phone.trim()) {
+        alert("Veuillez indiquer votre téléphone")
+        return
+      }
+
+      if (!formData.personal.address.trim()) {
+        alert("Veuillez indiquer votre adresse")
+        return
+      }
+
+      if (!formData.personal.city.trim()) {
+        alert("Veuillez indiquer votre ville")
+        return
+      }
+
+      if (!formData.personal.postalCode.trim()) {
+        alert("Veuillez indiquer votre code postal")
+        return
+      }
+
+      if (!formData.professional.experience) {
+        alert("Veuillez indiquer votre expérience")
+        return
+      }
+
+      if (formData.professional.specialties.length === 0) {
+        alert("Veuillez sélectionner au moins une spécialité")
+        return
+      }
+
+      if (!formData.professional.description.trim()) {
+        alert("Veuillez décrire votre activité")
+        return
+      }
+
+      if (!termsAccepted) {
+        alert("Veuillez accepter les conditions d'utilisation")
+        return
+      }
+
+      // Créer le compte réparateur
+      const newUser = {
+        id: StorageService.generateId(),
+        email: formData.personal.email,
+        password: "temp_password", // Mot de passe temporaire
+        firstName: formData.personal.firstName,
+        lastName: formData.personal.lastName,
+        phone: formData.personal.phone,
+        address: formData.personal.address,
+        city: formData.personal.city,
+        postalCode: formData.personal.postalCode,
+        userType: "reparateur" as const,
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        subscription: {
+          plan: formData.subscription,
+          status: "trial" as const, // 7 jours d'essai gratuit
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        professional: {
+          companyName: formData.professional.companyName,
+          siret: formData.professional.siret,
+          experience: formData.professional.experience,
+          specialties: formData.professional.specialties,
+          description: formData.professional.description,
+          website: formData.professional.website,
+        },
+      }
+
+      StorageService.saveUser(newUser)
+      StorageService.setCurrentUser(newUser)
+
+      // Envoyer email de vérification
+      await StorageService.sendVerificationEmail(newUser.email, newUser.firstName)
+
+      console.log("Inscription réparateur:", newUser)
+      alert(
+        "Votre inscription a été enregistrée avec succès ! Un email de confirmation vous a été envoyé. Vous bénéficiez de 7 jours d'essai gratuit.",
+      )
+
+      // Redirection vers le profil professionnel
+      window.location.href = "/profil-pro"
+    } catch (error) {
+      console.error("Erreur lors de l'inscription:", error)
+      alert("Une erreur est survenue. Veuillez réessayer.")
+    } finally {
       setIsSubmitting(false)
-      return
     }
-
-    if (!formData.personal.lastName.trim()) {
-      alert("Veuillez indiquer votre nom")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.personal.email.trim()) {
-      alert("Veuillez indiquer votre email")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.personal.phone.trim()) {
-      alert("Veuillez indiquer votre téléphone")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.personal.address.trim()) {
-      alert("Veuillez indiquer votre adresse")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.personal.city.trim()) {
-      alert("Veuillez indiquer votre ville")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.personal.postalCode.trim()) {
-      alert("Veuillez indiquer votre code postal")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.professional.experience) {
-      alert("Veuillez indiquer votre expérience")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (formData.professional.specialties.length === 0) {
-      alert("Veuillez sélectionner au moins une spécialité")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!formData.professional.description.trim()) {
-      alert("Veuillez décrire votre activité")
-      setIsSubmitting(false)
-      return
-    }
-
-    if (!termsAccepted) {
-      alert("Veuillez accepter les conditions d'utilisation")
-      setIsSubmitting(false)
-      return
-    }
-
-    // Simulation d'envoi des données
-    setTimeout(() => {
-      console.log("Inscription réparateur:", formData)
-      alert("Votre inscription a été enregistrée avec succès ! Vous recevrez un email de confirmation.")
-      setIsSubmitting(false)
-
-      // Redirection vers le profil ou tableau de bord
-      // window.location.href = "/profil-pro"
-    }, 2000)
   }
 
   const handleSpecialtyChange = (specialty: string, checked: boolean) => {

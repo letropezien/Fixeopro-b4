@@ -1,27 +1,29 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Camera, Bell, Shield, Star, Calendar } from "lucide-react"
+import { User, Bell, Shield, Calendar } from "lucide-react"
+import { StorageService } from "@/lib/storage"
+import PhotoUpload from "@/components/photo-upload"
 
 export default function ProfilPage() {
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
   const [userProfile, setUserProfile] = useState({
-    firstName: "Jean",
-    lastName: "Dupont",
-    email: "jean.dupont@email.com",
-    phone: "06 12 34 56 78",
-    address: "123 rue de la République",
-    city: "Paris",
-    postalCode: "75001",
-    bio: "Passionné de bricolage et de réparations depuis plus de 15 ans.",
-    avatar: "/placeholder-avatar.jpg",
+    firstName: currentUser?.firstName || "",
+    lastName: currentUser?.lastName || "",
+    email: currentUser?.email || "",
+    phone: currentUser?.phone || "",
+    address: currentUser?.address || "",
+    city: currentUser?.city || "",
+    postalCode: currentUser?.postalCode || "",
+    bio: "",
+    avatar: currentUser?.avatar || "",
   })
 
   const [notifications, setNotifications] = useState({
@@ -30,23 +32,58 @@ export default function ProfilPage() {
     push: true,
   })
 
-  const recentRequests = [
-    {
-      id: 1,
-      title: "Réparation lave-linge",
-      status: "En cours",
-      date: "2024-01-15",
-      repairer: "Marie Martin",
-    },
-    {
-      id: 2,
-      title: "Dépannage informatique",
-      status: "Terminé",
-      date: "2024-01-10",
-      repairer: "Pierre Durand",
-      rating: 5,
-    },
-  ]
+  const [userRequests, setUserRequests] = useState(
+    currentUser ? StorageService.getRepairRequestsByClient(currentUser.id) : [],
+  )
+
+  useEffect(() => {
+    if (currentUser) {
+      setUserRequests(StorageService.getRepairRequestsByClient(currentUser.id))
+    }
+  }, [currentUser])
+
+  const handleSaveProfile = () => {
+    if (!currentUser) return
+
+    const updatedUser = {
+      ...currentUser,
+      firstName: userProfile.firstName,
+      lastName: userProfile.lastName,
+      email: userProfile.email,
+      phone: userProfile.phone,
+      address: userProfile.address,
+      city: userProfile.city,
+      postalCode: userProfile.postalCode,
+      avatar: userProfile.avatar,
+    }
+
+    StorageService.saveUser(updatedUser)
+    StorageService.setCurrentUser(updatedUser)
+    setCurrentUser(updatedUser)
+
+    alert("Profil mis à jour avec succès !")
+  }
+
+  const handlePhotoChange = (photoUrl: string) => {
+    setUserProfile({ ...userProfile, avatar: photoUrl })
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Connexion requise</h2>
+            <p className="text-gray-600 mb-4">Vous devez être connecté pour accéder à votre profil.</p>
+            <Button asChild className="w-full">
+              <a href="/connexion">Se connecter</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -74,21 +111,8 @@ export default function ProfilPage() {
                     Photo de profil
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex items-center space-x-6">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={userProfile.avatar || "/placeholder.svg"} alt="Photo de profil" />
-                    <AvatarFallback className="text-lg">
-                      {userProfile.firstName[0]}
-                      {userProfile.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <Button variant="outline" className="mb-2">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Changer la photo
-                    </Button>
-                    <p className="text-sm text-gray-600">JPG, PNG ou GIF. Taille maximale : 2MB</p>
-                  </div>
+                <CardContent>
+                  <PhotoUpload currentPhoto={userProfile.avatar} onPhotoChange={handlePhotoChange} size="lg" />
                 </CardContent>
               </Card>
 
@@ -173,7 +197,9 @@ export default function ProfilPage() {
                       onChange={(e) => setUserProfile({ ...userProfile, bio: e.target.value })}
                     />
                   </div>
-                  <Button className="bg-blue-600 hover:bg-blue-700">Sauvegarder les modifications</Button>
+                  <Button onClick={handleSaveProfile} className="bg-blue-600 hover:bg-blue-700">
+                    Sauvegarder les modifications
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -188,42 +214,52 @@ export default function ProfilPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentRequests.map((request) => (
-                      <div key={request.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold">{request.title}</h3>
-                          <Badge variant={request.status === "Terminé" ? "default" : "secondary"}>
-                            {request.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600 space-x-4">
-                          <span className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {new Date(request.date).toLocaleDateString("fr-FR")}
-                          </span>
-                          <span className="flex items-center">
-                            <User className="h-4 w-4 mr-1" />
-                            {request.repairer}
-                          </span>
-                          {request.rating && (
+                    {userRequests.length > 0 ? (
+                      userRequests.map((request) => (
+                        <div key={request.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-semibold">{request.title}</h3>
+                            <Badge variant={request.status === "completed" ? "default" : "secondary"}>
+                              {request.status === "open"
+                                ? "En attente"
+                                : request.status === "in_progress"
+                                  ? "En cours"
+                                  : request.status === "completed"
+                                    ? "Terminé"
+                                    : "Annulé"}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{request.description}</p>
+                          <div className="flex items-center text-sm text-gray-600 space-x-4">
                             <span className="flex items-center">
-                              <Star className="h-4 w-4 mr-1 text-yellow-500" />
-                              {request.rating}/5
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {new Date(request.createdAt).toLocaleDateString("fr-FR")}
                             </span>
-                          )}
-                        </div>
-                        <div className="mt-3 flex space-x-2">
-                          <Button variant="outline" size="sm">
-                            Voir les détails
-                          </Button>
-                          {request.status === "Terminé" && !request.rating && (
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                              Laisser un avis
+                            <span className="flex items-center">
+                              <User className="h-4 w-4 mr-1" />
+                              {request.responses} réponse{request.responses > 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex space-x-2">
+                            <Button variant="outline" size="sm">
+                              Voir les détails
                             </Button>
-                          )}
+                            {request.status === "completed" && (
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                                Laisser un avis
+                              </Button>
+                            )}
+                          </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-600 mb-4">Vous n'avez pas encore de demandes de réparation</p>
+                        <Button asChild>
+                          <a href="/demande-reparation">Créer une demande</a>
+                        </Button>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -301,17 +337,12 @@ export default function ProfilPage() {
                   </div>
                   <div className="flex justify-between items-center p-4 border rounded-lg">
                     <div>
-                      <h4 className="font-medium">Authentification à deux facteurs</h4>
-                      <p className="text-sm text-gray-600">Sécurisez votre compte avec 2FA</p>
+                      <h4 className="font-medium">Email de vérification</h4>
+                      <p className="text-sm text-gray-600">
+                        {currentUser.isEmailVerified ? "Email vérifié ✓" : "Email non vérifié"}
+                      </p>
                     </div>
-                    <Button variant="outline">Activer</Button>
-                  </div>
-                  <div className="flex justify-between items-center p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Sessions actives</h4>
-                      <p className="text-sm text-gray-600">Gérez vos connexions</p>
-                    </div>
-                    <Button variant="outline">Voir</Button>
+                    {!currentUser.isEmailVerified && <Button variant="outline">Renvoyer l'email</Button>}
                   </div>
                 </CardContent>
               </Card>

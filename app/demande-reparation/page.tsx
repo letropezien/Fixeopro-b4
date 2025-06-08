@@ -1,9 +1,7 @@
 "use client"
 
 import Link from "next/link"
-
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,21 +12,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { MapPin } from "lucide-react"
+import { StorageService } from "@/lib/storage"
 
 export default function DemandeReparationPage() {
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
   const [formData, setFormData] = useState({
     category: "",
     urgency: "",
     description: "",
     location: "",
     contact: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      city: "",
-      postalCode: "",
+      firstName: currentUser?.firstName || "",
+      lastName: currentUser?.lastName || "",
+      email: currentUser?.email || "",
+      phone: currentUser?.phone || "",
+      address: currentUser?.address || "",
+      city: currentUser?.city || "",
+      postalCode: currentUser?.postalCode || "",
     },
     budget: "",
     availability: [],
@@ -36,8 +36,8 @@ export default function DemandeReparationPage() {
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [needsRegistration, setNeedsRegistration] = useState(!currentUser)
 
   const categories = [
     "Électroménager",
@@ -57,88 +57,131 @@ export default function DemandeReparationPage() {
     { value: "flexible", label: "Flexible", icon: "🗓️" },
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
 
-    // Validation des champs requis
-    if (!formData.category) {
-      alert("Veuillez sélectionner une catégorie")
-      return
+    try {
+      // Validation des champs requis
+      if (!formData.category) {
+        alert("Veuillez sélectionner une catégorie")
+        return
+      }
+
+      if (!formData.urgency) {
+        alert("Veuillez sélectionner un niveau d'urgence")
+        return
+      }
+
+      if (!formData.description.trim()) {
+        alert("Veuillez décrire votre problème")
+        return
+      }
+
+      if (!formData.contact.city.trim()) {
+        alert("Veuillez indiquer votre ville")
+        return
+      }
+
+      if (!formData.contact.postalCode.trim()) {
+        alert("Veuillez indiquer votre code postal")
+        return
+      }
+
+      if (!formData.contact.firstName.trim()) {
+        alert("Veuillez indiquer votre prénom")
+        return
+      }
+
+      if (!formData.contact.lastName.trim()) {
+        alert("Veuillez indiquer votre nom")
+        return
+      }
+
+      if (!formData.contact.email.trim()) {
+        alert("Veuillez indiquer votre email")
+        return
+      }
+
+      if (!formData.contact.phone.trim()) {
+        alert("Veuillez indiquer votre téléphone")
+        return
+      }
+
+      if (!termsAccepted) {
+        alert("Veuillez accepter les conditions d'utilisation")
+        return
+      }
+
+      let userId = currentUser?.id
+
+      // Si l'utilisateur n'est pas connecté, créer un compte automatiquement
+      if (!currentUser) {
+        const newUser = {
+          id: StorageService.generateId(),
+          email: formData.contact.email,
+          password: "temp_password", // Mot de passe temporaire
+          firstName: formData.contact.firstName,
+          lastName: formData.contact.lastName,
+          phone: formData.contact.phone,
+          address: formData.contact.address,
+          city: formData.contact.city,
+          postalCode: formData.contact.postalCode,
+          userType: "client" as const,
+          isEmailVerified: false,
+          createdAt: new Date().toISOString(),
+        }
+
+        StorageService.saveUser(newUser)
+        StorageService.setCurrentUser(newUser)
+        userId = newUser.id
+
+        // Envoyer email de vérification
+        await StorageService.sendVerificationEmail(newUser.email, newUser.firstName)
+
+        setCurrentUser(newUser)
+        setNeedsRegistration(false)
+      }
+
+      // Créer la demande de réparation
+      const urgencyLevel = urgencyLevels.find((level) => level.value === formData.urgency)
+
+      const repairRequest = {
+        id: StorageService.generateId(),
+        clientId: userId!,
+        category: formData.category,
+        urgency: formData.urgency,
+        urgencyLabel: urgencyLevel?.label || formData.urgency,
+        title: `Réparation ${formData.category.toLowerCase()}`,
+        description: formData.description,
+        budget: formData.budget,
+        city: formData.contact.city,
+        postalCode: formData.contact.postalCode,
+        address: formData.contact.address,
+        createdAt: new Date().toISOString(),
+        status: "open" as const,
+        responses: 0,
+        client: {
+          firstName: formData.contact.firstName,
+          lastName: formData.contact.lastName,
+          initials: `${formData.contact.firstName[0]}${formData.contact.lastName[0]}`,
+          email: formData.contact.email,
+          phone: formData.contact.phone,
+        },
+      }
+
+      StorageService.saveRepairRequest(repairRequest)
+
+      console.log("Demande soumise avec succès:", repairRequest)
+
+      // Rediriger vers la page de confirmation
+      window.location.href = "/confirmation"
+    } catch (error) {
+      console.error("Erreur lors de la soumission:", error)
+      alert("Une erreur est survenue. Veuillez réessayer.")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    if (!formData.urgency) {
-      alert("Veuillez sélectionner un niveau d'urgence")
-      return
-    }
-
-    if (!formData.description.trim()) {
-      alert("Veuillez décrire votre problème")
-      return
-    }
-
-    if (!formData.contact.city.trim()) {
-      alert("Veuillez indiquer votre ville")
-      return
-    }
-
-    if (!formData.contact.postalCode.trim()) {
-      alert("Veuillez indiquer votre code postal")
-      return
-    }
-
-    if (!formData.contact.firstName.trim()) {
-      alert("Veuillez indiquer votre prénom")
-      return
-    }
-
-    if (!formData.contact.lastName.trim()) {
-      alert("Veuillez indiquer votre nom")
-      return
-    }
-
-    if (!formData.contact.email.trim()) {
-      alert("Veuillez indiquer votre email")
-      return
-    }
-
-    if (!formData.contact.phone.trim()) {
-      alert("Veuillez indiquer votre téléphone")
-      return
-    }
-
-    if (!termsAccepted) {
-      alert("Veuillez accepter les conditions d'utilisation")
-      return
-    }
-
-    // Simulation d'envoi des données
-    console.log("Demande soumise avec succès:", formData)
-
-    // Afficher un message de succès
-    alert("Votre demande a été enregistrée avec succès ! Vous recevrez une réponse dans les plus brefs délais.")
-
-    // Rediriger vers une page de confirmation ou réinitialiser le formulaire
-    // window.location.href = "/confirmation"
-
-    // Ou réinitialiser le formulaire
-    setFormData({
-      category: "",
-      urgency: "",
-      description: "",
-      location: "",
-      contact: {
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        postalCode: "",
-      },
-      budget: "",
-      availability: [],
-      photos: [],
-    })
   }
 
   return (
@@ -149,6 +192,13 @@ export default function DemandeReparationPage() {
           <p className="text-lg text-gray-600">
             Décrivez votre problème et trouvez rapidement un expert près de chez vous
           </p>
+          {needsRegistration && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <p className="text-blue-800 text-sm">
+                💡 Un compte sera automatiquement créé pour vous permettre de suivre votre demande
+              </p>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -318,7 +368,9 @@ export default function DemandeReparationPage() {
                 Vos coordonnées
               </CardTitle>
               <CardDescription>
-                Ces informations restent confidentielles jusqu'à ce qu'un réparateur accepte votre demande
+                {needsRegistration
+                  ? "Un compte sera créé automatiquement avec ces informations"
+                  : "Ces informations restent confidentielles jusqu'à ce qu'un réparateur accepte votre demande"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

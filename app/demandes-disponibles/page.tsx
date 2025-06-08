@@ -1,120 +1,28 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Clock, Euro, User, Phone, Mail, Filter } from "lucide-react"
-
-// Données simulées des demandes
-const mockRequests = [
-  {
-    id: 1,
-    category: "Électroménager",
-    title: "Réparation lave-linge",
-    description:
-      "Mon lave-linge ne démarre plus depuis ce matin. Le voyant rouge clignote et il fait un bruit étrange quand j'appuie sur le bouton de démarrage.",
-    urgency: "urgent",
-    urgencyLabel: "Urgent (dans les 2h)",
-    budget: "100-200",
-    city: "Paris",
-    postalCode: "75015",
-    createdAt: "2024-01-15T10:30:00Z",
-    client: {
-      firstName: "Marie",
-      lastName: "D.",
-      initials: "MD",
-    },
-    responses: 2,
-  },
-  {
-    id: 2,
-    category: "Informatique",
-    title: "Dépannage ordinateur portable",
-    description:
-      "Mon ordinateur portable ne s'allume plus du tout. L'écran reste noir même quand je branche le chargeur. Il y avait des ralentissements avant la panne.",
-    urgency: "same-day",
-    urgencyLabel: "Aujourd'hui",
-    budget: "50-100",
-    city: "Lyon",
-    postalCode: "69002",
-    createdAt: "2024-01-15T09:15:00Z",
-    client: {
-      firstName: "Pierre",
-      lastName: "M.",
-      initials: "PM",
-    },
-    responses: 0,
-  },
-  {
-    id: 3,
-    category: "Plomberie",
-    title: "Fuite sous évier",
-    description:
-      "J'ai une fuite d'eau sous mon évier de cuisine. L'eau coule en permanence et j'ai dû couper l'arrivée d'eau. Cela semble venir du raccordement.",
-    urgency: "urgent",
-    urgencyLabel: "Urgent (dans les 2h)",
-    budget: "200-500",
-    city: "Marseille",
-    postalCode: "13001",
-    createdAt: "2024-01-15T08:45:00Z",
-    client: {
-      firstName: "Sophie",
-      lastName: "L.",
-      initials: "SL",
-    },
-    responses: 5,
-  },
-  {
-    id: 4,
-    category: "Électricité",
-    title: "Panne électrique partielle",
-    description:
-      "Plusieurs prises de ma cuisine ne fonctionnent plus depuis hier soir. Le disjoncteur ne semble pas avoir sauté. Les autres pièces fonctionnent normalement.",
-    urgency: "this-week",
-    urgencyLabel: "Cette semaine",
-    budget: "100-200",
-    city: "Toulouse",
-    postalCode: "31000",
-    createdAt: "2024-01-14T16:20:00Z",
-    client: {
-      firstName: "Jean",
-      lastName: "R.",
-      initials: "JR",
-    },
-    responses: 1,
-  },
-  {
-    id: 5,
-    category: "Chauffage",
-    title: "Chaudière en panne",
-    description:
-      "Ma chaudière gaz ne se déclenche plus. Plus d'eau chaude et pas de chauffage. J'ai vérifié la pression qui semble correcte.",
-    urgency: "urgent",
-    urgencyLabel: "Urgent (dans les 2h)",
-    budget: "200-500",
-    city: "Nice",
-    postalCode: "06000",
-    createdAt: "2024-01-14T14:10:00Z",
-    client: {
-      firstName: "Anne",
-      lastName: "B.",
-      initials: "AB",
-    },
-    responses: 3,
-  },
-]
+import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock } from "lucide-react"
+import { StorageService } from "@/lib/storage"
 
 export default function DemandesDisponiblesPage() {
-  const [requests, setRequests] = useState(mockRequests)
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
+  const [requests, setRequests] = useState(StorageService.getRepairRequests())
   const [filters, setFilters] = useState({
     category: "",
     urgency: "",
     city: "",
     budget: "",
   })
+
+  useEffect(() => {
+    // Recharger les demandes à chaque visite de la page
+    setRequests(StorageService.getRepairRequests())
+  }, [])
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
@@ -142,9 +50,24 @@ export default function DemandesDisponiblesPage() {
     return `Il y a ${diffInDays} jour${diffInDays > 1 ? "s" : ""}`
   }
 
-  const handleContactClient = (requestId: number) => {
-    // Ici on révélerait les coordonnées complètes du client
-    alert("Coordonnées du client révélées ! Vous pouvez maintenant le contacter directement.")
+  const hasActiveSubscription = () => {
+    return currentUser?.subscription?.status === "active" || currentUser?.subscription?.status === "trial"
+  }
+
+  const handleContactClient = (requestId: string) => {
+    if (!hasActiveSubscription()) {
+      alert("Vous devez avoir un abonnement actif pour contacter les clients. Veuillez souscrire à un abonnement.")
+      window.location.href = "/devenir-reparateur#abonnements"
+      return
+    }
+
+    // Révéler les coordonnées complètes du client
+    const request = requests.find((r) => r.id === requestId)
+    if (request) {
+      alert(
+        `Coordonnées du client révélées !\n\nEmail: ${request.client.email}\nTéléphone: ${request.client.phone}\n\nVous pouvez maintenant le contacter directement.`,
+      )
+    }
   }
 
   const filteredRequests = requests.filter((request) => {
@@ -155,12 +78,54 @@ export default function DemandesDisponiblesPage() {
     )
   })
 
+  // Vérifier si l'utilisateur est un réparateur
+  if (!currentUser || currentUser.userType !== "reparateur") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <Lock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Accès réservé aux réparateurs</h2>
+            <p className="text-gray-600 mb-4">
+              Cette page est réservée aux professionnels inscrits sur notre plateforme.
+            </p>
+            <div className="space-y-2">
+              <Button asChild className="w-full">
+                <a href="/devenir-reparateur">Devenir réparateur</a>
+              </Button>
+              <Button variant="outline" asChild className="w-full">
+                <a href="/connexion">Se connecter</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Demandes de réparation disponibles</h1>
           <p className="text-gray-600">Trouvez des clients près de chez vous et développez votre activité</p>
+
+          {!hasActiveSubscription() && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
+              <div className="flex items-center">
+                <Lock className="h-5 w-5 text-orange-600 mr-2" />
+                <div>
+                  <p className="text-orange-800 font-medium">Abonnement requis</p>
+                  <p className="text-orange-700 text-sm">
+                    Vous devez avoir un abonnement actif pour contacter les clients.{" "}
+                    <a href="/devenir-reparateur#abonnements" className="underline">
+                      Souscrire maintenant
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filtres */}
@@ -278,10 +243,12 @@ export default function DemandesDisponiblesPage() {
                       <MapPin className="h-4 w-4 mr-1" />
                       {request.city} ({request.postalCode})
                     </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Euro className="h-4 w-4 mr-1" />
-                      {request.budget}€
-                    </div>
+                    {request.budget && (
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Euro className="h-4 w-4 mr-1" />
+                        {request.budget}€
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -301,17 +268,41 @@ export default function DemandesDisponiblesPage() {
                   </div>
 
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleContactClient(request.id)}>
-                      <Phone className="h-4 w-4 mr-1" />
-                      Contacter
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleContactClient(request.id)}
+                      disabled={!hasActiveSubscription()}
+                    >
+                      {hasActiveSubscription() ? (
+                        <>
+                          <Phone className="h-4 w-4 mr-1" />
+                          Contacter
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4 mr-1" />
+                          Abonnement requis
+                        </>
+                      )}
                     </Button>
                     <Button
                       size="sm"
                       className="bg-blue-600 hover:bg-blue-700"
                       onClick={() => handleContactClient(request.id)}
+                      disabled={!hasActiveSubscription()}
                     >
-                      <Mail className="h-4 w-4 mr-1" />
-                      Répondre
+                      {hasActiveSubscription() ? (
+                        <>
+                          <Mail className="h-4 w-4 mr-1" />
+                          Répondre
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4 mr-1" />
+                          Abonnement requis
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
