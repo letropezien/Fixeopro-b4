@@ -9,8 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Menu, Wrench, User, Settings, LogOut, Bell } from "lucide-react"
 
 export default function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userType, setUserType] = useState<"client" | "reparateur" | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(true) // Simuler un utilisateur connecté
+  const [userType, setUserType] = useState<"client" | "reparateur" | null>("reparateur") // Simuler un réparateur connecté
 
   const categories = [
     "Électroménager",
@@ -92,6 +92,14 @@ export default function Header() {
                   Nouvelle demande
                 </Button>
               </Link>
+
+              {userType === "reparateur" && (
+                <Link href="/demandes-disponibles">
+                  <Button variant="outline" size="sm" className="hidden sm:inline-flex">
+                    Voir les demandes
+                  </Button>
+                </Link>
+              )}
 
               <Button variant="ghost" size="sm" className="relative">
                 <Bell className="h-4 w-4" />

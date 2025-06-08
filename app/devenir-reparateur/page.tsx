@@ -41,6 +41,9 @@ export default function DevenirReparateurPage() {
     subscription: "basic",
   })
 
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const specialties = [
     "Électroménager",
     "Informatique",
@@ -90,7 +93,104 @@ export default function DevenirReparateurPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Inscription réparateur:", formData)
+    setIsSubmitting(true)
+
+    // Validation des champs requis
+    if (!formData.personal.firstName.trim()) {
+      alert("Veuillez indiquer votre prénom")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.lastName.trim()) {
+      alert("Veuillez indiquer votre nom")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.email.trim()) {
+      alert("Veuillez indiquer votre email")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.phone.trim()) {
+      alert("Veuillez indiquer votre téléphone")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.address.trim()) {
+      alert("Veuillez indiquer votre adresse")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.city.trim()) {
+      alert("Veuillez indiquer votre ville")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.personal.postalCode.trim()) {
+      alert("Veuillez indiquer votre code postal")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.professional.experience) {
+      alert("Veuillez indiquer votre expérience")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (formData.professional.specialties.length === 0) {
+      alert("Veuillez sélectionner au moins une spécialité")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!formData.professional.description.trim()) {
+      alert("Veuillez décrire votre activité")
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!termsAccepted) {
+      alert("Veuillez accepter les conditions d'utilisation")
+      setIsSubmitting(false)
+      return
+    }
+
+    // Simulation d'envoi des données
+    setTimeout(() => {
+      console.log("Inscription réparateur:", formData)
+      alert("Votre inscription a été enregistrée avec succès ! Vous recevrez un email de confirmation.")
+      setIsSubmitting(false)
+
+      // Redirection vers le profil ou tableau de bord
+      // window.location.href = "/profil-pro"
+    }, 2000)
+  }
+
+  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
+    if (checked) {
+      setFormData({
+        ...formData,
+        professional: {
+          ...formData.professional,
+          specialties: [...formData.professional.specialties, specialty],
+        },
+      })
+    } else {
+      setFormData({
+        ...formData,
+        professional: {
+          ...formData.professional,
+          specialties: formData.professional.specialties.filter((s) => s !== specialty),
+        },
+      })
+    }
   }
 
   return (
@@ -325,25 +425,7 @@ export default function DevenirReparateurPage() {
                           <Checkbox
                             id={specialty}
                             checked={formData.professional.specialties.includes(specialty)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setFormData({
-                                  ...formData,
-                                  professional: {
-                                    ...formData.professional,
-                                    specialties: [...formData.professional.specialties, specialty],
-                                  },
-                                })
-                              } else {
-                                setFormData({
-                                  ...formData,
-                                  professional: {
-                                    ...formData.professional,
-                                    specialties: formData.professional.specialties.filter((s) => s !== specialty),
-                                  },
-                                })
-                              }
-                            }}
+                            onCheckedChange={(checked) => handleSpecialtyChange(specialty, checked as boolean)}
                           />
                           <Label htmlFor={specialty} className="text-sm">
                             {specialty}
@@ -351,6 +433,15 @@ export default function DevenirReparateurPage() {
                         </div>
                       ))}
                     </div>
+                    {formData.professional.specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.professional.specialties.map((specialty) => (
+                          <Badge key={specialty} variant="secondary">
+                            {specialty}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -383,63 +474,22 @@ export default function DevenirReparateurPage() {
                       }
                     />
                   </div>
-
-                  <div>
-                    <Label>Réseaux sociaux</Label>
-                    <div className="space-y-2 mt-2">
-                      <Input
-                        placeholder="Facebook"
-                        value={formData.professional.socialMedia.facebook}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            professional: {
-                              ...formData.professional,
-                              socialMedia: { ...formData.professional.socialMedia, facebook: e.target.value },
-                            },
-                          })
-                        }
-                      />
-                      <Input
-                        placeholder="Instagram"
-                        value={formData.professional.socialMedia.instagram}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            professional: {
-                              ...formData.professional,
-                              socialMedia: { ...formData.professional.socialMedia, instagram: e.target.value },
-                            },
-                          })
-                        }
-                      />
-                      <Input
-                        placeholder="LinkedIn"
-                        value={formData.professional.socialMedia.linkedin}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            professional: {
-                              ...formData.professional,
-                              socialMedia: { ...formData.professional.socialMedia, linkedin: e.target.value },
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 
               <div className="flex items-center space-x-2">
-                <Checkbox id="terms" />
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                />
                 <Label htmlFor="terms" className="text-sm">
                   J'accepte les conditions d'utilisation et la politique de confidentialité
                 </Label>
               </div>
 
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700">
-                Créer mon compte réparateur
+              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                {isSubmitting ? "Création en cours..." : "Créer mon compte réparateur"}
               </Button>
             </form>
           </TabsContent>
