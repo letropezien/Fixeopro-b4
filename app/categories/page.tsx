@@ -145,7 +145,7 @@ export default function CategoriesPage() {
                   {/* Image */}
                   <div className={`relative h-64 md:h-80 ${index % 2 === 1 ? "md:order-2" : ""}`}>
                     <Image
-                      src={category.image || "/placeholder.svg"}
+                      src={`/images/categories/${category.slug}.jpg`}
                       alt={`Réparation ${category.name}`}
                       fill
                       className="object-cover"

@@ -179,7 +179,7 @@ export default function HomePage() {
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
                     <Image
-                      src={`/images/categories/${category.name.toLowerCase().replace("é", "e").replace("è", "e")}.jpg`}
+                      src={`/images/categories/${category.name.toLowerCase().replace(/é/g, "e").replace(/è/g, "e")}.jpg`}
                       alt={`Réparation ${category.name}`}
                       fill
                       className="object-cover hover:scale-105 transition-transform duration-300"
