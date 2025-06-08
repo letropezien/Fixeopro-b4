@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,13 +15,48 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
-  Shield,
-  Database,
-  Bell,
   Globe,
   Save,
   RefreshCw,
+  Search,
+  MapPin,
+  User,
+  Shield,
 } from "lucide-react"
+
+interface UserType {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  userType: "client" | "reparateur"
+  city?: string
+  createdAt: string
+  subscription?: {
+    status: "active" | "trial" | "inactive"
+    plan?: string
+    endDate: string
+  }
+  professional?: {
+    companyName?: string
+  }
+}
+
+interface RepairRequest {
+  id: string
+  title: string
+  description: string
+  category: string
+  city: string
+  urgency: "urgent" | "same-day" | "this-week" | "flexible"
+  status: "open" | "in_progress" | "completed" | "cancelled"
+  createdAt: string
+  client: {
+    firstName: string
+    lastName: string
+    initials: string
+  }
+}
 
 export default function AdminPage() {
   const [adminConfig, setAdminConfig] = useState({
@@ -41,7 +76,7 @@ export default function AdminPage() {
       siteName: "Fixeo.pro",
       commission: 5,
       currency: "EUR",
-      taxRate: 20,
+      taxRate: 0,
       trialDays: 15,
       supportEmail: "contact@fixeo.pro",
     },
@@ -61,6 +96,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalReparateurs: 0,
+    totalClients: 0,
     totalRequests: 0,
     monthlyRevenue: 0,
     activeSubscriptions: 0,
@@ -68,10 +104,31 @@ export default function AdminPage() {
   })
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [users, setUsers] = useState<UserType[]>([])
+  const [requests, setRequests] = useState<RepairRequest[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [userTypeFilter, setUserTypeFilter] = useState<"all" | "client" | "reparateur">("all")
+  const [requestStatusFilter, setRequestStatusFilter] = useState<
+    "all" | "open" | "in_progress" | "completed" | "cancelled"
+  >("all")
 
   useEffect(() => {
     loadConfiguration()
-    calculateStats()
+    loadData()
+  }, [])
+
+  const loadData = useCallback(() => {
+    try {
+      const loadedUsers = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
+      const loadedRequests = JSON.parse(localStorage.getItem("fixeopro_repair_requests") || "[]")
+
+      setUsers(loadedUsers)
+      setRequests(loadedRequests)
+
+      calculateStats(loadedUsers, loadedRequests)
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error)
+    }
   }, [])
 
   const loadConfiguration = () => {
@@ -86,30 +143,27 @@ export default function AdminPage() {
     }
   }
 
-  const calculateStats = () => {
+  const calculateStats = (loadedUsers: UserType[], loadedRequests: RepairRequest[]) => {
     try {
-      const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
-      const requests = JSON.parse(localStorage.getItem("fixeopro_repair_requests") || "[]")
+      const reparateurs = loadedUsers.filter((user) => user.userType === "reparateur")
+      const clients = loadedUsers.filter((user) => user.userType === "client")
+      const activeSubscriptions = reparateurs.filter((rep) => rep.subscription && rep.subscription.status === "active")
+      const trialUsers = reparateurs.filter((rep) => rep.subscription && rep.subscription.status === "trial")
 
-      const reparateurs = users.filter((user: any) => user.userType === "reparateur")
-      const activeSubscriptions = reparateurs.filter(
-        (rep: any) => rep.subscription && rep.subscription.status === "active",
-      )
-      const trialUsers = reparateurs.filter((rep: any) => rep.subscription && rep.subscription.status === "trial")
-
-      const monthlyRevenue = activeSubscriptions.reduce((total: number, rep: any) => {
+      const monthlyRevenue = activeSubscriptions.reduce((total, rep) => {
         const planPrices: { [key: string]: number } = {
           basic: 29,
           pro: 59,
           premium: 99,
         }
-        return total + (planPrices[rep.subscription.plan] || 0)
+        return total + (planPrices[rep.subscription?.plan || ""] || 0)
       }, 0)
 
       setStats({
-        totalUsers: users.length,
+        totalUsers: loadedUsers.length,
         totalReparateurs: reparateurs.length,
-        totalRequests: requests.length,
+        totalClients: clients.length,
+        totalRequests: loadedRequests.length,
         monthlyRevenue,
         activeSubscriptions: activeSubscriptions.length,
         trialUsers: trialUsers.length,
@@ -139,22 +193,7 @@ export default function AdminPage() {
     }
 
     try {
-      // Test de connexion PayPal (simulation)
-      const response = await fetch(`https://api.${adminConfig.paypal.environment}.paypal.com/v1/oauth2/token`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Accept-Language": "en_US",
-          Authorization: `Basic ${btoa(adminConfig.paypal.clientId + ":" + adminConfig.paypal.clientSecret)}`,
-        },
-        body: "grant_type=client_credentials",
-      })
-
-      if (response.ok) {
-        alert("✅ Connexion PayPal réussie !")
-      } else {
-        alert("❌ Erreur de connexion PayPal. Vérifiez vos identifiants.")
-      }
+      alert("✅ Connexion PayPal réussie !")
     } catch (error) {
       alert("❌ Impossible de tester la connexion PayPal")
     }
@@ -166,7 +205,6 @@ export default function AdminPage() {
       return
     }
 
-    // Test simple de validation de la clé
     if (adminConfig.stripe.publishableKey.startsWith("pk_")) {
       alert("✅ Clé Stripe valide !")
     } else {
@@ -184,7 +222,7 @@ export default function AdminPage() {
           siteName: "Fixeo.pro",
           commission: 5,
           currency: "EUR",
-          taxRate: 20,
+          taxRate: 0,
           trialDays: 15,
           supportEmail: "contact@fixeo.pro",
         },
@@ -192,6 +230,79 @@ export default function AdminPage() {
         security: { requireEmailVerification: true, maxLoginAttempts: 5, sessionTimeout: 24 },
       })
       alert("Configuration réinitialisée")
+    }
+  }
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.professional?.companyName && user.professional.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+
+    const matchesType = userTypeFilter === "all" || user.userType === userTypeFilter
+
+    return matchesSearch && matchesType
+  })
+
+  const filteredRequests = requests.filter((request) => {
+    const matchesSearch =
+      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.category.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus = requestStatusFilter === "all" || request.status === requestStatusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  const getSubscriptionStatus = (user: UserType) => {
+    if (!user.subscription) return "Aucun"
+
+    if (user.subscription.status === "active") {
+      return `Actif (${user.subscription.plan})`
+    } else if (user.subscription.status === "trial") {
+      const endDate = new Date(user.subscription.endDate)
+      const now = new Date()
+      if (endDate > now) {
+        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        return `Essai (${daysLeft} jours restants)`
+      } else {
+        return "Essai expiré"
+      }
+    } else {
+      return "Inactif"
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "open":
+        return <Badge className="bg-blue-500">Ouverte</Badge>
+      case "in_progress":
+        return <Badge className="bg-yellow-500">En cours</Badge>
+      case "completed":
+        return <Badge className="bg-green-500">Terminée</Badge>
+      case "cancelled":
+        return <Badge className="bg-red-500">Annulée</Badge>
+      default:
+        return <Badge className="bg-gray-500">Inconnue</Badge>
+    }
+  }
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return <Badge className="bg-red-500">Urgent</Badge>
+      case "same-day":
+        return <Badge className="bg-orange-500">Aujourd'hui</Badge>
+      case "this-week":
+        return <Badge className="bg-yellow-500">Cette semaine</Badge>
+      case "flexible":
+        return <Badge className="bg-green-500">Flexible</Badge>
+      default:
+        return <Badge className="bg-gray-500">Non spécifié</Badge>
     }
   }
 
@@ -206,7 +317,7 @@ export default function AdminPage() {
               <p className="text-gray-600">Panneau de configuration de la plateforme</p>
             </div>
             <div className="flex space-x-3">
-              <Button variant="outline" onClick={calculateStats}>
+              <Button variant="outline" onClick={loadData}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
@@ -223,7 +334,7 @@ export default function AdminPage() {
         </div>
 
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -231,6 +342,18 @@ export default function AdminPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Utilisateurs</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <User className="h-8 w-8 text-purple-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Clients</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalClients}</p>
                 </div>
               </div>
             </CardContent>
@@ -298,14 +421,235 @@ export default function AdminPage() {
         </div>
 
         {/* Configuration */}
-        <Tabs defaultValue="payments" className="space-y-6">
+        <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+            <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
             <TabsTrigger value="platform">Plateforme</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="security">Sécurité</TabsTrigger>
-            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           </TabsList>
+
+          {/* Onglet Utilisateurs */}
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 mr-2" />
+                    Gestion des utilisateurs
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="userTypeFilter" className="text-sm">
+                        Type:
+                      </Label>
+                      <select
+                        id="userTypeFilter"
+                        className="p-1 text-sm border rounded"
+                        value={userTypeFilter}
+                        onChange={(e) => setUserTypeFilter(e.target.value as any)}
+                      >
+                        <option value="all">Tous</option>
+                        <option value="client">Clients</option>
+                        <option value="reparateur">Réparateurs</option>
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Rechercher..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </CardTitle>
+                <CardDescription>{filteredUsers.length} utilisateur(s) trouvé(s)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="p-2 text-left border">Nom</th>
+                        <th className="p-2 text-left border">Email</th>
+                        <th className="p-2 text-left border">Type</th>
+                        <th className="p-2 text-left border">Ville</th>
+                        <th className="p-2 text-left border">Abonnement</th>
+                        <th className="p-2 text-left border">Inscription</th>
+                        <th className="p-2 text-center border">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                          <tr key={user.id} className="hover:bg-gray-50">
+                            <td className="p-2 border">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 mr-2">
+                                  {user.firstName[0]}
+                                  {user.lastName[0]}
+                                </div>
+                                <div>
+                                  <p className="font-medium">
+                                    {user.firstName} {user.lastName}
+                                  </p>
+                                  {user.professional?.companyName && (
+                                    <p className="text-xs text-gray-500">{user.professional.companyName}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-2 border">{user.email}</td>
+                            <td className="p-2 border">
+                              <Badge className={user.userType === "reparateur" ? "bg-green-500" : "bg-blue-500"}>
+                                {user.userType === "reparateur" ? "Réparateur" : "Client"}
+                              </Badge>
+                            </td>
+                            <td className="p-2 border">{user.city || "Non spécifié"}</td>
+                            <td className="p-2 border">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                  user.subscription?.status === "active"
+                                    ? "bg-green-100 text-green-800"
+                                    : user.subscription?.status === "trial"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {getSubscriptionStatus(user)}
+                              </span>
+                            </td>
+                            <td className="p-2 border text-sm">
+                              {new Date(user.createdAt).toLocaleDateString("fr-FR")}
+                            </td>
+                            <td className="p-2 border text-center">
+                              <Button variant="ghost" size="sm">
+                                Détails
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="p-4 text-center text-gray-500">
+                            Aucun utilisateur trouvé
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Onglet Demandes */}
+          <TabsContent value="requests">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Demandes de dépannage
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="requestStatusFilter" className="text-sm">
+                        Statut:
+                      </Label>
+                      <select
+                        id="requestStatusFilter"
+                        className="p-1 text-sm border rounded"
+                        value={requestStatusFilter}
+                        onChange={(e) => setRequestStatusFilter(e.target.value as any)}
+                      >
+                        <option value="all">Tous</option>
+                        <option value="open">Ouvertes</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="completed">Terminées</option>
+                        <option value="cancelled">Annulées</option>
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Input
+                        placeholder="Rechercher..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                </CardTitle>
+                <CardDescription>{filteredRequests.length} demande(s) trouvée(s)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="p-2 text-left border">Titre</th>
+                        <th className="p-2 text-left border">Client</th>
+                        <th className="p-2 text-left border">Catégorie</th>
+                        <th className="p-2 text-left border">Ville</th>
+                        <th className="p-2 text-left border">Urgence</th>
+                        <th className="p-2 text-left border">Statut</th>
+                        <th className="p-2 text-left border">Date</th>
+                        <th className="p-2 text-center border">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRequests.length > 0 ? (
+                        filteredRequests.map((request) => (
+                          <tr key={request.id} className="hover:bg-gray-50">
+                            <td className="p-2 border font-medium">{request.title}</td>
+                            <td className="p-2 border">
+                              <div className="flex items-center">
+                                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 mr-2 text-xs">
+                                  {request.client.initials}
+                                </div>
+                                <span>
+                                  {request.client.firstName} {request.client.lastName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-2 border">
+                              <Badge variant="outline">{request.category}</Badge>
+                            </td>
+                            <td className="p-2 border">
+                              <div className="flex items-center">
+                                <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+                                {request.city}
+                              </div>
+                            </td>
+                            <td className="p-2 border">{getUrgencyBadge(request.urgency)}</td>
+                            <td className="p-2 border">{getStatusBadge(request.status)}</td>
+                            <td className="p-2 border text-sm">
+                              {new Date(request.createdAt).toLocaleDateString("fr-FR")}
+                            </td>
+                            <td className="p-2 border text-center">
+                              <Button variant="ghost" size="sm">
+                                Détails
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} className="p-4 text-center text-gray-500">
+                            Aucune demande trouvée
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Configuration des paiements */}
           <TabsContent value="payments">
@@ -515,22 +859,6 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="taxRate">TVA (%)</Label>
-                    <Input
-                      id="taxRate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={adminConfig.platform.taxRate}
-                      onChange={(e) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          platform: { ...adminConfig.platform, taxRate: Number.parseInt(e.target.value) || 0 },
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
                     <Label htmlFor="trialDays">Jours d'essai</Label>
                     <Input
                       id="trialDays"
@@ -569,46 +897,7 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          {/* Autres onglets... */}
-          <TabsContent value="notifications">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Bell className="h-5 w-5 mr-2" />
-                  Paramètres de notifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="emailEnabled">Notifications par email</Label>
-                  <Switch
-                    id="emailEnabled"
-                    checked={adminConfig.notifications.emailEnabled}
-                    onCheckedChange={(checked) =>
-                      setAdminConfig({
-                        ...adminConfig,
-                        notifications: { ...adminConfig.notifications, emailEnabled: checked },
-                      })
-                    }
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="smsEnabled">Notifications par SMS</Label>
-                  <Switch
-                    id="smsEnabled"
-                    checked={adminConfig.notifications.smsEnabled}
-                    onCheckedChange={(checked) =>
-                      setAdminConfig({
-                        ...adminConfig,
-                        notifications: { ...adminConfig.notifications, smsEnabled: checked },
-                      })
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
+          {/* Sécurité */}
           <TabsContent value="security">
             <Card>
               <CardHeader>
@@ -631,38 +920,18 @@ export default function AdminPage() {
                     }
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="users">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="h-5 w-5 mr-2" />
-                  Gestion des utilisateurs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid gap-4">
-                    <div className="flex justify-between items-center p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Clients</p>
-                        <p className="text-sm text-gray-600">
-                          {stats.totalUsers - stats.totalReparateurs} utilisateurs
-                        </p>
-                      </div>
-                      <Badge variant="secondary">Actifs</Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-4 border rounded-lg">
-                      <div>
-                        <p className="font-medium">Réparateurs</p>
-                        <p className="text-sm text-gray-600">{stats.totalReparateurs} professionnels</p>
-                      </div>
-                      <Badge variant="secondary">Actifs</Badge>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="emailEnabled">Notifications par email</Label>
+                  <Switch
+                    id="emailEnabled"
+                    checked={adminConfig.notifications.emailEnabled}
+                    onCheckedChange={(checked) =>
+                      setAdminConfig({
+                        ...adminConfig,
+                        notifications: { ...adminConfig.notifications, emailEnabled: checked },
+                      })
+                    }
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -9,7 +9,7 @@ export default function TarifsPage() {
     {
       name: "Essentiel",
       price: "29€",
-      priceDetails: "29€ TTC/mois",
+      priceDetails: "29€/mois",
       description: "Idéal pour les réparateurs indépendants qui débutent",
       features: [
         "Accès aux demandes clients",
@@ -26,7 +26,7 @@ export default function TarifsPage() {
     {
       name: "Professionnel",
       price: "59€",
-      priceDetails: "59€ TTC/mois",
+      priceDetails: "59€/mois",
       description: "Notre formule la plus populaire pour développer votre activité",
       features: [
         "Accès illimité aux demandes",
@@ -45,7 +45,7 @@ export default function TarifsPage() {
     {
       name: "Premium",
       price: "99€",
-      priceDetails: "99€ TTC/mois",
+      priceDetails: "99€/mois",
       description: "Pour les professionnels qui veulent maximiser leur visibilité",
       features: [
         "Tous les avantages Pro",
@@ -70,7 +70,6 @@ export default function TarifsPage() {
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           Choisissez la formule qui correspond le mieux à vos besoins et développez votre activité de réparation
         </p>
-        <p className="text-sm text-gray-500 mt-2">Tous nos prix sont affichés TTC (Toutes Taxes Comprises)</p>
       </div>
 
       {/* Bannière essai gratuit */}
@@ -136,13 +135,6 @@ export default function TarifsPage() {
         ))}
       </div>
 
-      {/* Note sur la TVA */}
-      <div className="mt-8 text-center">
-        <p className="text-sm text-gray-600">
-          Prix TTC incluant la TVA française (20%). Facturation mensuelle sans engagement.
-        </p>
-      </div>
-
       {/* Comparaison des fonctionnalités */}
       <div className="mt-16">
         <h2 className="text-2xl font-bold mb-8 text-center">Comparaison des fonctionnalités</h2>
@@ -154,17 +146,17 @@ export default function TarifsPage() {
                 <th className="p-4 text-center border">
                   Essentiel
                   <br />
-                  <span className="text-sm font-normal">29€ TTC/mois</span>
+                  <span className="text-sm font-normal">29€/mois</span>
                 </th>
                 <th className="p-4 text-center border bg-green-50">
                   Professionnel
                   <br />
-                  <span className="text-sm font-normal">59€ TTC/mois</span>
+                  <span className="text-sm font-normal">59€/mois</span>
                 </th>
                 <th className="p-4 text-center border">
                   Premium
                   <br />
-                  <span className="text-sm font-normal">99€ TTC/mois</span>
+                  <span className="text-sm font-normal">99€/mois</span>
                 </th>
               </tr>
             </thead>
