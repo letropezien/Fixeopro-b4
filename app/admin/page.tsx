@@ -27,7 +27,6 @@ import {
 } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { PromoCodeService, type PromoCode } from "@/lib/promo-codes"
-import { PaymentService } from "@/lib/payment-service"
 
 interface UserType {
   id: string
@@ -65,7 +64,39 @@ interface RepairRequest {
 }
 
 export default function AdminPage() {
-  const [adminConfig, setAdminConfig] = useState(PaymentService.getConfig())
+  const [adminConfig, setAdminConfig] = useState({
+    paypal: {
+      clientId: "",
+      clientSecret: "",
+      environment: "sandbox",
+      enabled: false,
+    },
+    stripe: {
+      publishableKey: "",
+      secretKey: "",
+      webhookSecret: "",
+      enabled: false,
+    },
+    platform: {
+      siteName: "Fixeo.pro",
+      commission: 5,
+      currency: "EUR",
+      taxRate: 0,
+      trialDays: 15,
+      supportEmail: "contact@fixeo.pro",
+    },
+    notifications: {
+      emailEnabled: true,
+      smsEnabled: false,
+      webhookUrl: "",
+      slackWebhook: "",
+    },
+    security: {
+      requireEmailVerification: true,
+      maxLoginAttempts: 5,
+      sessionTimeout: 24,
+    },
+  })
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
   const [newPromoCode, setNewPromoCode] = useState({
     code: "",
@@ -137,7 +168,13 @@ export default function AdminPage() {
       const savedConfig = localStorage.getItem("fixeo_admin_config")
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig)
-        setAdminConfig({ ...adminConfig, ...parsed })
+        setAdminConfig((prevConfig) => ({
+          paypal: { ...prevConfig.paypal, ...parsed.paypal },
+          stripe: { ...prevConfig.stripe, ...parsed.stripe },
+          platform: { ...prevConfig.platform, ...parsed.platform },
+          notifications: { ...prevConfig.notifications, ...parsed.notifications },
+          security: { ...prevConfig.security, ...parsed.security },
+        }))
       }
     } catch (error) {
       console.error("Erreur lors du chargement de la configuration:", error)
@@ -147,7 +184,7 @@ export default function AdminPage() {
   const saveConfiguration = async () => {
     setSaveStatus("saving")
     try {
-      PaymentService.saveConfig(adminConfig)
+      localStorage.setItem("fixeo_admin_config", JSON.stringify(adminConfig))
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus("idle"), 2000)
     } catch (error) {
