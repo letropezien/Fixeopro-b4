@@ -1,295 +1,269 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Wrench, Clock, Shield, Star, MapPin, CheckCircle } from "lucide-react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-import { CategoryImage } from "@/components/category-image"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import {
+  Search,
+  MapPin,
+  Clock,
+  Star,
+  Wrench,
+  Smartphone,
+  Laptop,
+  Car,
+  Home,
+  Zap,
+  Droplets,
+  Wind,
+  Shield,
+  Settings,
+} from "lucide-react"
+import { StorageService } from "@/lib/storage"
 
 export default function HomePage() {
+  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
+  const [showAdminSetup, setShowAdminSetup] = useState(false)
+
+  useEffect(() => {
+    // Vérifier si un admin existe
+    const users = StorageService.getUsers()
+    const adminExists = users.some((user) => user.userType === "admin")
+    setShowAdminSetup(!adminExists)
+  }, [])
+
   const categories = [
-    { name: "Électroménager", slug: "electromenager", count: "150+ réparateurs" },
-    { name: "Informatique", slug: "informatique", count: "120+ réparateurs" },
-    { name: "Plomberie", slug: "plomberie", count: "200+ réparateurs" },
-    { name: "Électricité", slug: "electricite", count: "180+ réparateurs" },
-    { name: "Chauffage", slug: "chauffage", count: "90+ réparateurs" },
-    { name: "Serrurerie", slug: "serrurerie", count: "110+ réparateurs" },
-    { name: "Multimédia", slug: "multimedia", count: "80+ réparateurs" },
-    { name: "Téléphonie", slug: "telephonie", count: "95+ réparateurs" },
-    { name: "Climatisation", slug: "climatisation", count: "70+ réparateurs" },
+    { name: "Électroménager", icon: Home, color: "bg-blue-500", count: "150+ réparateurs" },
+    { name: "Informatique", icon: Laptop, color: "bg-purple-500", count: "200+ réparateurs" },
+    { name: "Téléphonie", icon: Smartphone, color: "bg-green-500", count: "180+ réparateurs" },
+    { name: "Automobile", icon: Car, color: "bg-red-500", count: "120+ réparateurs" },
+    { name: "Électricité", icon: Zap, color: "bg-yellow-500", count: "90+ réparateurs" },
+    { name: "Plomberie", icon: Droplets, color: "bg-cyan-500", count: "110+ réparateurs" },
+    { name: "Chauffage", icon: Wind, color: "bg-orange-500", count: "80+ réparateurs" },
+    { name: "Serrurerie", icon: Shield, color: "bg-gray-500", count: "60+ réparateurs" },
   ]
 
-  const features = [
+  const recentRequests = [
     {
-      icon: Clock,
-      title: "Intervention rapide",
-      description: "Trouvez un réparateur disponible immédiatement",
+      id: 1,
+      title: "Réparation machine à laver",
+      category: "Électroménager",
+      location: "Paris 15ème",
+      urgency: "Urgent",
+      time: "Il y a 5 min",
+      responses: 3,
     },
     {
-      icon: Shield,
-      title: "Professionnels certifiés",
-      description: "Tous nos réparateurs sont vérifiés et qualifiés",
+      id: 2,
+      title: "Écran iPhone cassé",
+      category: "Téléphonie",
+      location: "Lyon 3ème",
+      urgency: "Cette semaine",
+      time: "Il y a 12 min",
+      responses: 7,
     },
     {
-      icon: Star,
-      title: "Qualité garantie",
-      description: "Évaluations clients pour un service de qualité",
+      id: 3,
+      title: "Problème de chauffage",
+      category: "Chauffage",
+      location: "Marseille 8ème",
+      urgency: "Aujourd'hui",
+      time: "Il y a 18 min",
+      responses: 2,
     },
     {
-      icon: MapPin,
-      title: "Proximité locale",
-      description: "Des experts près de chez vous",
+      id: 4,
+      title: "Ordinateur qui ne démarre plus",
+      category: "Informatique",
+      location: "Toulouse Centre",
+      urgency: "Flexible",
+      time: "Il y a 25 min",
+      responses: 5,
     },
   ]
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "Urgent":
+        return "bg-red-100 text-red-800"
+      case "Aujourd'hui":
+        return "bg-orange-100 text-orange-800"
+      case "Cette semaine":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-green-100 text-green-800"
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="relative py-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="flex justify-center mb-6">
-            <div className="bg-blue-600 p-4 rounded-full">
-              <Wrench className="h-12 w-12 text-white" />
-            </div>
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">🔧 FixeoPro.fr</h1>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto">
-            Trouvez rapidement un expert pour vos réparations et dépannages
+      <section className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            Trouvez le bon réparateur
+            <br />
+            <span className="text-blue-200">près de chez vous</span>
+          </h1>
+          <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+            Connectez-vous avec des professionnels qualifiés pour tous vos besoins de réparation. Rapide, fiable et
+            transparent.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+
+          {/* Admin Setup Alert */}
+          {showAdminSetup && (
+            <div className="mb-8 max-w-md mx-auto">
+              <div className="bg-yellow-500 text-yellow-900 p-4 rounded-lg">
+                <div className="flex items-center justify-center mb-2">
+                  <Settings className="h-5 w-5 mr-2" />
+                  <span className="font-medium">Configuration requise</span>
+                </div>
+                <p className="text-sm mb-3">Configurez votre compte administrateur pour sécuriser la plateforme</p>
+                <Link href="/admin-setup">
+                  <Button className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Configurer l'admin
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/demande-reparation">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-4">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg">
+                <Search className="mr-2 h-5 w-5" />
                 Demander une réparation
               </Button>
             </Link>
             <Link href="/devenir-reparateur">
               <Button
-                variant="outline"
                 size="lg"
-                className="text-lg px-8 py-4 border-blue-600 text-blue-600 hover:bg-blue-50"
+                variant="outline"
+                className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 text-lg"
               >
+                <Wrench className="mr-2 h-5 w-5" />
                 Devenir réparateur
               </Button>
             </Link>
           </div>
-
-          {/* Action rapide */}
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-center mb-4">Action rapide</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link href="/demande-reparation" className="block">
-                <div className="border-2 border-blue-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
-                  <div className="text-center">
-                    <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-2xl">🔧</span>
-                    </div>
-                    <h4 className="font-semibold text-blue-900 mb-2">J'ai besoin d'une réparation</h4>
-                    <p className="text-sm text-gray-600">Décrivez votre problème et trouvez un expert</p>
-                    <Button className="mt-3 w-full bg-blue-600 hover:bg-blue-700">Commencer maintenant</Button>
-                  </div>
-                </div>
-              </Link>
-
-              <Link href="/devenir-reparateur" className="block">
-                <div className="border-2 border-green-200 rounded-lg p-4 hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer">
-                  <div className="text-center">
-                    <div className="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <span className="text-2xl">👨‍🔧</span>
-                    </div>
-                    <h4 className="font-semibold text-green-900 mb-2">Je suis un réparateur</h4>
-                    <p className="text-sm text-gray-600">Rejoignez notre réseau de professionnels</p>
-                    <Button className="mt-3 w-full bg-green-600 hover:bg-green-700">S'inscrire maintenant</Button>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* SEO Content Section */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="prose prose-lg max-w-none">
-            <p className="text-lg text-gray-700 mb-6">
-              FixeoPro.fr est la plateforme de référence pour toute personne à la recherche d'un professionnel de la
-              réparation ou du dépannage, près de chez elle. Notre mission est simple : vous trouver un expert qualifié,
-              rapidement, et en toute confiance.
-            </p>
-            <p className="text-gray-600 mb-8">
-              Que vous soyez confronté à une panne d'électroménager, un problème électrique, une fuite de plomberie, ou
-              un équipement high-tech en panne, FixeoPro.fr vous met en relation avec des réparateurs certifiés,
-              sélectionnés pour leur fiabilité, leur expertise et leur proximité.
+      {/* Categories Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Nos catégories de services</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Des professionnels qualifiés dans tous les domaines pour répondre à vos besoins
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* How it works */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">✅ Une plateforme simple, rapide et efficace</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center">
-              <CardHeader>
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📝</span>
-                </div>
-                <CardTitle>1. Décrivez votre panne</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Vous décrivez votre panne ou votre besoin via un formulaire intuitif.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center">
-              <CardHeader>
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🔍</span>
-                </div>
-                <CardTitle>2. Nous trouvons l'expert</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Nous identifions pour vous les experts disponibles dans votre région.</p>
-              </CardContent>
-            </Card>
-            <Card className="text-center">
-              <CardHeader>
-                <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🤝</span>
-                </div>
-                <CardTitle>3. Mise en relation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Vous recevez rapidement une mise en relation avec un professionnel de confiance.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">🛠️ Tous les domaines de réparation couverts</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category, index) => (
-              <Link key={index} href={`/categories/${category.slug}`}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <div className="relative h-48 overflow-hidden rounded-t-lg">
-                    <CategoryImage
-                      category={category.slug}
-                      alt={`Réparation ${category.name}`}
-                      fill
-                      className="object-cover hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black/20" />
-                  </div>
-                  <CardContent className="p-6 text-center">
-                    <h3 className="font-semibold mb-2 text-lg">{category.name}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {category.count}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {categories.map((category, index) => {
+              const IconComponent = category.icon
+              return (
+                <Link key={index} href={`/categories/${category.name.toLowerCase()}`}>
+                  <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+                    <CardContent className="p-6 text-center">
+                      <div
+                        className={`${category.color} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}
+                      >
+                        <IconComponent className="h-8 w-8 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{category.name}</h3>
+                      <p className="text-sm text-gray-600">{category.count}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
           </div>
 
           <div className="text-center mt-8">
             <Link href="/categories">
-              <Button variant="outline" size="lg" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+              <Button variant="outline" size="lg">
                 Voir toutes les catégories
-                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">🔍 Pourquoi choisir FixeoPro.fr ?</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="text-center">
+      {/* Recent Requests Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Demandes récentes</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Découvrez les dernières demandes de réparation publiées par nos clients
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {recentRequests.map((request) => (
+              <Card key={request.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <feature.icon className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{request.title}</CardTitle>
+                      <CardDescription className="flex items-center mt-1">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {request.location}
+                      </CardDescription>
+                    </div>
+                    <Badge className={getUrgencyColor(request.urgency)}>{request.urgency}</Badge>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600 text-sm">{feature.description}</p>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {request.time}
+                    </div>
+                    <div className="flex items-center text-sm text-blue-600">
+                      <Star className="h-4 w-4 mr-1" />
+                      {request.responses} réponse{request.responses > 1 ? "s" : ""}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <div className="mt-12 grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3 flex items-center">
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                  Gain de temps
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Fini les recherches interminables sur Internet ou les appels sans réponse.
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-3 flex items-center">
-                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                  Transparence
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Pas de frais cachés, vous êtes informé du tarif avant l'intervention.
-                </p>
-              </CardContent>
-            </Card>
+          <div className="text-center mt-8">
+            <Link href="/listes-demandes">
+              <Button variant="outline" size="lg">
+                Voir toutes les demandes
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Local presence */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">📍 Une présence locale pour plus de proximité</h2>
-          <p className="text-lg text-gray-700 mb-8">
-            Nous croyons en l'importance de l'artisanat local. C'est pourquoi FixeoPro.fr privilégie les professionnels
-            de votre région, pour une intervention plus rapide et un service plus humain.
-          </p>
-          <p className="text-xl font-semibold text-blue-600 mb-8">
-            FixeoPro.fr, c'est bien plus qu'un annuaire de réparateurs. C'est une solution sur mesure, pensée pour vous
-            simplifier la vie.
-          </p>
-        </div>
-      </section>
-
       {/* CTA Section */}
-      <section className="py-16 px-4 bg-blue-600 text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">➡️ Prêt à commencer ?</h2>
-          <p className="text-xl mb-8">
-            Inscrivez-vous gratuitement ou faites une demande d'intervention dès maintenant
+      <section className="py-16 bg-blue-600 text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Prêt à commencer ?</h2>
+          <p className="text-xl mb-8 text-blue-100 max-w-2xl mx-auto">
+            Rejoignez des milliers d'utilisateurs qui font confiance à Fixeo.pro pour leurs réparations
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/demande-reparation">
-              <Button size="lg" variant="secondary" className="text-lg px-8 py-4">
-                Demander une intervention
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
+                Publier une demande
               </Button>
             </Link>
             <Link href="/devenir-reparateur">
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-blue-600"
+                className="border-white text-white hover:bg-white hover:text-blue-600"
               >
-                Devenir réparateur partenaire
+                Rejoindre comme réparateur
               </Button>
             </Link>
           </div>
