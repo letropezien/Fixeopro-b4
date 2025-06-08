@@ -74,8 +74,6 @@ export class StorageService {
     }
   }
 
-  // Ajouter une méthode generateId manquante dans la classe StorageService
-
   static generateId(): string {
     return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
@@ -95,7 +93,7 @@ export class StorageService {
         user.createdAt = new Date().toISOString()
       }
 
-      // Pour les réparateurs, ajouter une période d'essai par défaut
+      // Pour les réparateurs, ajouter automatiquement une période d'essai de 15 jours
       if (user.userType === "reparateur" && !user.subscription) {
         const trialEndDate = new Date()
         trialEndDate.setDate(trialEndDate.getDate() + 15)
@@ -155,10 +153,11 @@ export class StorageService {
     }
   }
 
-  static setCurrentUser(user: User): void {
+  static setCurrentUser(user: User | string): void {
     if (!isBrowser) return
     try {
-      localStorage.setItem("fixeopro_current_user_id", user.id)
+      const userId = typeof user === "string" ? user : user.id
+      localStorage.setItem("fixeopro_current_user_id", userId)
     } catch (error) {
       console.error("Erreur lors de la définition de l'utilisateur actuel:", error)
     }
@@ -255,7 +254,7 @@ export class StorageService {
     }
   }
 
-  // Vérification des abonnements
+  // Vérification des abonnements avec période d'essai de 15 jours
   static isInTrialPeriod(user: User): boolean {
     if (!user.subscription || user.subscription.status !== "trial") return false
     const expiresAt = new Date(user.subscription.endDate)
@@ -264,7 +263,11 @@ export class StorageService {
 
   static canContactClients(user: User): boolean {
     if (user.userType !== "reparateur") return false
+
+    // Vérifier si l'abonnement est actif
     if (user.subscription?.status === "active") return true
+
+    // Vérifier si la période d'essai de 15 jours est encore valide
     return this.isInTrialPeriod(user)
   }
 
@@ -287,8 +290,6 @@ export class StorageService {
       return false
     }
   }
-
-  // Ajouter une méthode sendVerificationEmail manquante
 
   static async sendVerificationEmail(email: string, firstName: string): Promise<void> {
     // Simulation d'envoi d'email
@@ -339,6 +340,7 @@ export class StorageService {
               specialties: ["électroménager", "électricité"],
               description: "Spécialiste en réparation électroménager depuis 10 ans",
             },
+            // Période d'essai automatique de 15 jours
             subscription: {
               plan: "trial",
               status: "trial",
@@ -395,6 +397,69 @@ export class StorageService {
             },
             createdAt: new Date().toISOString(),
             coordinates: { lat: 45.764, lng: 4.8357 },
+          },
+          {
+            id: "demo_request_3",
+            clientId: "demo_client_1",
+            title: "Écran d'ordinateur cassé",
+            description: "L'écran de mon ordinateur portable est fissuré",
+            category: "informatique",
+            urgency: "this-week",
+            urgencyLabel: "Cette semaine",
+            budget: "150-300€",
+            city: "Marseille",
+            postalCode: "13001",
+            status: "open",
+            responses: 0,
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date().toISOString(),
+            coordinates: { lat: 43.2965, lng: 5.3698 },
+          },
+          {
+            id: "demo_request_4",
+            clientId: "demo_client_1",
+            title: "Réparation iPhone",
+            description: "Écran cassé sur iPhone 13",
+            category: "téléphonie",
+            urgency: "flexible",
+            urgencyLabel: "Flexible",
+            budget: "80-150€",
+            city: "Toulouse",
+            postalCode: "31000",
+            status: "open",
+            responses: 0,
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date().toISOString(),
+            coordinates: { lat: 43.6047, lng: 1.4442 },
+          },
+          {
+            id: "demo_request_5",
+            clientId: "demo_client_1",
+            title: "Panne de chauffage",
+            description: "Radiateur qui ne chauffe plus",
+            category: "chauffage",
+            urgency: "urgent",
+            urgencyLabel: "Urgent",
+            budget: "200-400€",
+            city: "Nice",
+            postalCode: "06000",
+            status: "open",
+            responses: 0,
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date().toISOString(),
+            coordinates: { lat: 43.7102, lng: 7.262 },
           },
         ]
 

@@ -9,6 +9,7 @@ export default function TarifsPage() {
     {
       name: "Essentiel",
       price: "29€",
+      priceDetails: "29€ TTC/mois",
       description: "Idéal pour les réparateurs indépendants qui débutent",
       features: [
         "Accès aux demandes clients",
@@ -25,6 +26,7 @@ export default function TarifsPage() {
     {
       name: "Professionnel",
       price: "59€",
+      priceDetails: "59€ TTC/mois",
       description: "Notre formule la plus populaire pour développer votre activité",
       features: [
         "Accès illimité aux demandes",
@@ -43,6 +45,7 @@ export default function TarifsPage() {
     {
       name: "Premium",
       price: "99€",
+      priceDetails: "99€ TTC/mois",
       description: "Pour les professionnels qui veulent maximiser leur visibilité",
       features: [
         "Tous les avantages Pro",
@@ -67,6 +70,7 @@ export default function TarifsPage() {
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           Choisissez la formule qui correspond le mieux à vos besoins et développez votre activité de réparation
         </p>
+        <p className="text-sm text-gray-500 mt-2">Tous nos prix sont affichés TTC (Toutes Taxes Comprises)</p>
       </div>
 
       {/* Bannière essai gratuit */}
@@ -98,6 +102,7 @@ export default function TarifsPage() {
               <div className="mt-4">
                 <span className="text-4xl font-bold">{plan.price}</span>
                 <span className="text-gray-500">/mois</span>
+                <div className="text-sm text-gray-500 mt-1">{plan.priceDetails}</div>
               </div>
             </CardHeader>
             <CardContent>
@@ -131,6 +136,13 @@ export default function TarifsPage() {
         ))}
       </div>
 
+      {/* Note sur la TVA */}
+      <div className="mt-8 text-center">
+        <p className="text-sm text-gray-600">
+          Prix TTC incluant la TVA française (20%). Facturation mensuelle sans engagement.
+        </p>
+      </div>
+
       {/* Comparaison des fonctionnalités */}
       <div className="mt-16">
         <h2 className="text-2xl font-bold mb-8 text-center">Comparaison des fonctionnalités</h2>
@@ -139,9 +151,21 @@ export default function TarifsPage() {
             <thead>
               <tr className="bg-gray-100">
                 <th className="p-4 text-left border">Fonctionnalités</th>
-                <th className="p-4 text-center border">Essentiel</th>
-                <th className="p-4 text-center border bg-green-50">Professionnel</th>
-                <th className="p-4 text-center border">Premium</th>
+                <th className="p-4 text-center border">
+                  Essentiel
+                  <br />
+                  <span className="text-sm font-normal">29€ TTC/mois</span>
+                </th>
+                <th className="p-4 text-center border bg-green-50">
+                  Professionnel
+                  <br />
+                  <span className="text-sm font-normal">59€ TTC/mois</span>
+                </th>
+                <th className="p-4 text-center border">
+                  Premium
+                  <br />
+                  <span className="text-sm font-normal">99€ TTC/mois</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -224,7 +248,7 @@ export default function TarifsPage() {
             <div>
               <h3 className="text-lg font-semibold mb-2">Y a-t-il des frais cachés ?</h3>
               <p className="text-gray-600">
-                Non, nos tarifs sont transparents. Aucun frais d'inscription ou de résiliation.
+                Non, nos tarifs sont transparents et TTC. Aucun frais d'inscription ou de résiliation.
               </p>
             </div>
           </div>
@@ -247,7 +271,7 @@ export default function TarifsPage() {
 
       {/* CTA final */}
       <div className="mt-16 text-center bg-gray-50 rounded-lg p-8">
-        <h2 className="text-2xl font-bold mb-4">Prêt à rejoindre FixeoPro ?</h2>
+        <h2 className="text-2xl font-bold mb-4">Prêt à rejoindre Fixeo.pro ?</h2>
         <p className="text-lg text-gray-600 mb-6">Commencez dès aujourd'hui avec 15 jours d'essai gratuit</p>
         <div className="space-x-4">
           <Link href="/devenir-reparateur">
