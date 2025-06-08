@@ -23,8 +23,11 @@ import {
   User,
   Shield,
   Trash2,
+  Gift,
 } from "lucide-react"
 import { StorageService } from "@/lib/storage"
+import { PromoCodeService, type PromoCode } from "@/lib/promo-codes"
+import { PaymentService } from "@/lib/payment-service"
 
 interface UserType {
   id: string
@@ -62,38 +65,17 @@ interface RepairRequest {
 }
 
 export default function AdminPage() {
-  const [adminConfig, setAdminConfig] = useState({
-    paypal: {
-      clientId: "",
-      clientSecret: "",
-      environment: "sandbox",
-      enabled: false,
-    },
-    stripe: {
-      publishableKey: "",
-      secretKey: "",
-      webhookSecret: "",
-      enabled: false,
-    },
-    platform: {
-      siteName: "Fixeo.pro",
-      commission: 5,
-      currency: "EUR",
-      taxRate: 0,
-      trialDays: 15,
-      supportEmail: "contact@fixeo.pro",
-    },
-    notifications: {
-      emailEnabled: true,
-      smsEnabled: false,
-      webhookUrl: "",
-      slackWebhook: "",
-    },
-    security: {
-      requireEmailVerification: true,
-      maxLoginAttempts: 5,
-      sessionTimeout: 24,
-    },
+  const [adminConfig, setAdminConfig] = useState(PaymentService.getConfig())
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
+  const [newPromoCode, setNewPromoCode] = useState({
+    code: "",
+    description: "",
+    type: "percentage" as "percentage" | "fixed",
+    value: 0,
+    validFrom: "",
+    validUntil: "",
+    maxUses: 100,
+    applicablePlans: ["all"] as string[],
   })
 
   const [stats, setStats] = useState({
@@ -124,9 +106,11 @@ export default function AdminPage() {
     try {
       const loadedUsers = StorageService.getUsers() || []
       const loadedRequests = StorageService.getRepairRequests() || []
+      const loadedPromoCodes = PromoCodeService.getPromoCodes()
 
       setUsers(loadedUsers)
       setRequests(loadedRequests)
+      setPromoCodes(loadedPromoCodes)
 
       // Calculer les statistiques
       const clients = loadedUsers.filter((user) => user.userType === "client")
@@ -163,7 +147,7 @@ export default function AdminPage() {
   const saveConfiguration = async () => {
     setSaveStatus("saving")
     try {
-      localStorage.setItem("fixeo_admin_config", JSON.stringify(adminConfig))
+      PaymentService.saveConfig(adminConfig)
       setSaveStatus("saved")
       setTimeout(() => setSaveStatus("idle"), 2000)
     } catch (error) {
@@ -277,6 +261,52 @@ export default function AdminPage() {
         return <Badge className="bg-green-500">Flexible</Badge>
       default:
         return <Badge className="bg-gray-500">Non spécifié</Badge>
+    }
+  }
+
+  const handleCreatePromoCode = () => {
+    if (!newPromoCode.code || !newPromoCode.description) {
+      alert("Veuillez remplir tous les champs obligatoires")
+      return
+    }
+
+    const promoCode: PromoCode = {
+      id: `promo_${Date.now()}`,
+      ...newPromoCode,
+      currentUses: 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      createdBy: "admin",
+    }
+
+    const success = PromoCodeService.savePromoCode(promoCode)
+    if (success) {
+      loadData()
+      setNewPromoCode({
+        code: "",
+        description: "",
+        type: "percentage",
+        value: 0,
+        validFrom: "",
+        validUntil: "",
+        maxUses: 100,
+        applicablePlans: ["all"],
+      })
+      alert("Code promo créé avec succès")
+    } else {
+      alert("Erreur lors de la création du code promo")
+    }
+  }
+
+  const handleDeletePromoCode = (codeId: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce code promo ?")) {
+      const success = PromoCodeService.deletePromoCode(codeId)
+      if (success) {
+        loadData()
+        alert("Code promo supprimé avec succès")
+      } else {
+        alert("Erreur lors de la suppression du code promo")
+      }
     }
   }
 
@@ -396,10 +426,11 @@ export default function AdminPage() {
 
         {/* Configuration */}
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
+            <TabsTrigger value="promocodes">Codes Promo</TabsTrigger>
             <TabsTrigger value="platform">Plateforme</TabsTrigger>
             <TabsTrigger value="security">Sécurité</TabsTrigger>
           </TabsList>
@@ -643,6 +674,180 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Onglet Codes Promo */}
+          <TabsContent value="promocodes">
+            <div className="space-y-6">
+              {/* Création d'un nouveau code promo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Gift className="h-5 w-5 mr-2" />
+                    Créer un nouveau code promo
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="promoCode">Code promo</Label>
+                      <Input
+                        id="promoCode"
+                        placeholder="BIENVENUE20"
+                        value={newPromoCode.code}
+                        onChange={(e) => setNewPromoCode({ ...newPromoCode, code: e.target.value.toUpperCase() })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoDescription">Description</Label>
+                      <Input
+                        id="promoDescription"
+                        placeholder="20% de réduction pour les nouveaux clients"
+                        value={newPromoCode.description}
+                        onChange={(e) => setNewPromoCode({ ...newPromoCode, description: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoType">Type de réduction</Label>
+                      <select
+                        id="promoType"
+                        className="w-full p-2 border rounded"
+                        value={newPromoCode.type}
+                        onChange={(e) =>
+                          setNewPromoCode({ ...newPromoCode, type: e.target.value as "percentage" | "fixed" })
+                        }
+                      >
+                        <option value="percentage">Pourcentage</option>
+                        <option value="fixed">Montant fixe</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="promoValue">Valeur ({newPromoCode.type === "percentage" ? "%" : "€"})</Label>
+                      <Input
+                        id="promoValue"
+                        type="number"
+                        placeholder={newPromoCode.type === "percentage" ? "20" : "10"}
+                        value={newPromoCode.value}
+                        onChange={(e) =>
+                          setNewPromoCode({ ...newPromoCode, value: Number.parseFloat(e.target.value) || 0 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoValidFrom">Valide à partir du</Label>
+                      <Input
+                        id="promoValidFrom"
+                        type="date"
+                        value={newPromoCode.validFrom}
+                        onChange={(e) => setNewPromoCode({ ...newPromoCode, validFrom: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoValidUntil">Valide jusqu'au</Label>
+                      <Input
+                        id="promoValidUntil"
+                        type="date"
+                        value={newPromoCode.validUntil}
+                        onChange={(e) => setNewPromoCode({ ...newPromoCode, validUntil: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoMaxUses">Nombre d'utilisations max</Label>
+                      <Input
+                        id="promoMaxUses"
+                        type="number"
+                        placeholder="100"
+                        value={newPromoCode.maxUses}
+                        onChange={(e) =>
+                          setNewPromoCode({ ...newPromoCode, maxUses: Number.parseInt(e.target.value) || 0 })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="promoPlans">Forfaits applicables</Label>
+                      <select
+                        id="promoPlans"
+                        className="w-full p-2 border rounded"
+                        value={newPromoCode.applicablePlans[0]}
+                        onChange={(e) => setNewPromoCode({ ...newPromoCode, applicablePlans: [e.target.value] })}
+                      >
+                        <option value="all">Tous les forfaits</option>
+                        <option value="essentiel">Essentiel uniquement</option>
+                        <option value="professionnel">Professionnel uniquement</option>
+                        <option value="premium">Premium uniquement</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button onClick={handleCreatePromoCode} className="bg-green-600 hover:bg-green-700">
+                      <Gift className="h-4 w-4 mr-2" />
+                      Créer le code promo
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Liste des codes promo existants */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Codes promo existants ({promoCodes.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="p-2 text-left border">Code</th>
+                          <th className="p-2 text-left border">Description</th>
+                          <th className="p-2 text-left border">Réduction</th>
+                          <th className="p-2 text-left border">Validité</th>
+                          <th className="p-2 text-left border">Utilisations</th>
+                          <th className="p-2 text-left border">Statut</th>
+                          <th className="p-2 text-center border">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {promoCodes.length > 0 ? (
+                          promoCodes.map((promo) => (
+                            <tr key={promo.id} className="hover:bg-gray-50">
+                              <td className="p-2 border font-mono font-bold">{promo.code}</td>
+                              <td className="p-2 border">{promo.description}</td>
+                              <td className="p-2 border">
+                                {promo.type === "percentage" ? `${promo.value}%` : `${promo.value}€`}
+                              </td>
+                              <td className="p-2 border text-sm">
+                                Du {new Date(promo.validFrom).toLocaleDateString("fr-FR")}
+                                <br />
+                                Au {new Date(promo.validUntil).toLocaleDateString("fr-FR")}
+                              </td>
+                              <td className="p-2 border">
+                                {promo.currentUses} / {promo.maxUses}
+                              </td>
+                              <td className="p-2 border">
+                                <Badge className={promo.isActive ? "bg-green-500" : "bg-red-500"}>
+                                  {promo.isActive ? "Actif" : "Inactif"}
+                                </Badge>
+                              </td>
+                              <td className="p-2 border text-center">
+                                <Button variant="destructive" size="sm" onClick={() => handleDeletePromoCode(promo.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="p-4 text-center text-gray-500">
+                              Aucun code promo créé
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Configuration des paiements */}
