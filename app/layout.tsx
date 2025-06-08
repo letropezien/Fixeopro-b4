@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import QuickActionWidget from "@/components/quick-action-widget"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
   description:
     "Plateforme de référence pour trouver un professionnel de la réparation près de chez vous. Réparateurs certifiés, intervention rapide, devis gratuit.",
   keywords: "réparation, dépannage, réparateur, électroménager, plomberie, électricité, informatique",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -26,6 +27,7 @@ export default function RootLayout({
         <Header />
         <main>{children}</main>
         <Footer />
+        <QuickActionWidget />
       </body>
     </html>
   )

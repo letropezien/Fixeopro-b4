@@ -69,6 +69,38 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
+
+          {/* Action rapide */}
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
+            <h3 className="text-xl font-semibold text-center mb-4">Action rapide</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Link href="/demande-reparation" className="block">
+                <div className="border-2 border-blue-200 rounded-lg p-4 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+                  <div className="text-center">
+                    <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <span className="text-2xl">🔧</span>
+                    </div>
+                    <h4 className="font-semibold text-blue-900 mb-2">J'ai besoin d'une réparation</h4>
+                    <p className="text-sm text-gray-600">Décrivez votre problème et trouvez un expert</p>
+                    <Button className="mt-3 w-full bg-blue-600 hover:bg-blue-700">Commencer maintenant</Button>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/devenir-reparateur" className="block">
+                <div className="border-2 border-green-200 rounded-lg p-4 hover:border-green-400 hover:bg-green-50 transition-all cursor-pointer">
+                  <div className="text-center">
+                    <div className="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <span className="text-2xl">👨‍🔧</span>
+                    </div>
+                    <h4 className="font-semibold text-green-900 mb-2">Je suis un réparateur</h4>
+                    <p className="text-sm text-gray-600">Rejoignez notre réseau de professionnels</p>
+                    <Button className="mt-3 w-full bg-green-600 hover:bg-green-700">S'inscrire maintenant</Button>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
