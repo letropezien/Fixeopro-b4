@@ -30,6 +30,9 @@ import PaymentGatewayConfig from "@/components/payment-gateway-config"
 import GoogleMapsConfigPanel from "@/components/google-maps-config"
 import CategoryImagesConfig from "@/components/category-images-config"
 
+// Accès temporaire admin - À SUPPRIMER après configuration
+const TEMP_ADMIN_ACCESS = "temp_admin_2024"
+
 interface UserType {
   id: string
   firstName: string
@@ -134,7 +137,36 @@ export default function AdminPage() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
+    newEmail: "",
+    changeNewPassword: "",
+    changeConfirmPassword: "",
   })
+
+  useEffect(() => {
+    // Vérifier l'accès temporaire via URL
+    const urlParams = new URLSearchParams(window.location.search)
+    const tempAccess = urlParams.get("temp")
+
+    if (tempAccess === TEMP_ADMIN_ACCESS) {
+      // Créer une session admin temporaire
+      const tempAdminUser = {
+        id: "temp_admin",
+        email: "admin@temp.local",
+        password: "temp",
+        firstName: "Admin",
+        lastName: "Temporaire",
+        userType: "admin" as const,
+        city: "Paris",
+        postalCode: "75001",
+        phone: "0000000000",
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+      }
+      StorageService.setCurrentUser(tempAdminUser)
+      // Nettoyer l'URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     loadConfiguration()
@@ -386,7 +418,82 @@ export default function AdminPage() {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
+      newEmail: "",
+      changeNewPassword: "",
+      changeConfirmPassword: "",
     })
+  }
+
+  const handleConfigureAdmin = () => {
+    if (!adminPasswordData.newEmail || !adminPasswordData.newPassword || !adminPasswordData.confirmPassword) {
+      alert("Veuillez remplir tous les champs")
+      return
+    }
+
+    if (adminPasswordData.newPassword !== adminPasswordData.confirmPassword) {
+      alert("Les mots de passe ne correspondent pas")
+      return
+    }
+
+    if (adminPasswordData.newPassword.length < 8) {
+      alert("Le mot de passe doit contenir au moins 8 caractères")
+      return
+    }
+
+    // Vérifier si l'email est valide
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(adminPasswordData.newEmail)) {
+      alert("Veuillez saisir une adresse email valide")
+      return
+    }
+
+    try {
+      // Supprimer l'ancien compte admin s'il existe
+      const users = StorageService.getUsers()
+      const filteredUsers = users.filter((user) => user.userType !== "admin")
+
+      // Créer le nouveau compte admin
+      const newAdminUser = {
+        id: "admin_configured",
+        email: adminPasswordData.newEmail,
+        password: adminPasswordData.newPassword,
+        firstName: "Administrateur",
+        lastName: "Système",
+        userType: "admin" as const,
+        city: "Paris",
+        postalCode: "75001",
+        phone: "0000000000",
+        isEmailVerified: true,
+        createdAt: new Date().toISOString(),
+      }
+
+      // Sauvegarder les utilisateurs avec le nouveau admin
+      filteredUsers.push(newAdminUser)
+      localStorage.setItem("fixeopro_users", JSON.stringify(filteredUsers))
+
+      // Connecter le nouvel admin
+      StorageService.setCurrentUser(newAdminUser)
+
+      alert(
+        "Compte administrateur configuré avec succès ! Vous pouvez maintenant vous connecter avec ces identifiants.",
+      )
+
+      // Réinitialiser le formulaire
+      setAdminPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+        newEmail: "",
+        changeNewPassword: "",
+        changeConfirmPassword: "",
+      })
+
+      // Recharger les données
+      loadData()
+    } catch (error) {
+      console.error("Erreur lors de la configuration:", error)
+      alert("Erreur lors de la configuration du compte administrateur")
+    }
   }
 
   return (
@@ -1019,56 +1126,98 @@ export default function AdminPage() {
 
           {/* Onglet Admin */}
           <TabsContent value="admin">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Shield className="h-5 w-5 mr-2" />
-                  Gestion du compte administrateur
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Changer le mot de passe administrateur</h3>
-                  <div className="grid md:grid-cols-1 gap-4 max-w-md">
-                    <div>
-                      <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-                      <Input
-                        id="currentPassword"
-                        type="password"
-                        value={adminPasswordData.currentPassword}
-                        onChange={(e) =>
-                          setAdminPasswordData({ ...adminPasswordData, currentPassword: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        value={adminPasswordData.newPassword}
-                        onChange={(e) => setAdminPasswordData({ ...adminPasswordData, newPassword: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={adminPasswordData.confirmPassword}
-                        onChange={(e) =>
-                          setAdminPasswordData({ ...adminPasswordData, confirmPassword: e.target.value })
-                        }
-                      />
-                    </div>
-                    <Button onClick={handleChangeAdminPassword} className="bg-red-600 hover:bg-red-700">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Changer le mot de passe
-                    </Button>
+            <div>
+              <h3 className="text-lg font-medium mb-4">Configuration du compte administrateur</h3>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center">
+                  <Shield className="h-5 w-5 text-yellow-600 mr-2" />
+                  <div>
+                    <h4 className="font-medium text-yellow-800">Configuration initiale</h4>
+                    <p className="text-sm text-yellow-700">
+                      Configurez votre adresse email et mot de passe administrateur pour sécuriser l'accès.
+                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+
+              <div className="grid md:grid-cols-1 gap-6 max-w-md">
+                <div>
+                  <Label htmlFor="adminEmail">Adresse email administrateur</Label>
+                  <Input
+                    id="adminEmail"
+                    type="email"
+                    value={adminPasswordData.newEmail || ""}
+                    onChange={(e) => setAdminPasswordData({ ...adminPasswordData, newEmail: e.target.value })}
+                    placeholder="votre-email@exemple.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={adminPasswordData.newPassword}
+                    onChange={(e) => setAdminPasswordData({ ...adminPasswordData, newPassword: e.target.value })}
+                    placeholder="Minimum 8 caractères"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={adminPasswordData.confirmPassword}
+                    onChange={(e) => setAdminPasswordData({ ...adminPasswordData, confirmPassword: e.target.value })}
+                    placeholder="Confirmer le mot de passe"
+                  />
+                </div>
+                <Button onClick={handleConfigureAdmin} className="bg-green-600 hover:bg-green-700">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Configurer le compte administrateur
+                </Button>
+              </div>
+
+              <div className="mt-8 pt-6 border-t">
+                <h4 className="font-medium mb-4">Changer le mot de passe (si déjà configuré)</h4>
+                <div className="grid md:grid-cols-1 gap-4 max-w-md">
+                  <div>
+                    <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={adminPasswordData.currentPassword}
+                      onChange={(e) => setAdminPasswordData({ ...adminPasswordData, currentPassword: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="changeNewPassword">Nouveau mot de passe</Label>
+                    <Input
+                      id="changeNewPassword"
+                      type="password"
+                      value={adminPasswordData.changeNewPassword || ""}
+                      onChange={(e) =>
+                        setAdminPasswordData({ ...adminPasswordData, changeNewPassword: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="changeConfirmPassword">Confirmer le nouveau mot de passe</Label>
+                    <Input
+                      id="changeConfirmPassword"
+                      type="password"
+                      value={adminPasswordData.changeConfirmPassword || ""}
+                      onChange={(e) =>
+                        setAdminPasswordData({ ...adminPasswordData, changeConfirmPassword: e.target.value })
+                      }
+                    />
+                  </div>
+                  <Button onClick={handleChangeAdminPassword} className="bg-red-600 hover:bg-red-700">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Changer le mot de passe
+                  </Button>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
