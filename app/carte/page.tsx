@@ -7,8 +7,20 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Filter, Search, Wrench, Clock, User, MapPin, Lock, AlertCircle, RefreshCw } from "lucide-react"
-import { StorageService } from "@/lib/storage"
-import LeafletMap from "@/components/leaflet-map"
+import dynamic from "next/dynamic"
+
+// Import dynamique de LeafletMap pour éviter les erreurs côté serveur
+const LeafletMap = dynamic(() => import("@/components/leaflet-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[700px] bg-gray-100 rounded-lg flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Chargement de la carte...</p>
+      </div>
+    </div>
+  ),
+})
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -23,52 +35,50 @@ export default function CartePage() {
     city: "",
     urgency: "",
   })
+  const [mapMarkers, setMapMarkers] = useState<any[]>([])
+  const [isClient, setIsClient] = useState(false)
+
+  // Vérifier si nous sommes côté client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
-    // Délai pour éviter les erreurs d'hydratation
-    const timer = setTimeout(() => {
-      loadData()
-    }, 100)
+    if (isClient) {
+      // Délai pour éviter les erreurs d'hydratation
+      const timer = setTimeout(() => {
+        loadData()
+      }, 200)
 
-    return () => clearTimeout(timer)
-  }, [])
+      return () => clearTimeout(timer)
+    }
+  }, [isClient])
 
   const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log("[CartePage] Début du chargement des données")
-
-      // Vérifier si nous sommes côté client
-      if (typeof window === "undefined") {
-        console.log("[CartePage] Côté serveur, attente...")
-        return
-      }
+      // Import dynamique du service de stockage pour éviter les erreurs côté serveur
+      const { StorageService } = await import("@/lib/storage")
 
       // Initialiser les données de démonstration si nécessaire
       StorageService.initDemoData()
 
       // Charger les données
-      const loadedRequests = StorageService.getRepairRequests()
-      const loadedUsers = StorageService.getUsers()
+      const loadedRequests = StorageService.getRepairRequests() || []
+      const loadedUsers = StorageService.getUsers() || []
       const user = StorageService.getCurrentUser()
 
-      console.log("[CartePage] Données chargées:", {
-        requests: loadedRequests.length,
-        users: loadedUsers.length,
-        currentUser: user?.email,
-      })
-
       // Vérifier et corriger les coordonnées manquantes
-      const requestsWithCoords = loadedRequests.map((request) => {
+      const requestsWithCoords = loadedRequests.map((request: any) => {
         if (!request.coordinates) {
           request.coordinates = StorageService.generateCoordinatesForCity(request.city || "Paris")
         }
         return request
       })
 
-      const usersWithCoords = loadedUsers.map((user) => {
+      const usersWithCoords = loadedUsers.map((user: any) => {
         if (user.userType === "reparateur" && !user.coordinates) {
           user.coordinates = StorageService.generateCoordinatesForCity(user.city || "Paris")
         }
@@ -79,7 +89,8 @@ export default function CartePage() {
       setUsers(usersWithCoords)
       setCurrentUser(user)
 
-      console.log("[CartePage] État mis à jour avec succès")
+      // Préparer les marqueurs pour la carte
+      updateMapMarkers(requestsWithCoords, usersWithCoords, filters)
     } catch (err) {
       console.error("Erreur lors du chargement des données:", err)
       setError("Erreur lors du chargement des données. Veuillez rafraîchir la page.")
@@ -88,50 +99,34 @@ export default function CartePage() {
     }
   }
 
-  // Fonction de filtrage sécurisée
-  const getFilteredRequests = () => {
+  // Fonction pour mettre à jour les marqueurs de la carte
+  const updateMapMarkers = async (requestsData: any[], usersData: any[], currentFilters: any) => {
     try {
-      if (!Array.isArray(requests)) return []
+      const { StorageService } = await import("@/lib/storage")
 
-      return requests.filter((request) => {
+      // Filtrer les demandes
+      const filteredRequests = requestsData.filter((request) => {
         if (!request) return false
         return (
-          (filters.type === "all" || filters.type === "requests") &&
-          (!filters.category || request.category?.toLowerCase().includes(filters.category.toLowerCase())) &&
-          (!filters.city || request.city?.toLowerCase().includes(filters.city.toLowerCase())) &&
-          (!filters.urgency || request.urgency === filters.urgency)
+          (currentFilters.type === "all" || currentFilters.type === "requests") &&
+          (!currentFilters.category ||
+            request.category?.toLowerCase().includes(currentFilters.category.toLowerCase())) &&
+          (!currentFilters.city || request.city?.toLowerCase().includes(currentFilters.city.toLowerCase())) &&
+          (!currentFilters.urgency || request.urgency === currentFilters.urgency)
         )
       })
-    } catch (err) {
-      console.error("Erreur lors du filtrage des demandes:", err)
-      return []
-    }
-  }
 
-  const getFilteredReparateurs = () => {
-    try {
-      if (!Array.isArray(users)) return []
-
-      return users.filter((user) => {
+      // Filtrer les réparateurs
+      const filteredReparateurs = usersData.filter((user) => {
         if (!user) return false
         return (
           user.userType === "reparateur" &&
-          (filters.type === "all" || filters.type === "reparateurs") &&
-          (!filters.city || user.city?.toLowerCase().includes(filters.city.toLowerCase()))
+          (currentFilters.type === "all" || currentFilters.type === "reparateurs") &&
+          (!currentFilters.city || user.city?.toLowerCase().includes(currentFilters.city.toLowerCase()))
         )
       })
-    } catch (err) {
-      console.error("Erreur lors du filtrage des réparateurs:", err)
-      return []
-    }
-  }
 
-  const filteredRequests = getFilteredRequests()
-  const filteredReparateurs = getFilteredReparateurs()
-
-  // Convertir les données en marqueurs pour la carte
-  const getMapMarkers = () => {
-    try {
+      // Créer les marqueurs
       const requestMarkers = filteredRequests.map((request) => ({
         id: request.id || `request_${Math.random()}`,
         type: "request" as const,
@@ -148,16 +143,19 @@ export default function CartePage() {
         data: reparateur,
       }))
 
-      const allMarkers = [...requestMarkers, ...reparateurMarkers]
-      console.log("[CartePage] Marqueurs créés:", allMarkers.length)
-      return allMarkers
+      setMapMarkers([...requestMarkers, ...reparateurMarkers])
     } catch (err) {
-      console.error("Erreur lors de la création des marqueurs:", err)
-      return []
+      console.error("Erreur lors de la mise à jour des marqueurs:", err)
+      setMapMarkers([])
     }
   }
 
-  const mapMarkers = getMapMarkers()
+  // Mettre à jour les marqueurs lorsque les filtres changent
+  useEffect(() => {
+    if (isClient && requests.length > 0) {
+      updateMapMarkers(requests, users, filters)
+    }
+  }, [filters, isClient, requests, users])
 
   const canViewPersonalData = () => {
     try {
@@ -216,7 +214,6 @@ export default function CartePage() {
 
   const handleMarkerClick = (marker: any) => {
     try {
-      console.log("[CartePage] Marqueur cliqué:", marker.title)
       setSelectedItem(marker)
     } catch (err) {
       console.error("Erreur lors de la sélection du marqueur:", err)
@@ -229,6 +226,25 @@ export default function CartePage() {
     } catch (err) {
       console.error("Erreur lors de la réinitialisation des filtres:", err)
     }
+  }
+
+  // Calculer les statistiques
+  const filteredRequests = mapMarkers.filter((marker) => marker.type === "request")
+  const filteredReparateurs = mapMarkers.filter((marker) => marker.type === "reparateur")
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Chargement de la carte des dépannages...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -302,17 +318,7 @@ export default function CartePage() {
                   <label className="text-sm font-medium mb-2 block">Affichage</label>
                   <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                     <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          filters.type === ""
-                            ? "Tout afficher"
-                            : filters.type === "all"
-                              ? "Tout afficher"
-                              : filters.type === "requests"
-                                ? "Demandes uniquement"
-                                : "Réparateurs uniquement"
-                        }
-                      />
+                      <SelectValue placeholder="Tout afficher" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tout afficher</SelectItem>
@@ -329,7 +335,7 @@ export default function CartePage() {
                     onValueChange={(value) => setFilters({ ...filters, category: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={filters.category === "" ? "Toutes" : filters.category} />
+                      <SelectValue placeholder="Toutes" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Toutes les catégories</SelectItem>
@@ -360,7 +366,7 @@ export default function CartePage() {
                       onValueChange={(value) => setFilters({ ...filters, urgency: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={filters.urgency === "" ? "Toutes" : filters.urgency} />
+                        <SelectValue placeholder="Toutes" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Toutes les urgences</SelectItem>
