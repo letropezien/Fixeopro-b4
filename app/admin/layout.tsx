@@ -2,12 +2,8 @@
 
 import type React from "react"
 
-import { useEffect, useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { StorageService } from "@/lib/storage"
-
-// Code d'accès temporaire - À changer après utilisation
-const TEMP_ACCESS_CODE = "fixeo_temp_2024"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 export default function AdminLayout({
   children,
@@ -18,66 +14,41 @@ export default function AdminLayout({
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
 
-  return (
-    <Suspense fallback={<Loading />}>
-      <AdminLayoutContent children={children} setIsLoading={setIsLoading} setIsAuthorized={setIsAuthorized} />
-    </Suspense>
-  )
-}
-
-function AdminLayoutContent({
-  children,
-  setIsLoading,
-  setIsAuthorized,
-}: {
-  children: React.ReactNode
-  setIsLoading: (isLoading: boolean) => void
-  setIsAuthorized: (isAuthorized: boolean) => void
-}) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [isLoading, setLoading] = useState(true)
-  const [isAuthorized, setAuthorized] = useState(false)
-
   useEffect(() => {
-    // Vérifier l'accès temporaire via URL
-    const tempCode = searchParams.get("temp")
+    try {
+      // Vérifier l'utilisateur actuel
+      const currentUserId = localStorage.getItem("fixeopro_current_user_id")
 
-    if (tempCode === TEMP_ACCESS_CODE) {
-      // Créer une session admin temporaire
-      const tempAdminUser = {
-        id: "temp_admin",
-        email: "admin@temp.local",
-        password: "temp",
-        firstName: "Admin",
-        lastName: "Temporaire",
-        userType: "admin" as const,
-        city: "Paris",
-        postalCode: "75001",
-        phone: "0000000000",
-        isEmailVerified: true,
-        createdAt: new Date().toISOString(),
+      if (!currentUserId) {
+        console.log("Aucun utilisateur connecté")
+        router.push("/connexion")
+        return
       }
-      StorageService.setCurrentUser(tempAdminUser)
+
+      // Récupérer les données utilisateur
+      const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
+      const currentUser = users.find((user: any) => user.id === currentUserId)
+
+      if (!currentUser) {
+        console.log("Utilisateur non trouvé")
+        router.push("/connexion")
+        return
+      }
+
+      if (currentUser.userType !== "admin") {
+        console.log("Utilisateur non admin:", currentUser.userType)
+        router.push("/connexion")
+        return
+      }
+
+      console.log("Accès admin autorisé pour:", currentUser.email)
       setIsAuthorized(true)
       setIsLoading(false)
-
-      // Nettoyer l'URL
-      window.history.replaceState({}, document.title, window.location.pathname)
-      return
-    }
-
-    // Vérifier si l'utilisateur est admin
-    const user = StorageService.getCurrentUser()
-
-    if (!user || user.userType !== "admin") {
+    } catch (error) {
+      console.error("Erreur lors de la vérification admin:", error)
       router.push("/connexion")
-      return
     }
-
-    setIsAuthorized(true)
-    setIsLoading(false)
-  }, [router, searchParams, setIsLoading, setIsAuthorized])
+  }, [router])
 
   if (isLoading) {
     return (
@@ -93,30 +64,33 @@ function AdminLayoutContent({
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Accès refusé</h1>
-          <p className="text-gray-600 mb-4">Vous n'avez pas les permissions pour accéder à cette page.</p>
-          <button
-            onClick={() => router.push("/")}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Retour à l'accueil
-          </button>
+          <p className="text-gray-600 mb-6">Vous devez être administrateur pour accéder à cette page.</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push("/setup-admin")}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Configurer un compte admin
+            </button>
+            <button
+              onClick={() => router.push("/connexion")}
+              className="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Se connecter
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-50"
+            >
+              Retour à l'accueil
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   return <>{children}</>
-}
-
-function Loading() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Vérification des permissions...</p>
-      </div>
-    </div>
-  )
 }
