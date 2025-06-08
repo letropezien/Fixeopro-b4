@@ -6,18 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Filter, MapPin, Search, Wrench, Clock, User, Plus, Minus, RotateCcw } from "lucide-react"
+import { Filter, Search, Wrench, Clock, User, MapPin, Lock } from "lucide-react"
 import { StorageService } from "@/lib/storage"
+import GoogleMap from "@/components/google-map"
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [selectedItem, setSelectedItem] = useState<any>(null)
-  const [mapZoom, setMapZoom] = useState(1)
-  const [mapCenter, setMapCenter] = useState({ x: 0, y: 0 })
   const [filters, setFilters] = useState({
-    type: "requests",
+    type: "all",
     category: "",
     city: "",
     urgency: "",
@@ -56,19 +55,37 @@ export default function CartePage() {
     )
   })
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "urgent":
-        return "bg-red-500"
-      case "same-day":
-        return "bg-orange-500"
-      case "this-week":
-        return "bg-yellow-500"
-      case "flexible":
-        return "bg-green-500"
-      default:
-        return "bg-gray-500"
+  // Convertir les données en marqueurs pour Google Maps
+  const mapMarkers = [
+    ...filteredRequests.map((request) => ({
+      id: request.id,
+      type: "request" as const,
+      position: request.coordinates || StorageService.generateCoordinatesForCity(request.city),
+      title: request.title,
+      data: request,
+    })),
+    ...filteredReparateurs.map((reparateur) => ({
+      id: reparateur.id,
+      type: "reparateur" as const,
+      position: reparateur.coordinates || StorageService.generateCoordinatesForCity(reparateur.city),
+      title: `${reparateur.firstName} ${reparateur.lastName}`,
+      data: reparateur,
+    })),
+  ]
+
+  const canViewPersonalData = () => {
+    if (!currentUser || currentUser.userType !== "reparateur") return false
+    if (currentUser.subscription?.status === "active") return true
+    if (currentUser.subscription?.status === "trial") {
+      const expiresAt = new Date(currentUser.subscription.endDate)
+      return expiresAt > new Date()
     }
+    return false
+  }
+
+  const maskPersonalData = (text: string) => {
+    if (canViewPersonalData()) return text
+    return text.replace(/[a-zA-ZÀ-ÿ]/g, "*")
   }
 
   const getUrgencyLabel = (urgency: string) => {
@@ -86,91 +103,19 @@ export default function CartePage() {
     }
   }
 
-  const canViewPersonalData = () => {
-    if (!currentUser || currentUser.userType !== "reparateur") return false
-    if (currentUser.subscription?.status === "active") return true
-    if (currentUser.subscription?.status === "trial") {
-      const expiresAt = new Date(currentUser.subscription.endDate)
-      return expiresAt > new Date()
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "urgent":
+        return "bg-red-500"
+      case "same-day":
+        return "bg-orange-500"
+      case "this-week":
+        return "bg-yellow-500"
+      case "flexible":
+        return "bg-green-500"
+      default:
+        return "bg-gray-500"
     }
-    return false
-  }
-
-  const maskPersonalData = (text: string) => {
-    if (canViewPersonalData()) return text
-    return text.replace(/[a-zA-ZÀ-ÿ]/g, "*")
-  }
-
-  // Coordonnées des villes françaises
-  const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
-    paris: { lat: 48.8566, lng: 2.3522 },
-    lyon: { lat: 45.764, lng: 4.8357 },
-    marseille: { lat: 43.2965, lng: 5.3698 },
-    toulouse: { lat: 43.6047, lng: 1.4442 },
-    nice: { lat: 43.7102, lng: 7.262 },
-    nantes: { lat: 47.2184, lng: -1.5536 },
-    strasbourg: { lat: 48.5734, lng: 7.7521 },
-    montpellier: { lat: 43.611, lng: 3.8767 },
-    bordeaux: { lat: 44.8378, lng: -0.5792 },
-    lille: { lat: 50.6292, lng: 3.0573 },
-    rennes: { lat: 48.1173, lng: -1.6778 },
-    reims: { lat: 49.2583, lng: 4.0317 },
-    toulon: { lat: 43.1242, lng: 5.928 },
-    grenoble: { lat: 45.1885, lng: 5.7245 },
-    dijon: { lat: 47.3215, lng: 5.0415 },
-    angers: { lat: 47.4784, lng: -0.5632 },
-    villeurbanne: { lat: 45.7797, lng: 4.8814 },
-    clermont: { lat: 45.7797, lng: 3.0863 },
-    aix: { lat: 43.5297, lng: 5.4474 },
-    brest: { lat: 48.3905, lng: -4.4861 },
-  }
-
-  const convertToMapCoordinates = (lat: number, lng: number) => {
-    // Conversion des coordonnées GPS vers les coordonnées de la carte SVG
-    const mapWidth = 800
-    const mapHeight = 600
-
-    // Limites approximatives de la France
-    const bounds = {
-      north: 51.1,
-      south: 41.3,
-      east: 9.6,
-      west: -5.1,
-    }
-
-    const x = ((lng - bounds.west) / (bounds.east - bounds.west)) * mapWidth
-    const y = ((bounds.north - lat) / (bounds.north - bounds.south)) * mapHeight
-
-    return { x: x * mapZoom + mapCenter.x, y: y * mapZoom + mapCenter.y }
-  }
-
-  const getMarkerPosition = (city: string, coordinates?: { lat: number; lng: number }) => {
-    if (coordinates) {
-      return convertToMapCoordinates(coordinates.lat, coordinates.lng)
-    }
-
-    const cityKey = city?.toLowerCase().trim().replace(/\s+/g, "")
-    const coords = cityCoordinates[cityKey]
-
-    if (coords) {
-      return convertToMapCoordinates(coords.lat, coords.lng)
-    }
-
-    // Position par défaut (centre de la France)
-    return convertToMapCoordinates(46.603354, 1.888334)
-  }
-
-  const handleZoomIn = () => {
-    setMapZoom((prev) => Math.min(prev * 1.2, 3))
-  }
-
-  const handleZoomOut = () => {
-    setMapZoom((prev) => Math.max(prev / 1.2, 0.5))
-  }
-
-  const handleResetView = () => {
-    setMapZoom(1)
-    setMapCenter({ x: 0, y: 0 })
   }
 
   return (
@@ -179,7 +124,7 @@ export default function CartePage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Carte des demandes de dépannage</h1>
-          <p className="text-gray-600">Visualisez les demandes de réparation par ville en temps réel</p>
+          <p className="text-gray-600">Visualisez les demandes de réparation et les réparateurs en temps réel</p>
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
@@ -197,12 +142,22 @@ export default function CartePage() {
                   <label className="text-sm font-medium mb-2 block">Affichage</label>
                   <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                     <SelectTrigger>
-                      <SelectValue placeholder={filters.type ? filters.type : "Sélectionner"} />
+                      <SelectValue
+                        placeholder={
+                          filters.type === ""
+                            ? "Tout afficher"
+                            : filters.type === "requests"
+                              ? "Demandes uniquement"
+                              : filters.type === "reparateurs"
+                                ? "Réparateurs uniquement"
+                                : "Tout afficher"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Tout afficher</SelectItem>
                       <SelectItem value="requests">Demandes uniquement</SelectItem>
                       <SelectItem value="reparateurs">Réparateurs uniquement</SelectItem>
-                      <SelectItem value="all">Tout afficher</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -261,7 +216,7 @@ export default function CartePage() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => setFilters({ type: "requests", category: "", city: "", urgency: "" })}
+                  onClick={() => setFilters({ type: "all", category: "", city: "", urgency: "" })}
                 >
                   Réinitialiser
                 </Button>
@@ -320,140 +275,9 @@ export default function CartePage() {
             )}
           </div>
 
-          {/* Carte */}
+          {/* Carte Google Maps */}
           <div className="lg:col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <MapPin className="h-5 w-5 mr-2" />
-                    Carte interactive de France
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={handleZoomIn}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleZoomOut}>
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleResetView}>
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="relative bg-gradient-to-br from-blue-50 to-green-50 rounded-lg overflow-hidden border"
-                  style={{ height: "600px" }}
-                >
-                  {/* Carte SVG de la France */}
-                  <svg
-                    viewBox="0 0 800 600"
-                    className="w-full h-full"
-                    style={{ transform: `scale(${mapZoom}) translate(${mapCenter.x}px, ${mapCenter.y}px)` }}
-                  >
-                    {/* Contour de la France */}
-                    <path
-                      d="M158,206 L168,196 L178,186 L188,176 L198,166 L218,156 L238,146 L258,136 L278,126 L298,116 L318,106 L338,96 L358,86 L378,76 L398,66 L418,56 L438,46 L458,36 L478,26 L498,16 L518,6 L538,16 L558,26 L578,36 L598,46 L618,56 L638,66 L658,76 L678,86 L698,96 L718,106 L738,116 L758,126 L778,136 L788,146 L798,156 L798,176 L798,196 L798,216 L798,236 L798,256 L798,276 L798,296 L798,316 L798,336 L798,356 L798,376 L798,396 L798,416 L798,436 L798,456 L798,476 L798,496 L798,516 L798,536 L798,556 L798,576 L798,596 L778,596 L758,596 L738,596 L718,596 L698,596 L678,596 L658,596 L638,596 L618,596 L598,596 L578,596 L558,596 L538,596 L518,596 L498,596 L478,596 L458,596 L438,596 L418,596 L398,596 L378,596 L358,596 L338,596 L318,596 L298,596 L278,596 L258,596 L238,596 L218,596 L198,596 L178,596 L158,596 L138,596 L118,596 L98,596 L78,596 L58,596 L38,596 L18,596 L8,596 L8,576 L8,556 L8,536 L8,516 L8,496 L8,476 L8,456 L8,436 L8,416 L8,396 L8,376 L8,356 L8,336 L8,316 L8,296 L8,276 L8,256 L8,236 L8,216 L8,196 L18,196 L28,196 L38,196 L48,196 L58,196 L68,196 L78,196 L88,196 L98,196 L108,196 L118,196 L128,196 L138,196 L148,196 Z"
-                      fill="#e5f3ff"
-                      stroke="#3b82f6"
-                      strokeWidth="2"
-                      className="drop-shadow-sm"
-                    />
-
-                    {/* Marqueurs pour les demandes */}
-                    {filteredRequests.map((request) => {
-                      if (!request || !request.city) return null
-                      const position = getMarkerPosition(request.city, request.coordinates)
-
-                      return (
-                        <g key={`request-${request.id}`}>
-                          <circle
-                            cx={position.x}
-                            cy={position.y}
-                            r="8"
-                            className={`${getUrgencyColor(request.urgency)} cursor-pointer hover:scale-110 transition-transform duration-200 drop-shadow-md`}
-                            fill="currentColor"
-                            stroke="white"
-                            strokeWidth="2"
-                            onClick={() => setSelectedItem({ type: "request", data: request })}
-                          />
-                          <circle cx={position.x} cy={position.y} r="4" fill="white" className="pointer-events-none" />
-                        </g>
-                      )
-                    })}
-
-                    {/* Marqueurs pour les réparateurs */}
-                    {filteredReparateurs.map((reparateur) => {
-                      if (!reparateur || !reparateur.city) return null
-                      const position = getMarkerPosition(reparateur.city, reparateur.coordinates)
-
-                      return (
-                        <g key={`reparateur-${reparateur.id}`}>
-                          <rect
-                            x={position.x - 8}
-                            y={position.y - 8}
-                            width="16"
-                            height="16"
-                            fill="#3b82f6"
-                            stroke="white"
-                            strokeWidth="2"
-                            className="cursor-pointer hover:scale-110 transition-transform duration-200 drop-shadow-md"
-                            onClick={() => setSelectedItem({ type: "reparateur", data: reparateur })}
-                          />
-                          <rect
-                            x={position.x - 4}
-                            y={position.y - 4}
-                            width="8"
-                            height="8"
-                            fill="white"
-                            className="pointer-events-none"
-                          />
-                        </g>
-                      )
-                    })}
-                  </svg>
-
-                  {/* Légende */}
-                  <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg">
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                        <span>Urgent</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-                        <span>Aujourd'hui</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                        <span>Cette semaine</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                        <span>Flexible</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-blue-600 mr-2"></div>
-                        <span>Réparateurs</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Message si aucune donnée */}
-                  {filteredRequests.length === 0 && filteredReparateurs.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-white/90 backdrop-blur-sm p-6 rounded-lg text-center">
-                        <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-600 font-medium">Aucun résultat trouvé</p>
-                        <p className="text-sm text-gray-500">Essayez de modifier vos filtres</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <GoogleMap markers={mapMarkers} onMarkerClick={setSelectedItem} height="700px" />
 
             {/* Détails de l'élément sélectionné */}
             {selectedItem && (
@@ -506,11 +330,14 @@ export default function CartePage() {
                           <div>
                             <span className="font-medium">Client:</span>
                             <p className="text-gray-600">
-                              {canViewPersonalData()
-                                ? `${selectedItem.data.client?.firstName || "Client"} ${selectedItem.data.client?.lastName || ""}`
-                                : maskPersonalData(
-                                    `${selectedItem.data.client?.firstName || "Client"} ${selectedItem.data.client?.lastName || ""}`,
-                                  )}
+                              {canViewPersonalData() ? (
+                                `${selectedItem.data.client?.firstName || "Client"} ${selectedItem.data.client?.lastName || ""}`
+                              ) : (
+                                <span className="flex items-center">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  {maskPersonalData("Jean Dupont")}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -530,6 +357,24 @@ export default function CartePage() {
                           </div>
                         </div>
                       </div>
+
+                      {!canViewPersonalData() && currentUser?.userType !== "client" && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-start">
+                            <Lock className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-yellow-800 font-medium">Informations de contact masquées</p>
+                              <p className="text-sm text-yellow-700 mt-1">
+                                Devenez réparateur avec un abonnement pour accéder aux coordonnées complètes des
+                                clients.
+                              </p>
+                              <Button size="sm" className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white">
+                                Devenir réparateur
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex space-x-2">
                         <Button

@@ -306,6 +306,40 @@ export default function AdminPage() {
     }
   }
 
+  const handleDeleteUser = (userId: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.")) {
+      try {
+        const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
+        const updatedUsers = users.filter((user: any) => user.id !== userId)
+        localStorage.setItem("fixeopro_users", JSON.stringify(updatedUsers))
+
+        // Recharger les données
+        loadData()
+        alert("Utilisateur supprimé avec succès")
+      } catch (error) {
+        console.error("Erreur lors de la suppression:", error)
+        alert("Erreur lors de la suppression de l'utilisateur")
+      }
+    }
+  }
+
+  const handleDeleteRequest = (requestId: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.")) {
+      try {
+        const requests = JSON.parse(localStorage.getItem("fixeopro_repair_requests") || "[]")
+        const updatedRequests = requests.filter((request: any) => request.id !== requestId)
+        localStorage.setItem("fixeopro_repair_requests", JSON.stringify(updatedRequests))
+
+        // Recharger les données
+        loadData()
+        alert("Demande supprimée avec succès")
+      } catch (error) {
+        console.error("Erreur lors de la suppression:", error)
+        alert("Erreur lors de la suppression de la demande")
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -526,9 +560,14 @@ export default function AdminPage() {
                               {new Date(user.createdAt).toLocaleDateString("fr-FR")}
                             </td>
                             <td className="p-2 border text-center">
-                              <Button variant="ghost" size="sm">
-                                Détails
-                              </Button>
+                              <div className="flex space-x-1">
+                                <Button variant="ghost" size="sm">
+                                  Détails
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                                  Supprimer
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -631,9 +670,14 @@ export default function AdminPage() {
                               {new Date(request.createdAt).toLocaleDateString("fr-FR")}
                             </td>
                             <td className="p-2 border text-center">
-                              <Button variant="ghost" size="sm">
-                                Détails
-                              </Button>
+                              <div className="flex space-x-1">
+                                <Button variant="ghost" size="sm">
+                                  Détails
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleDeleteRequest(request.id)}>
+                                  Supprimer
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))
