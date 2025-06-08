@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Filter } from "lucide-react"
 import { StorageService } from "@/lib/storage"
-import VirtualMap from "@/components/virtual-map"
+import GoogleMaps from "@/components/google-maps"
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -232,10 +232,11 @@ export default function CartePage() {
 
           {/* Carte virtuelle */}
           <div className="lg:col-span-3">
-            <VirtualMap
+            <GoogleMaps
               markers={mapMarkers}
               currentUser={currentUser}
               showPersonalData={currentUser?.userType === "reparateur"}
+              standalone={true}
             />
           </div>
         </div>
