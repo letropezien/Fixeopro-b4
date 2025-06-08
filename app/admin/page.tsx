@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import {
   Settings,
-  CreditCard,
   Users,
   FileText,
   DollarSign,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { PromoCodeService, type PromoCode } from "@/lib/promo-codes"
+import PaymentGatewayConfig from "@/components/payment-gateway-config"
 
 interface UserType {
   id: string
@@ -889,79 +889,7 @@ export default function AdminPage() {
 
           {/* Configuration des paiements */}
           <TabsContent value="payments">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <CreditCard className="h-5 w-5 mr-2" />
-                      Configuration PayPal
-                    </div>
-                    <Switch
-                      checked={adminConfig.paypal.enabled}
-                      onCheckedChange={(checked) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          paypal: { ...adminConfig.paypal, enabled: checked },
-                        })
-                      }
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="paypalClientId">Client ID</Label>
-                    <Input
-                      id="paypalClientId"
-                      placeholder="AXxxx..."
-                      value={adminConfig.paypal.clientId}
-                      onChange={(e) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          paypal: { ...adminConfig.paypal, clientId: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <CreditCard className="h-5 w-5 mr-2" />
-                      Configuration Stripe
-                    </div>
-                    <Switch
-                      checked={adminConfig.stripe.enabled}
-                      onCheckedChange={(checked) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          stripe: { ...adminConfig.stripe, enabled: checked },
-                        })
-                      }
-                    />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="stripePublishable">Clé publique</Label>
-                    <Input
-                      id="stripePublishable"
-                      placeholder="pk_test_..."
-                      value={adminConfig.stripe.publishableKey}
-                      onChange={(e) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          stripe: { ...adminConfig.stripe, publishableKey: e.target.value },
-                        })
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <PaymentGatewayConfig />
           </TabsContent>
 
           {/* Configuration plateforme */}
