@@ -31,82 +31,152 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
   const mapRef = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<any>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mapMarkers, setMapMarkers] = useState<any[]>([])
+  const [debugInfo, setDebugInfo] = useState<string[]>([])
 
   // Centre par défaut sur la France
   const defaultCenter = center || { lat: 46.603354, lng: 1.888334 }
 
+  const addDebug = (message: string) => {
+    console.log(`[LeafletMap] ${message}`)
+    setDebugInfo((prev) => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`])
+  }
+
   useEffect(() => {
+    addDebug("Composant monté, début du chargement")
     loadLeaflet()
   }, [])
 
   useEffect(() => {
-    if (map && isLoaded) {
+    if (map && isLoaded && markers.length > 0) {
+      addDebug(`Mise à jour des marqueurs: ${markers.length} marqueurs`)
       updateMarkers()
     }
   }, [markers, map, isLoaded])
 
   const loadLeaflet = async () => {
     try {
+      addDebug("Début du chargement de Leaflet")
+      setIsLoading(true)
+      setError(null)
+
       // Vérifier si Leaflet est déjà chargé
       if (window.L) {
+        addDebug("Leaflet déjà chargé")
+        setIsLoaded(true)
         initializeMap()
         return
       }
+
+      addDebug("Chargement des ressources Leaflet...")
 
       // Charger Leaflet CSS
       const cssLink = document.createElement("link")
       cssLink.rel = "stylesheet"
       cssLink.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      cssLink.onload = () => addDebug("CSS Leaflet chargé")
+      cssLink.onerror = () => addDebug("Erreur chargement CSS Leaflet")
       document.head.appendChild(cssLink)
 
       // Charger Leaflet JS
       const script = document.createElement("script")
       script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       script.onload = () => {
+        addDebug("Script Leaflet chargé avec succès")
         setIsLoaded(true)
-        initializeMap()
+        setTimeout(() => {
+          initializeMap()
+        }, 100)
       }
-      script.onerror = () => {
+      script.onerror = (e) => {
+        addDebug("Erreur lors du chargement du script Leaflet")
         setError("Impossible de charger Leaflet. Utilisation de la carte de secours.")
         setIsLoaded(false)
+        setIsLoading(false)
       }
       document.head.appendChild(script)
     } catch (err) {
       console.error("Erreur lors du chargement de Leaflet:", err)
+      addDebug(`Erreur: ${err}`)
       setError("Erreur lors du chargement de la carte")
+      setIsLoading(false)
     }
   }
 
   const initializeMap = () => {
-    if (!mapRef.current || !window.L) return
+    if (!mapRef.current) {
+      addDebug("Erreur: mapRef.current est null")
+      return
+    }
+
+    if (!window.L) {
+      addDebug("Erreur: window.L n'est pas disponible")
+      return
+    }
 
     try {
+      addDebug("Initialisation de la carte...")
+
+      // Nettoyer la carte existante si elle existe
+      if (map) {
+        map.remove()
+      }
+
       const mapInstance = window.L.map(mapRef.current, {
         center: [defaultCenter.lat, defaultCenter.lng],
         zoom: 6,
-        zoomControl: false, // On va ajouter nos propres contrôles
+        zoomControl: false,
+        preferCanvas: true,
       })
 
+      addDebug("Instance de carte créée")
+
       // Ajouter les tuiles OpenStreetMap
-      window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tileLayer = window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 18,
-      }).addTo(mapInstance)
+      })
+
+      tileLayer.on("load", () => {
+        addDebug("Tuiles chargées avec succès")
+        setIsLoading(false)
+      })
+
+      tileLayer.on("tileerror", () => {
+        addDebug("Erreur lors du chargement des tuiles")
+      })
+
+      tileLayer.addTo(mapInstance)
 
       setMap(mapInstance)
       setError(null)
+      addDebug("Carte initialisée avec succès")
+
+      // Forcer la mise à jour de la taille après un court délai
+      setTimeout(() => {
+        if (mapInstance) {
+          mapInstance.invalidateSize()
+          addDebug("Taille de la carte mise à jour")
+        }
+      }, 200)
     } catch (err) {
       console.error("Erreur lors de l'initialisation de la carte:", err)
+      addDebug(`Erreur initialisation: ${err}`)
       setError("Erreur lors de l'initialisation de la carte")
+      setIsLoading(false)
     }
   }
 
   const updateMarkers = () => {
-    if (!map || !window.L) return
+    if (!map || !window.L) {
+      addDebug("Impossible de mettre à jour les marqueurs: map ou L manquant")
+      return
+    }
 
     try {
+      addDebug("Suppression des anciens marqueurs...")
       // Supprimer les anciens marqueurs
       mapMarkers.forEach((marker) => {
         if (marker && marker.remove) {
@@ -114,51 +184,68 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
         }
       })
 
-      const newMarkers = markers.map((markerData) => {
-        const color = getMarkerColor(markerData)
+      addDebug(`Création de ${markers.length} nouveaux marqueurs...`)
+      const newMarkers = markers
+        .map((markerData, index) => {
+          try {
+            const color = getMarkerColor(markerData)
 
-        // Créer une icône personnalisée
-        const icon = window.L.divIcon({
-          className: "custom-marker",
-          html: `<div style="
-            width: 20px; 
-            height: 20px; 
-            background-color: ${color}; 
-            border: 2px solid white; 
-            border-radius: ${markerData.type === "request" ? "50%" : "0%"};
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 10px;
-          ">${markerData.type === "request" ? "!" : "R"}</div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10],
+            // Créer une icône personnalisée
+            const icon = window.L.divIcon({
+              className: "custom-marker",
+              html: `<div style="
+              width: 24px; 
+              height: 24px; 
+              background-color: ${color}; 
+              border: 3px solid white; 
+              border-radius: ${markerData.type === "request" ? "50%" : "20%"};
+              box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: bold;
+              font-size: 12px;
+              cursor: pointer;
+            ">${markerData.type === "request" ? "!" : "R"}</div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            })
+
+            const marker = window.L.marker([markerData.position.lat, markerData.position.lng], {
+              icon: icon,
+              title: markerData.title,
+            }).addTo(map)
+
+            marker.on("click", () => {
+              addDebug(`Clic sur marqueur: ${markerData.title}`)
+              onMarkerClick?.(markerData)
+            })
+
+            return marker
+          } catch (err) {
+            addDebug(`Erreur création marqueur ${index}: ${err}`)
+            return null
+          }
         })
-
-        const marker = window.L.marker([markerData.position.lat, markerData.position.lng], {
-          icon: icon,
-          title: markerData.title,
-        }).addTo(map)
-
-        marker.on("click", () => {
-          onMarkerClick?.(markerData)
-        })
-
-        return marker
-      })
+        .filter(Boolean)
 
       setMapMarkers(newMarkers)
+      addDebug(`${newMarkers.length} marqueurs créés avec succès`)
 
       // Ajuster la vue pour inclure tous les marqueurs
       if (newMarkers.length > 0) {
-        const group = new window.L.featureGroup(newMarkers)
-        map.fitBounds(group.getBounds().pad(0.1))
+        try {
+          const group = new window.L.featureGroup(newMarkers)
+          map.fitBounds(group.getBounds().pad(0.1))
+          addDebug("Vue ajustée aux marqueurs")
+        } catch (err) {
+          addDebug(`Erreur ajustement vue: ${err}`)
+        }
       }
     } catch (err) {
       console.error("Erreur lors de la mise à jour des marqueurs:", err)
+      addDebug(`Erreur mise à jour marqueurs: ${err}`)
     }
   }
 
@@ -182,18 +269,21 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
   const zoomIn = () => {
     if (map) {
       map.zoomIn()
+      addDebug("Zoom avant")
     }
   }
 
   const zoomOut = () => {
     if (map) {
       map.zoomOut()
+      addDebug("Zoom arrière")
     }
   }
 
   const resetView = () => {
     if (map) {
       map.setView([defaultCenter.lat, defaultCenter.lng], 6)
+      addDebug("Vue réinitialisée")
     }
   }
 
@@ -210,7 +300,7 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
         />
 
         {/* Marqueurs simulés */}
-        {markers.map((marker, index) => {
+        {markers.slice(0, 10).map((marker, index) => {
           // Conversion approximative des coordonnées GPS en coordonnées SVG
           const x = ((marker.position.lng + 5) / 10) * 800
           const y = ((51 - marker.position.lat) / 10) * 600
@@ -250,6 +340,16 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
         <p className="text-yellow-800 text-sm font-medium">⚠️ Carte de secours</p>
         <p className="text-yellow-700 text-xs">Carte interactive non disponible</p>
       </div>
+
+      {/* Debug info */}
+      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm p-2 rounded text-xs max-w-xs">
+        <div className="font-semibold mb-1">Debug:</div>
+        {debugInfo.slice(-3).map((info, i) => (
+          <div key={i} className="text-gray-600">
+            {info}
+          </div>
+        ))}
+      </div>
     </div>
   )
 
@@ -263,14 +363,8 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
               Carte des dépannages
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={zoomIn}>
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={zoomOut}>
-                <Minus className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={resetView}>
-                <RotateCcw className="h-4 w-4" />
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Recharger
               </Button>
             </div>
           </CardTitle>
@@ -290,7 +384,9 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center">
             <MapPin className="h-5 w-5 mr-2" />
-            Carte des dépannages {isLoaded ? "(OpenStreetMap)" : "(Chargement...)"}
+            Carte des dépannages
+            {isLoading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
+            {isLoaded && !isLoading && " (OpenStreetMap)"}
           </div>
           {isLoaded && (
             <div className="flex space-x-2">
@@ -311,11 +407,16 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
         <div style={{ height }} className="relative">
           <div ref={mapRef} className="w-full h-full rounded-lg" />
 
-          {!isLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 backdrop-blur-sm rounded-lg">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-600" />
                 <p className="text-gray-600">Chargement de la carte...</p>
+                <div className="mt-2 text-xs text-gray-500 max-w-xs">
+                  {debugInfo.slice(-2).map((info, i) => (
+                    <div key={i}>{info}</div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -346,6 +447,16 @@ export default function LeafletMap({ markers, onMarkerClick, height = "600px", c
               </div>
             </div>
           </div>
+
+          {/* Debug panel en développement */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="absolute top-4 left-4 bg-black/80 text-white p-2 rounded text-xs max-w-xs">
+              <div className="font-semibold mb-1">Debug Info:</div>
+              {debugInfo.slice(-5).map((info, i) => (
+                <div key={i}>{info}</div>
+              ))}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
