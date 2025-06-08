@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Filter } from "lucide-react"
 import { StorageService } from "@/lib/storage"
-import InteractiveFranceMap from "@/components/interactive-france-map"
+import FranceMap from "@/components/france-map"
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -230,9 +230,9 @@ export default function CartePage() {
             )}
           </div>
 
-          {/* Carte interactive */}
+          {/* Carte de France */}
           <div className="lg:col-span-3">
-            <InteractiveFranceMap markers={mapMarkers} currentUser={currentUser} height="700px" />
+            <FranceMap markers={mapMarkers} currentUser={currentUser} height="700px" />
           </div>
         </div>
       </div>

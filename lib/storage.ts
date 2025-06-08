@@ -229,12 +229,87 @@ export class StorageService {
     return requests.find((r) => r.id === id) || null
   }
 
+  // Géolocalisation automatique
+  static async getCurrentLocation(): Promise<{ lat: number; lng: number } | null> {
+    if (!isBrowser) return null
+
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null)
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          })
+        },
+        (error) => {
+          console.error("Erreur de géolocalisation:", error)
+          resolve(null)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000, // 5 minutes
+        },
+      )
+    })
+  }
+
+  // Obtenir la ville à partir des coordonnées (géocodage inverse simplifié)
+  static async getCityFromCoordinates(lat: number, lng: number): Promise<string> {
+    // Simulation d'un service de géocodage inverse
+    // En production, utiliser une vraie API comme Nominatim ou Google Geocoding
+
+    const cities = [
+      { name: "Paris", lat: 48.8566, lng: 2.3522 },
+      { name: "Marseille", lat: 43.2965, lng: 5.3698 },
+      { name: "Lyon", lat: 45.764, lng: 4.8357 },
+      { name: "Toulouse", lat: 43.6047, lng: 1.4442 },
+      { name: "Nice", lat: 43.7102, lng: 7.262 },
+      { name: "Nantes", lat: 47.2184, lng: -1.5536 },
+      { name: "Strasbourg", lat: 48.5734, lng: 7.7521 },
+      { name: "Montpellier", lat: 43.611, lng: 3.8767 },
+      { name: "Bordeaux", lat: 44.8378, lng: -0.5792 },
+      { name: "Lille", lat: 50.6292, lng: 3.0573 },
+    ]
+
+    // Trouver la ville la plus proche
+    let closestCity = cities[0]
+    let minDistance = this.calculateDistance(lat, lng, closestCity.lat, closestCity.lng)
+
+    for (const city of cities) {
+      const distance = this.calculateDistance(lat, lng, city.lat, city.lng)
+      if (distance < minDistance) {
+        minDistance = distance
+        closestCity = city
+      }
+    }
+
+    return closestCity.name
+  }
+
+  // Calculer la distance entre deux points GPS
+  static calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371 // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * (Math.PI / 180)
+    const dLng = (lng2 - lng1) * (Math.PI / 180)
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
   // Générer des coordonnées pour une ville
-  static generateCoordinatesForCity(city: string): { lat: number; lng: number } {
+  static generateCoordinatesForCity(cityName: string): { lat: number; lng: number } {
     const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
       paris: { lat: 48.8566, lng: 2.3522 },
-      lyon: { lat: 45.764, lng: 4.8357 },
       marseille: { lat: 43.2965, lng: 5.3698 },
+      lyon: { lat: 45.764, lng: 4.8357 },
       toulouse: { lat: 43.6047, lng: 1.4442 },
       nice: { lat: 43.7102, lng: 7.262 },
       nantes: { lat: 47.2184, lng: -1.5536 },
@@ -242,15 +317,40 @@ export class StorageService {
       montpellier: { lat: 43.611, lng: 3.8767 },
       bordeaux: { lat: 44.8378, lng: -0.5792 },
       lille: { lat: 50.6292, lng: 3.0573 },
+      rennes: { lat: 48.1173, lng: -1.6778 },
+      reims: { lat: 49.2583, lng: 4.0317 },
+      toulon: { lat: 43.1242, lng: 5.928 },
+      grenoble: { lat: 45.1885, lng: 5.7245 },
+      dijon: { lat: 47.3215, lng: 5.0415 },
+      angers: { lat: 47.4784, lng: -0.5632 },
+      nancy: { lat: 48.6921, lng: 6.1844 },
+      nimes: { lat: 43.8367, lng: 4.3601 },
+      limoges: { lat: 45.8336, lng: 1.2611 },
+      tours: { lat: 47.3941, lng: 0.6848 },
+      amiens: { lat: 49.8941, lng: 2.2958 },
+      metz: { lat: 49.1193, lng: 6.1757 },
+      besancon: { lat: 47.2378, lng: 6.0241 },
+      brest: { lat: 48.3905, lng: -4.4861 },
+      orleans: { lat: 47.9029, lng: 1.9093 },
+      rouen: { lat: 49.4431, lng: 1.0993 },
+      caen: { lat: 49.1829, lng: -0.3707 },
     }
 
-    const cityKey = city.toLowerCase().replace(/\s+/g, "")
-    const baseCoords = cityCoordinates[cityKey] || { lat: 46.2276, lng: 2.2137 }
+    const cityKey = cityName.toLowerCase().replace(/[^a-z]/g, "")
+    const coords = cityCoordinates[cityKey]
 
-    // Ajouter une variation aléatoire pour éviter la superposition
+    if (coords) {
+      // Ajouter une petite variation aléatoire pour éviter la superposition
+      return {
+        lat: coords.lat + (Math.random() - 0.5) * 0.02,
+        lng: coords.lng + (Math.random() - 0.5) * 0.02,
+      }
+    }
+
+    // Coordonnées par défaut (centre de la France) si la ville n'est pas trouvée
     return {
-      lat: baseCoords.lat + (Math.random() - 0.5) * 0.1,
-      lng: baseCoords.lng + (Math.random() - 0.5) * 0.1,
+      lat: 46.603354 + (Math.random() - 0.5) * 2,
+      lng: 1.888334 + (Math.random() - 0.5) * 2,
     }
   }
 

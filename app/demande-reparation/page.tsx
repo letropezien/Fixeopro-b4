@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,7 @@ export default function DemandeReparationPage() {
     urgency: "",
     description: "",
     location: "",
+    coordinates: null as { lat: number; lng: number } | null,
     contact: {
       firstName: currentUser?.firstName || "",
       lastName: currentUser?.lastName || "",
@@ -57,6 +58,30 @@ export default function DemandeReparationPage() {
     { value: "this-week", label: "Cette semaine", icon: "📅" },
     { value: "flexible", label: "Flexible", icon: "🗓️" },
   ]
+
+  useEffect(() => {
+    // Récupérer la position de l'utilisateur
+    const getCurrentLocation = async () => {
+      try {
+        const location = await StorageService.getCurrentLocation()
+        if (location) {
+          const city = await StorageService.getCityFromCoordinates(location.lat, location.lng)
+          setFormData((prev) => ({
+            ...prev,
+            contact: {
+              ...prev.contact,
+              city: city,
+            },
+            coordinates: location,
+          }))
+        }
+      } catch (error) {
+        console.error("Erreur de géolocalisation:", error)
+      }
+    }
+
+    getCurrentLocation()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
