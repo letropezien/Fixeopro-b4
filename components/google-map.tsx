@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Plus, Minus, RotateCcw, Loader2 } from "lucide-react"
+import { MapsConfigService } from "@/lib/maps-config"
 
 interface MapMarker {
   id: string
@@ -35,7 +36,7 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
   const [mapMarkers, setMapMarkers] = useState<any[]>([])
 
   // Centre par défaut sur la France
-  const defaultCenter = center || { lat: 46.603354, lng: 1.888334 }
+  const defaultCenter = center || MapsConfigService.getConfig().defaultCenter || { lat: 46.603354, lng: 1.888334 }
 
   useEffect(() => {
     loadGoogleMaps()
@@ -54,9 +55,19 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
       return
     }
 
-    // Charger Google Maps avec une clé publique de démonstration
+    // Récupérer la clé API depuis la configuration
+    const apiKey = MapsConfigService.getApiKey()
+    const isEnabled = MapsConfigService.isEnabled()
+
+    if (!isEnabled || !apiKey) {
+      setError("Google Maps n'est pas configuré. Utilisez la carte de secours.")
+      setIsLoaded(false)
+      return
+    }
+
+    // Charger Google Maps avec la clé API configurée
     const script = document.createElement("script")
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dOWTgkKSFRG-iI&libraries=places&callback=initMap`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`
     script.async = true
     script.defer = true
 
@@ -66,7 +77,7 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
     }
 
     script.onerror = () => {
-      setError("Impossible de charger Google Maps. Utilisation de la carte de secours.")
+      setError("Impossible de charger Google Maps. Vérifiez votre clé API.")
       setIsLoaded(false)
     }
 
@@ -77,17 +88,14 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
     if (!mapRef.current) return
 
     try {
+      const config = MapsConfigService.getConfig()
+      const mapOptions = MapsConfigService.getMapOptions()
+
       const mapInstance = new window.google.maps.Map(mapRef.current, {
-        zoom: 6,
-        center: defaultCenter,
+        zoom: mapOptions.zoom,
+        center: mapOptions.center,
         mapTypeId: "roadmap",
-        styles: [
-          {
-            featureType: "poi",
-            elementType: "labels",
-            stylers: [{ visibility: "off" }],
-          },
-        ],
+        styles: mapOptions.styles,
       })
 
       setMap(mapInstance)
@@ -104,17 +112,15 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
     // Supprimer les anciens marqueurs
     mapMarkers.forEach((marker) => marker.setMap(null))
 
+    const config = MapsConfigService.getConfig()
     const newMarkers = markers.map((markerData) => {
       const marker = new window.google.maps.Marker({
         position: markerData.position,
         map: map,
         title: markerData.title,
         icon: {
-          path:
-            markerData.type === "request"
-              ? window.google.maps.SymbolPath.CIRCLE
-              : window.google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-          fillColor: getMarkerColor(markerData),
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: getMarkerColor(markerData, config),
           fillOpacity: 1,
           strokeColor: "#ffffff",
           strokeWeight: 2,
@@ -139,20 +145,20 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
     }
   }
 
-  const getMarkerColor = (marker: MapMarker) => {
-    if (marker.type === "reparateur") return "#3b82f6" // blue
+  const getMarkerColor = (marker: MapMarker, config: any) => {
+    if (marker.type === "reparateur") return config.markerColors.reparateur
 
     switch (marker.data.urgency) {
       case "urgent":
-        return "#ef4444" // red
+        return config.markerColors.urgent
       case "same-day":
-        return "#f97316" // orange
+        return config.markerColors.sameDay
       case "this-week":
-        return "#eab308" // yellow
+        return config.markerColors.thisWeek
       case "flexible":
-        return "#22c55e" // green
+        return config.markerColors.flexible
       default:
-        return "#6b7280" // gray
+        return config.markerColors.request
     }
   }
 
@@ -199,7 +205,7 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
                 cx={Math.max(50, Math.min(750, x))}
                 cy={Math.max(50, Math.min(550, y))}
                 r="8"
-                fill={getMarkerColor(marker)}
+                fill={getMarkerColor(marker, MapsConfigService.getConfig())}
                 stroke="white"
                 strokeWidth="2"
                 className="cursor-pointer hover:scale-110 transition-transform"
@@ -212,7 +218,7 @@ export default function GoogleMap({ markers, onMarkerClick, height = "600px", ce
 
       <div className="absolute top-4 left-4 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
         <p className="text-yellow-800 text-sm font-medium">⚠️ Carte de secours</p>
-        <p className="text-yellow-700 text-xs">Google Maps non disponible</p>
+        <p className="text-yellow-700 text-xs">Google Maps non configuré</p>
       </div>
     </div>
   )

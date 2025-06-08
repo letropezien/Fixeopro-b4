@@ -27,6 +27,7 @@ import {
 import { StorageService } from "@/lib/storage"
 import { PromoCodeService, type PromoCode } from "@/lib/promo-codes"
 import PaymentGatewayConfig from "@/components/payment-gateway-config"
+import GoogleMapsConfigPanel from "@/components/google-maps-config"
 
 interface UserType {
   id: string
@@ -463,10 +464,11 @@ export default function AdminPage() {
 
         {/* Configuration */}
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
+            <TabsTrigger value="maps">Google Maps</TabsTrigger>
             <TabsTrigger value="promocodes">Codes Promo</TabsTrigger>
             <TabsTrigger value="platform">Plateforme</TabsTrigger>
             <TabsTrigger value="security">Sécurité</TabsTrigger>
@@ -711,6 +713,11 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Onglet Google Maps */}
+          <TabsContent value="maps">
+            <GoogleMapsConfigPanel />
           </TabsContent>
 
           {/* Onglet Codes Promo */}

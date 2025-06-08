@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Filter, Search, Wrench, Clock, User, MapPin, Lock, AlertCircle, RefreshCw } from "lucide-react"
-import SimpleMap from "@/components/simple-map"
+import GoogleMap from "@/components/google-map"
+import { MapsConfigService } from "@/lib/maps-config"
 
 export default function CartePage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -263,6 +264,11 @@ export default function CartePage() {
             {mapMarkers.length} marqueurs • {filteredRequests.length} demandes • {filteredReparateurs.length}{" "}
             réparateurs
           </div>
+          {!MapsConfigService.isEnabled() && (
+            <div className="mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-800 text-sm">
+              ⚠️ Google Maps n'est pas configuré. Contactez l'administrateur pour activer les cartes.
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
@@ -371,7 +377,7 @@ export default function CartePage() {
 
           {/* Carte */}
           <div className="lg:col-span-3">
-            <SimpleMap markers={mapMarkers} onMarkerClick={handleMarkerClick} height="700px" />
+            <GoogleMap markers={mapMarkers} onMarkerClick={handleMarkerClick} height="700px" />
 
             {/* Détails de l'élément sélectionné */}
             {selectedItem && (
