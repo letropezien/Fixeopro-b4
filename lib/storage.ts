@@ -11,7 +11,7 @@ export interface User {
   address?: string
   city?: string
   postalCode?: string
-  userType: "client" | "reparateur"
+  userType: "client" | "reparateur" | "admin"
   isEmailVerified: boolean
   createdAt: string
   subscription?: {
@@ -612,6 +612,10 @@ export class StorageService {
     return Promise.resolve()
   }
 
+  static isAdmin(user: User | null): boolean {
+    return user?.userType === "admin"
+  }
+
   // Initialisation des données de démonstration
   static initDemoData(): void {
     if (!isBrowser) return
@@ -690,6 +694,19 @@ export class StorageService {
               startDate: new Date().toISOString(),
               endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
             },
+          },
+          {
+            id: "admin_1",
+            email: "admin",
+            password: "admin",
+            firstName: "Administrateur",
+            lastName: "Système",
+            userType: "admin",
+            city: "Paris",
+            postalCode: "75001",
+            phone: "0000000000",
+            isEmailVerified: true,
+            createdAt: new Date().toISOString(),
           },
         ]
 

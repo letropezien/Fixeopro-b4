@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Menu, Wrench, User, Settings, LogOut, Bell } from "lucide-react"
+import { Menu, Wrench, User, Settings, LogOut, Bell, Shield } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { useRouter } from "next/navigation"
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userType, setUserType] = useState<"client" | "reparateur" | null>(null)
+  const [userType, setUserType] = useState<"client" | "reparateur" | "admin" | null>(null)
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
   const router = useRouter()
 
@@ -122,6 +122,15 @@ export default function Header() {
           >
             Contact
           </Link>
+          {userType === "admin" && (
+            <Link
+              href="/admin"
+              className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors flex items-center h-10"
+            >
+              <Shield className="h-4 w-4 mr-1" />
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Action Buttons */}
@@ -212,6 +221,14 @@ export default function Header() {
                       Paramètres
                     </Link>
                   </DropdownMenuItem>
+                  {userType === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="flex items-center text-red-600">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Administration
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Déconnexion
@@ -260,6 +277,14 @@ export default function Header() {
                   <Link href="/contact" className="block text-sm hover:text-blue-600">
                     Contact
                   </Link>
+                  {userType === "admin" && (
+                    <Link href="/admin" className="block text-sm text-red-600 hover:text-red-800 font-medium">
+                      <div className="flex items-center">
+                        <Shield className="h-4 w-4 mr-1" />
+                        Administration
+                      </div>
+                    </Link>
+                  )}
                 </div>
 
                 <div className="border-t pt-4 space-y-3">

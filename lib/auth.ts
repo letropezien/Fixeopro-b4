@@ -1,28 +1,25 @@
-import { getServerSession } from "next-auth"
+// Fichier de compatibilité pour simuler l'authentification
+// Nous n'utilisons pas next-auth mais notre propre système basé sur localStorage
 
-// Configuration de base pour next-auth
+// Fonction simulée pour la compatibilité avec le code existant
+export function getServerSession() {
+  // Cette fonction est appelée côté serveur, donc nous retournons null
+  // L'authentification réelle est gérée côté client avec StorageService
+  return Promise.resolve(null)
+}
+
+// Configuration factice pour la compatibilité
 export const authOptions = {
-  providers: [
-    // Nous utilisons une implémentation personnalisée basée sur localStorage
-    // mais nous gardons la structure compatible avec next-auth
-  ],
+  providers: [],
   callbacks: {
-    async session({ session, token }) {
-      return session
+    async session() {
+      return null
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.user = user
-      }
-      return token
+    async jwt() {
+      return null
     },
   },
   pages: {
     signIn: "/connexion",
   },
-}
-
-// Fonction pour obtenir la session côté serveur (simulée)
-export function getSession() {
-  return getServerSession(authOptions)
 }

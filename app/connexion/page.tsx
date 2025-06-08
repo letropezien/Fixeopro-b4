@@ -50,11 +50,24 @@ export default function ConnexionPage() {
         return
       }
 
+      // Authentification spéciale pour l'admin
+      if (loginData.email === "admin" && loginData.password === "admin") {
+        const adminUser = StorageService.getUserByEmail("admin")
+        if (adminUser) {
+          StorageService.setCurrentUser(adminUser)
+          router.push("/admin")
+          window.location.reload()
+          return
+        }
+      }
+
       const user = StorageService.authenticateUser(loginData.email, loginData.password)
 
       if (user) {
         // Redirection selon le type d'utilisateur
-        if (user.userType === "reparateur") {
+        if (user.userType === "admin") {
+          router.push("/admin")
+        } else if (user.userType === "reparateur") {
           router.push("/profil-pro")
         } else {
           router.push("/profil")
@@ -255,6 +268,9 @@ export default function ConnexionPage() {
                     </p>
                     <p>
                       <strong>Réparateur :</strong> reparateur@demo.com / demo123
+                    </p>
+                    <p>
+                      <strong>Admin :</strong> admin / admin
                     </p>
                   </div>
                 </div>

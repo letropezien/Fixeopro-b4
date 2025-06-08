@@ -130,6 +130,12 @@ export default function AdminPage() {
     "all" | "open" | "in_progress" | "completed" | "cancelled"
   >("all")
 
+  const [adminPasswordData, setAdminPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
   useEffect(() => {
     loadConfiguration()
     loadData()
@@ -349,6 +355,40 @@ export default function AdminPage() {
     }
   }
 
+  const handleChangeAdminPassword = () => {
+    if (!adminPasswordData.currentPassword || !adminPasswordData.newPassword || !adminPasswordData.confirmPassword) {
+      alert("Veuillez remplir tous les champs")
+      return
+    }
+
+    if (adminPasswordData.newPassword !== adminPasswordData.confirmPassword) {
+      alert("Les nouveaux mots de passe ne correspondent pas")
+      return
+    }
+
+    if (adminPasswordData.newPassword.length < 6) {
+      alert("Le nouveau mot de passe doit contenir au moins 6 caractères")
+      return
+    }
+
+    const currentUser = StorageService.getCurrentUser()
+    if (!currentUser || currentUser.password !== adminPasswordData.currentPassword) {
+      alert("Mot de passe actuel incorrect")
+      return
+    }
+
+    // Mettre à jour le mot de passe
+    currentUser.password = adminPasswordData.newPassword
+    StorageService.saveUser(currentUser)
+
+    alert("Mot de passe administrateur mis à jour avec succès")
+    setAdminPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -465,7 +505,7 @@ export default function AdminPage() {
 
         {/* Configuration */}
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="payments">Paiements</TabsTrigger>
@@ -474,6 +514,7 @@ export default function AdminPage() {
             <TabsTrigger value="promocodes">Codes Promo</TabsTrigger>
             <TabsTrigger value="platform">Plateforme</TabsTrigger>
             <TabsTrigger value="security">Sécurité</TabsTrigger>
+            <TabsTrigger value="admin">Admin</TabsTrigger>
           </TabsList>
 
           {/* Onglet Utilisateurs */}
@@ -971,6 +1012,60 @@ export default function AdminPage() {
                       })
                     }
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Onglet Admin */}
+          <TabsContent value="admin">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Gestion du compte administrateur
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Changer le mot de passe administrateur</h3>
+                  <div className="grid md:grid-cols-1 gap-4 max-w-md">
+                    <div>
+                      <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={adminPasswordData.currentPassword}
+                        onChange={(e) =>
+                          setAdminPasswordData({ ...adminPasswordData, currentPassword: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={adminPasswordData.newPassword}
+                        onChange={(e) => setAdminPasswordData({ ...adminPasswordData, newPassword: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={adminPasswordData.confirmPassword}
+                        onChange={(e) =>
+                          setAdminPasswordData({ ...adminPasswordData, confirmPassword: e.target.value })
+                        }
+                      />
+                    </div>
+                    <Button onClick={handleChangeAdminPassword} className="bg-red-600 hover:bg-red-700">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Changer le mot de passe
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
