@@ -1,296 +1,398 @@
 // Vérifier si nous sommes dans un environnement navigateur
 const isBrowser = typeof window !== "undefined"
 
+export interface User {
+  id: string
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  phone?: string
+  address?: string
+  city?: string
+  postalCode?: string
+  userType: "client" | "reparateur"
+  isEmailVerified: boolean
+  createdAt: string
+  subscription?: {
+    plan: string
+    status: "active" | "inactive" | "trial"
+    startDate: string
+    endDate: string
+    paymentMethod?: string
+    transactionId?: string
+  }
+  professional?: {
+    companyName?: string
+    siret?: string
+    experience: string
+    specialties: string[]
+    description: string
+    website?: string
+  }
+  avatar?: string
+}
+
+export interface RepairRequest {
+  id: string
+  clientId: string
+  category: string
+  urgency: string
+  urgencyLabel: string
+  title: string
+  description: string
+  budget: string
+  city: string
+  postalCode: string
+  address?: string
+  createdAt: string
+  status: "open" | "in_progress" | "completed" | "cancelled"
+  responses: number
+  client: {
+    firstName: string
+    lastName: string
+    initials: string
+    email?: string
+    phone?: string
+  }
+  coordinates?: {
+    lat: number
+    lng: number
+  }
+}
+
 export class StorageService {
-  // Utilisateurs
-  static getUsers() {
+  // Gestion des utilisateurs
+  static getUsers(): User[] {
     if (!isBrowser) return []
-    const users = localStorage.getItem("users")
-    return users ? JSON.parse(users) : []
+    try {
+      const users = localStorage.getItem("fixeopro_users")
+      return users ? JSON.parse(users) : []
+    } catch (error) {
+      console.error("Erreur lors de la récupération des utilisateurs:", error)
+      return []
+    }
   }
 
-  static saveUser(user: any) {
-    if (!isBrowser) return
+  static saveUser(user: User): User {
+    if (!isBrowser) return user
+    try {
+      const users = this.getUsers()
+
+      // Générer un ID unique si nécessaire
+      if (!user.id) {
+        user.id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+
+      // Ajouter la date de création si elle n'existe pas
+      if (!user.createdAt) {
+        user.createdAt = new Date().toISOString()
+      }
+
+      // Pour les réparateurs, ajouter une période d'essai par défaut
+      if (user.userType === "reparateur" && !user.subscription) {
+        const trialEndDate = new Date()
+        trialEndDate.setDate(trialEndDate.getDate() + 15)
+
+        user.subscription = {
+          plan: "trial",
+          status: "trial",
+          startDate: new Date().toISOString(),
+          endDate: trialEndDate.toISOString(),
+        }
+      }
+
+      const existingIndex = users.findIndex((u) => u.id === user.id)
+      if (existingIndex >= 0) {
+        users[existingIndex] = user
+      } else {
+        users.push(user)
+      }
+
+      localStorage.setItem("fixeopro_users", JSON.stringify(users))
+      return user
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde de l'utilisateur:", error)
+      return user
+    }
+  }
+
+  static getUserByEmail(email: string): User | null {
     const users = this.getUsers()
-
-    // Générer un ID unique si l'utilisateur n'en a pas
-    if (!user.id) {
-      user.id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    }
-
-    // Si l'utilisateur est un réparateur et qu'il vient de s'inscrire, ajouter la période d'essai
-    if (user.userType === "reparateur" && !user.subscription) {
-      user.subscription = {
-        plan: "trial",
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 jours
-        isActive: true,
-      }
-    }
-
-    // Vérifier si l'utilisateur existe déjà
-    const existingUserIndex = users.findIndex((u: any) => u.id === user.id)
-
-    if (existingUserIndex >= 0) {
-      // Mettre à jour l'utilisateur existant
-      users[existingUserIndex] = { ...users[existingUserIndex], ...user }
-    } else {
-      // Ajouter le nouvel utilisateur
-      users.push(user)
-    }
-
-    localStorage.setItem("users", JSON.stringify(users))
-    return user
+    return users.find((u) => u.email === email) || null
   }
 
-  static getUserByEmail(email: string) {
-    if (!isBrowser) return null
+  static getUserById(id: string): User | null {
     const users = this.getUsers()
-    return users.find((user: any) => user.email === email) || null
+    return users.find((u) => u.id === id) || null
   }
 
-  static getUserById(id: string) {
-    if (!isBrowser) return null
-    const users = this.getUsers()
-    return users.find((user: any) => user.id === id) || null
-  }
-
-  static getCurrentUser() {
-    if (!isBrowser) return null
-    const currentUserId = localStorage.getItem("currentUserId")
-    if (!currentUserId) return null
-    return this.getUserById(currentUserId)
-  }
-
-  static setCurrentUser(userId: string) {
-    if (!isBrowser) return
-    localStorage.setItem("currentUserId", userId)
-  }
-
-  static logout() {
-    if (!isBrowser) return
-    localStorage.removeItem("currentUserId")
-  }
-
-  static updateUserSubscription(userId: string, subscription: any) {
-    if (!isBrowser) return
-    const user = this.getUserById(userId)
-    if (user) {
-      user.subscription = subscription
-      this.saveUser(user)
-    }
-  }
-
-  static isSubscriptionActive(user: any) {
-    if (!user || !user.subscription) return false
-
-    // Si c'est un abonnement payant actif
-    if (user.subscription.isActive && user.subscription.plan !== "trial") {
-      return true
-    }
-
-    // Si c'est une période d'essai, vérifier qu'elle n'est pas expirée
-    if (user.subscription.plan === "trial") {
-      const endDate = new Date(user.subscription.endDate)
-      return endDate > new Date()
-    }
-
-    return false
-  }
-
-  // Demandes de réparation
-  static getRepairRequests() {
-    if (!isBrowser) return []
-    const requests = localStorage.getItem("repairRequests")
-    return requests ? JSON.parse(requests) : []
-  }
-
-  static saveRepairRequest(request: any) {
-    if (!isBrowser) return
-    const requests = this.getRepairRequests()
-
-    // Générer un ID unique si la demande n'en a pas
-    if (!request.id) {
-      request.id = `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    }
-
-    // Ajouter la date de création si elle n'existe pas
-    if (!request.createdAt) {
-      request.createdAt = new Date().toISOString()
-    }
-
-    // Initialiser les réponses si elles n'existent pas
-    if (!request.responses) {
-      request.responses = []
-    }
-
-    // Vérifier si la demande existe déjà
-    const existingRequestIndex = requests.findIndex((r: any) => r.id === request.id)
-
-    if (existingRequestIndex >= 0) {
-      // Mettre à jour la demande existante
-      requests[existingRequestIndex] = { ...requests[existingRequestIndex], ...request }
-    } else {
-      // Ajouter la nouvelle demande
-      requests.push(request)
-    }
-
-    localStorage.setItem("repairRequests", JSON.stringify(requests))
-    return request
-  }
-
-  static getRepairRequestById(id: string) {
-    if (!isBrowser) return null
-    const requests = this.getRepairRequests()
-    return requests.find((request: any) => request.id === id) || null
-  }
-
-  static getRepairRequestsByUserId(userId: string) {
-    if (!isBrowser) return []
-    const requests = this.getRepairRequests()
-    return requests.filter((request: any) => request.userId === userId)
-  }
-
-  static addResponseToRequest(requestId: string, response: any) {
-    if (!isBrowser) return
-    const request = this.getRepairRequestById(requestId)
-    if (request) {
-      if (!response.id) {
-        response.id = `response_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      }
-      if (!response.createdAt) {
-        response.createdAt = new Date().toISOString()
-      }
-
-      if (!request.responses) {
-        request.responses = []
-      }
-
-      request.responses.push(response)
-      this.saveRepairRequest(request)
-      return response
+  static authenticateUser(email: string, password: string): User | null {
+    const user = this.getUserByEmail(email)
+    if (user && user.password === password) {
+      this.setCurrentUser(user)
+      return user
     }
     return null
   }
 
-  // Données de démonstration
-  static initDemoData() {
+  // Gestion de l'utilisateur connecté
+  static getCurrentUser(): User | null {
+    if (!isBrowser) return null
+    try {
+      const currentUserId = localStorage.getItem("fixeopro_current_user_id")
+      if (!currentUserId) return null
+      return this.getUserById(currentUserId)
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'utilisateur actuel:", error)
+      return null
+    }
+  }
+
+  static setCurrentUser(user: User): void {
     if (!isBrowser) return
+    try {
+      localStorage.setItem("fixeopro_current_user_id", user.id)
+    } catch (error) {
+      console.error("Erreur lors de la définition de l'utilisateur actuel:", error)
+    }
+  }
 
-    // Vérifier si des données existent déjà
-    const users = this.getUsers()
+  static logout(): void {
+    if (!isBrowser) return
+    try {
+      localStorage.removeItem("fixeopro_current_user_id")
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error)
+    }
+  }
+
+  // Gestion des demandes de réparation
+  static getRepairRequests(): RepairRequest[] {
+    if (!isBrowser) return []
+    try {
+      const requests = localStorage.getItem("fixeopro_repair_requests")
+      return requests ? JSON.parse(requests) : []
+    } catch (error) {
+      console.error("Erreur lors de la récupération des demandes:", error)
+      return []
+    }
+  }
+
+  static saveRepairRequest(request: RepairRequest): RepairRequest {
+    if (!isBrowser) return request
+    try {
+      const requests = this.getRepairRequests()
+
+      // Générer un ID unique si nécessaire
+      if (!request.id) {
+        request.id = `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+
+      // Ajouter la date de création si elle n'existe pas
+      if (!request.createdAt) {
+        request.createdAt = new Date().toISOString()
+      }
+
+      // Ajouter des coordonnées simulées si elles n'existent pas
+      if (!request.coordinates) {
+        request.coordinates = this.generateCoordinatesForCity(request.city)
+      }
+
+      const existingIndex = requests.findIndex((r) => r.id === request.id)
+      if (existingIndex >= 0) {
+        requests[existingIndex] = request
+      } else {
+        requests.push(request)
+      }
+
+      localStorage.setItem("fixeopro_repair_requests", JSON.stringify(requests))
+      return request
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde de la demande:", error)
+      return request
+    }
+  }
+
+  static getRepairRequestsByClient(clientId: string): RepairRequest[] {
     const requests = this.getRepairRequests()
+    return requests.filter((r) => r.clientId === clientId)
+  }
 
-    if (users.length === 0) {
-      // Créer des utilisateurs de démonstration
-      const demoUsers = [
-        {
-          id: "user_client_1",
-          firstName: "Jean",
-          lastName: "Dupont",
-          email: "client@example.com",
-          password: "password123",
-          userType: "client",
-          city: "Paris",
-          postalCode: "75001",
-          phone: "0123456789",
-        },
-        {
-          id: "user_reparateur_1",
-          firstName: "Thomas",
-          lastName: "Bernard",
-          email: "pro@example.com",
-          password: "password123",
-          userType: "reparateur",
-          city: "Paris",
-          postalCode: "75002",
-          phone: "0123456788",
-          professional: {
-            companyName: "Répar'Tout",
-            siret: "12345678901234",
-            description: "Spécialiste en réparation électroménager depuis 10 ans",
-            experience: "10 ans",
-            specialties: ["électroménager", "électricité"],
-          },
-          subscription: {
-            plan: "trial",
-            startDate: new Date().toISOString(),
-            endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-            isActive: true,
-          },
-        },
-      ]
+  static getRepairRequestById(id: string): RepairRequest | null {
+    const requests = this.getRepairRequests()
+    return requests.find((r) => r.id === id) || null
+  }
 
-      demoUsers.forEach((user) => this.saveUser(user))
+  // Générer des coordonnées pour une ville
+  static generateCoordinatesForCity(city: string): { lat: number; lng: number } {
+    const cityCoordinates: { [key: string]: { lat: number; lng: number } } = {
+      paris: { lat: 48.8566, lng: 2.3522 },
+      lyon: { lat: 45.764, lng: 4.8357 },
+      marseille: { lat: 43.2965, lng: 5.3698 },
+      toulouse: { lat: 43.6047, lng: 1.4442 },
+      nice: { lat: 43.7102, lng: 7.262 },
+      nantes: { lat: 47.2184, lng: -1.5536 },
+      strasbourg: { lat: 48.5734, lng: 7.7521 },
+      montpellier: { lat: 43.611, lng: 3.8767 },
+      bordeaux: { lat: 44.8378, lng: -0.5792 },
+      lille: { lat: 50.6292, lng: 3.0573 },
     }
 
-    if (requests.length === 0) {
-      // Créer des demandes de réparation de démonstration
-      const demoRequests = [
-        {
-          id: "request_1",
-          title: "Réparation machine à laver",
-          description: "Ma machine à laver ne démarre plus et fait un bruit étrange",
-          category: "électroménager",
-          city: "Paris",
-          postalCode: "75001",
-          urgency: "urgent",
-          urgencyLabel: "Urgent",
-          userId: "user_client_1",
-          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
-          createdAt: new Date().toISOString(),
-          responses: [],
-        },
-        {
-          id: "request_2",
-          title: "Problème de plomberie",
-          description: "Fuite sous l'évier de la cuisine",
-          category: "plomberie",
-          city: "Lyon",
-          postalCode: "69001",
-          urgency: "same-day",
-          urgencyLabel: "Aujourd'hui",
-          userId: "user_client_1",
-          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          responses: [],
-        },
-        {
-          id: "request_3",
-          title: "Écran d'ordinateur cassé",
-          description: "L'écran de mon ordinateur portable est fissuré",
-          category: "informatique",
-          city: "Marseille",
-          postalCode: "13001",
-          urgency: "this-week",
-          urgencyLabel: "Cette semaine",
-          userId: "user_client_1",
-          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
-          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          responses: [],
-        },
-        {
-          id: "request_4",
-          title: "Réparation iPhone",
-          description: "Écran cassé sur iPhone 13",
-          category: "téléphonie",
-          city: "Toulouse",
-          postalCode: "31000",
-          urgency: "flexible",
-          urgencyLabel: "Flexible",
-          userId: "user_client_1",
-          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
-          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          responses: [],
-        },
-      ]
+    const cityKey = city.toLowerCase().replace(/\s+/g, "")
+    const baseCoords = cityCoordinates[cityKey] || { lat: 46.2276, lng: 2.2137 }
 
-      demoRequests.forEach((request) => this.saveRepairRequest(request))
+    // Ajouter une variation aléatoire pour éviter la superposition
+    return {
+      lat: baseCoords.lat + (Math.random() - 0.5) * 0.1,
+      lng: baseCoords.lng + (Math.random() - 0.5) * 0.1,
+    }
+  }
+
+  // Vérification des abonnements
+  static isInTrialPeriod(user: User): boolean {
+    if (!user.subscription || user.subscription.status !== "trial") return false
+    const expiresAt = new Date(user.subscription.endDate)
+    return expiresAt > new Date()
+  }
+
+  static canContactClients(user: User): boolean {
+    if (user.userType !== "reparateur") return false
+    if (user.subscription?.status === "active") return true
+    return this.isInTrialPeriod(user)
+  }
+
+  // Mise à jour de l'abonnement après paiement
+  static updateSubscription(userId: string, subscriptionData: any): boolean {
+    try {
+      const user = this.getUserById(userId)
+      if (!user) return false
+
+      user.subscription = {
+        ...user.subscription,
+        ...subscriptionData,
+        status: "active",
+      }
+
+      this.saveUser(user)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour de l'abonnement:", error)
+      return false
+    }
+  }
+
+  // Initialisation des données de démonstration
+  static initDemoData(): void {
+    if (!isBrowser) return
+
+    try {
+      const users = this.getUsers()
+      const requests = this.getRepairRequests()
+
+      // Créer des utilisateurs de démonstration si aucun n'existe
+      if (users.length === 0) {
+        const demoUsers: User[] = [
+          {
+            id: "demo_client_1",
+            email: "client@demo.com",
+            password: "demo123",
+            firstName: "Jean",
+            lastName: "Dupont",
+            userType: "client",
+            city: "Paris",
+            postalCode: "75001",
+            phone: "0123456789",
+            isEmailVerified: true,
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "demo_reparateur_1",
+            email: "reparateur@demo.com",
+            password: "demo123",
+            firstName: "Thomas",
+            lastName: "Martin",
+            userType: "reparateur",
+            city: "Lyon",
+            postalCode: "69001",
+            phone: "0123456788",
+            isEmailVerified: true,
+            createdAt: new Date().toISOString(),
+            professional: {
+              companyName: "Répar'Tout",
+              siret: "12345678901234",
+              experience: "10 ans",
+              specialties: ["électroménager", "électricité"],
+              description: "Spécialiste en réparation électroménager depuis 10 ans",
+            },
+            subscription: {
+              plan: "trial",
+              status: "trial",
+              startDate: new Date().toISOString(),
+              endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          },
+        ]
+
+        demoUsers.forEach((user) => this.saveUser(user))
+      }
+
+      // Créer des demandes de démonstration si aucune n'existe
+      if (requests.length === 0) {
+        const demoRequests: RepairRequest[] = [
+          {
+            id: "demo_request_1",
+            clientId: "demo_client_1",
+            title: "Réparation machine à laver",
+            description: "Ma machine à laver ne démarre plus",
+            category: "électroménager",
+            urgency: "urgent",
+            urgencyLabel: "Urgent",
+            budget: "100-200€",
+            city: "Paris",
+            postalCode: "75001",
+            status: "open",
+            responses: 0,
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date().toISOString(),
+            coordinates: { lat: 48.8566, lng: 2.3522 },
+          },
+          {
+            id: "demo_request_2",
+            clientId: "demo_client_1",
+            title: "Problème de plomberie",
+            description: "Fuite sous l'évier",
+            category: "plomberie",
+            urgency: "same-day",
+            urgencyLabel: "Aujourd'hui",
+            budget: "50-100€",
+            city: "Lyon",
+            postalCode: "69001",
+            status: "open",
+            responses: 0,
+            client: {
+              firstName: "Jean",
+              lastName: "Dupont",
+              initials: "JD",
+            },
+            createdAt: new Date().toISOString(),
+            coordinates: { lat: 45.764, lng: 4.8357 },
+          },
+        ]
+
+        demoRequests.forEach((request) => this.saveRepairRequest(request))
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'initialisation des données de démonstration:", error)
     }
   }
 }
 
-// Initialiser les données de démonstration si nous sommes dans un environnement navigateur
+// Initialiser les données de démonstration au chargement
 if (isBrowser) {
   StorageService.initDemoData()
 }
