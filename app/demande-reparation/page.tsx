@@ -35,6 +35,10 @@ export default function DemandeReparationPage() {
     photos: [],
   })
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<string[]>([])
+  const [termsAccepted, setTermsAccepted] = useState(false)
+
   const categories = [
     "Électroménager",
     "Informatique",
@@ -55,8 +59,86 @@ export default function DemandeReparationPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Demande soumise:", formData)
-    // Ici on enverrait les données au backend
+
+    // Validation des champs requis
+    if (!formData.category) {
+      alert("Veuillez sélectionner une catégorie")
+      return
+    }
+
+    if (!formData.urgency) {
+      alert("Veuillez sélectionner un niveau d'urgence")
+      return
+    }
+
+    if (!formData.description.trim()) {
+      alert("Veuillez décrire votre problème")
+      return
+    }
+
+    if (!formData.contact.city.trim()) {
+      alert("Veuillez indiquer votre ville")
+      return
+    }
+
+    if (!formData.contact.postalCode.trim()) {
+      alert("Veuillez indiquer votre code postal")
+      return
+    }
+
+    if (!formData.contact.firstName.trim()) {
+      alert("Veuillez indiquer votre prénom")
+      return
+    }
+
+    if (!formData.contact.lastName.trim()) {
+      alert("Veuillez indiquer votre nom")
+      return
+    }
+
+    if (!formData.contact.email.trim()) {
+      alert("Veuillez indiquer votre email")
+      return
+    }
+
+    if (!formData.contact.phone.trim()) {
+      alert("Veuillez indiquer votre téléphone")
+      return
+    }
+
+    if (!termsAccepted) {
+      alert("Veuillez accepter les conditions d'utilisation")
+      return
+    }
+
+    // Simulation d'envoi des données
+    console.log("Demande soumise avec succès:", formData)
+
+    // Afficher un message de succès
+    alert("Votre demande a été enregistrée avec succès ! Vous recevrez une réponse dans les plus brefs délais.")
+
+    // Rediriger vers une page de confirmation ou réinitialiser le formulaire
+    // window.location.href = "/confirmation"
+
+    // Ou réinitialiser le formulaire
+    setFormData({
+      category: "",
+      urgency: "",
+      description: "",
+      location: "",
+      contact: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        address: "",
+        city: "",
+        postalCode: "",
+      },
+      budget: "",
+      availability: [],
+      photos: [],
+    })
   }
 
   return (
@@ -303,7 +385,11 @@ export default function DemandeReparationPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2 mb-6">
-                <Checkbox id="terms" />
+                <Checkbox
+                  id="terms"
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                />
                 <Label htmlFor="terms" className="text-sm">
                   J'accepte les{" "}
                   <Link href="/conditions" className="text-blue-600 hover:underline">
@@ -324,8 +410,8 @@ export default function DemandeReparationPage() {
                 </p>
               </div>
 
-              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700">
-                Publier ma demande gratuitement
+              <Button type="submit" size="lg" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                {isSubmitting ? "Envoi en cours..." : "Publier ma demande gratuitement"}
               </Button>
             </CardContent>
           </Card>
