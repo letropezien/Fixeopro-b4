@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { StorageService } from "@/lib/storage"
+// Importer le nouveau composant de paiement
+import PaymentIntegration from "@/components/payment-integration"
 
 export default function DevenirReparateurPage() {
   const router = useRouter()
@@ -41,6 +43,8 @@ export default function DevenirReparateurPage() {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
+  // Ajouter l'état pour le modal de paiement
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   const specialties = [
     "Électroménager",
@@ -90,12 +94,13 @@ export default function DevenirReparateurPage() {
     },
   ]
 
+  // Modifier la fonction handleSubmit pour ne pas créer l'abonnement immédiatement
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // Validation des champs requis
+      // Validation des champs requis (garder la validation existante)
       if (!formData.personal.firstName.trim()) {
         alert("Veuillez indiquer votre prénom")
         setIsSubmitting(false)
@@ -162,11 +167,11 @@ export default function DevenirReparateurPage() {
         return
       }
 
-      // Créer le compte réparateur
+      // Créer le compte réparateur SANS abonnement payant
       const newUser = {
         id: StorageService.generateId(),
         email: formData.personal.email,
-        password: "temp_password", // Mot de passe temporaire
+        password: "temp_password",
         firstName: formData.personal.firstName,
         lastName: formData.personal.lastName,
         phone: formData.personal.phone,
@@ -177,11 +182,6 @@ export default function DevenirReparateurPage() {
         isEmailVerified: false,
         createdAt: new Date().toISOString(),
         avatar: formData.avatar,
-        subscription: {
-          plan: formData.subscription,
-          status: "trial" as const, // 15 jours d'essai gratuit
-          expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-        },
         professional: {
           companyName: formData.professional.companyName,
           siret: formData.professional.siret,
@@ -190,27 +190,34 @@ export default function DevenirReparateurPage() {
           description: formData.professional.description,
           website: formData.professional.website,
         },
+        // Période d'essai gratuit de 15 jours
+        subscription: {
+          plan: "trial",
+          status: "trial",
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        },
       }
 
       StorageService.saveUser(newUser)
-      StorageService.setCurrentUser(newUser)
-
-      // Envoyer email de vérification
-      await StorageService.sendVerificationEmail(newUser.email, newUser.firstName)
+      StorageService.setCurrentUser(newUser.id)
 
       console.log("Inscription réparateur:", newUser)
-      alert(
-        "Votre inscription a été enregistrée avec succès ! Un email de confirmation vous a été envoyé. Vous bénéficiez de 15 jours d'essai gratuit.",
-      )
 
-      // Redirection vers le profil professionnel
-      router.push("/profil-pro")
+      // Ouvrir le modal de paiement au lieu de rediriger
+      setShowPaymentModal(true)
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error)
       alert("Une erreur est survenue. Veuillez réessayer.")
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Ajouter la fonction de succès de paiement
+  const handlePaymentSuccess = () => {
+    alert("Votre abonnement a été activé avec succès ! Bienvenue sur Fixeo.pro")
+    router.push("/profil-pro")
   }
 
   const handleSpecialtyChange = (specialty: string, checked: boolean) => {
@@ -226,8 +233,11 @@ export default function DevenirReparateurPage() {
       setFormData({
         ...formData,
         professional: {
-          ...formData.professional,
-          specialties: formData.professional.specialties.filter((s) => s !== specialty),
+          ...formData,
+          professional: {
+            ...formData.professional,
+            specialties: formData.professional.specialties.filter((s) => s !== specialty),
+          },
         },
       })
     }
@@ -656,6 +666,16 @@ export default function DevenirReparateurPage() {
           </div>
         </div>
       </div>
+      {/* Ajouter le modal de paiement avant la fermeture du div principal */}
+      {showPaymentModal && (
+        <PaymentIntegration
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          plan={subscriptionPlans.find((p) => p.id === formData.subscription) || subscriptionPlans[1]}
+          userId={StorageService.getCurrentUser()?.id || ""}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   )
 }

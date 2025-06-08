@@ -7,29 +7,54 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Settings, CreditCard, Users, FileText, DollarSign, TrendingUp } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import {
+  Settings,
+  CreditCard,
+  Users,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Shield,
+  Database,
+  Bell,
+  Globe,
+  Save,
+  RefreshCw,
+} from "lucide-react"
 
 export default function AdminPage() {
   const [adminConfig, setAdminConfig] = useState({
     paypal: {
       clientId: "",
       clientSecret: "",
-      environment: "sandbox", // sandbox ou production
+      environment: "sandbox",
+      enabled: false,
     },
     stripe: {
       publishableKey: "",
       secretKey: "",
       webhookSecret: "",
+      enabled: false,
     },
     platform: {
-      commission: 5, // Pourcentage de commission
+      siteName: "Fixeo.pro",
+      commission: 5,
       currency: "EUR",
-      taxRate: 20, // TVA en pourcentage
+      taxRate: 20,
+      trialDays: 15,
+      supportEmail: "contact@fixeo.pro",
     },
     notifications: {
       emailEnabled: true,
       smsEnabled: false,
       webhookUrl: "",
+      slackWebhook: "",
+    },
+    security: {
+      requireEmailVerification: true,
+      maxLoginAttempts: 5,
+      sessionTimeout: 24,
     },
   })
 
@@ -39,18 +64,27 @@ export default function AdminPage() {
     totalRequests: 0,
     monthlyRevenue: 0,
     activeSubscriptions: 0,
+    trialUsers: 0,
   })
 
-  useEffect(() => {
-    // Charger la configuration depuis le localStorage
-    const savedConfig = localStorage.getItem("admin_config")
-    if (savedConfig) {
-      setAdminConfig(JSON.parse(savedConfig))
-    }
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
 
-    // Calculer les statistiques
+  useEffect(() => {
+    loadConfiguration()
     calculateStats()
   }, [])
+
+  const loadConfiguration = () => {
+    try {
+      const savedConfig = localStorage.getItem("fixeo_admin_config")
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig)
+        setAdminConfig({ ...adminConfig, ...parsed })
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement de la configuration:", error)
+    }
+  }
 
   const calculateStats = () => {
     try {
@@ -59,20 +93,17 @@ export default function AdminPage() {
 
       const reparateurs = users.filter((user: any) => user.userType === "reparateur")
       const activeSubscriptions = reparateurs.filter(
-        (rep: any) => rep.subscription && (rep.subscription.status === "active" || rep.subscription.status === "trial"),
+        (rep: any) => rep.subscription && rep.subscription.status === "active",
       )
+      const trialUsers = reparateurs.filter((rep: any) => rep.subscription && rep.subscription.status === "trial")
 
-      // Calculer le revenu mensuel estimé
       const monthlyRevenue = activeSubscriptions.reduce((total: number, rep: any) => {
-        if (rep.subscription.status === "active") {
-          const planPrices: { [key: string]: number } = {
-            basic: 29,
-            pro: 59,
-            premium: 99,
-          }
-          return total + (planPrices[rep.subscription.plan] || 0)
+        const planPrices: { [key: string]: number } = {
+          basic: 29,
+          pro: 59,
+          premium: 99,
         }
-        return total
+        return total + (planPrices[rep.subscription.plan] || 0)
       }, 0)
 
       setStats({
@@ -81,45 +112,124 @@ export default function AdminPage() {
         totalRequests: requests.length,
         monthlyRevenue,
         activeSubscriptions: activeSubscriptions.length,
+        trialUsers: trialUsers.length,
       })
     } catch (error) {
       console.error("Erreur lors du calcul des statistiques:", error)
     }
   }
 
-  const saveConfig = () => {
-    localStorage.setItem("admin_config", JSON.stringify(adminConfig))
-    alert("Configuration sauvegardée avec succès !")
+  const saveConfiguration = async () => {
+    setSaveStatus("saving")
+    try {
+      localStorage.setItem("fixeo_admin_config", JSON.stringify(adminConfig))
+      setSaveStatus("saved")
+      setTimeout(() => setSaveStatus("idle"), 2000)
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde:", error)
+      setSaveStatus("error")
+      setTimeout(() => setSaveStatus("idle"), 2000)
+    }
   }
 
-  const resetConfig = () => {
-    if (confirm("Êtes-vous sûr de vouloir réinitialiser la configuration ?")) {
-      localStorage.removeItem("admin_config")
-      setAdminConfig({
-        paypal: { clientId: "", clientSecret: "", environment: "sandbox" },
-        stripe: { publishableKey: "", secretKey: "", webhookSecret: "" },
-        platform: { commission: 5, currency: "EUR", taxRate: 20 },
-        notifications: { emailEnabled: true, smsEnabled: false, webhookUrl: "" },
+  const testPayPalConnection = async () => {
+    if (!adminConfig.paypal.clientId) {
+      alert("Veuillez d'abord configurer votre Client ID PayPal")
+      return
+    }
+
+    try {
+      // Test de connexion PayPal (simulation)
+      const response = await fetch(`https://api.${adminConfig.paypal.environment}.paypal.com/v1/oauth2/token`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-Language": "en_US",
+          Authorization: `Basic ${btoa(adminConfig.paypal.clientId + ":" + adminConfig.paypal.clientSecret)}`,
+        },
+        body: "grant_type=client_credentials",
       })
+
+      if (response.ok) {
+        alert("✅ Connexion PayPal réussie !")
+      } else {
+        alert("❌ Erreur de connexion PayPal. Vérifiez vos identifiants.")
+      }
+    } catch (error) {
+      alert("❌ Impossible de tester la connexion PayPal")
+    }
+  }
+
+  const testStripeConnection = async () => {
+    if (!adminConfig.stripe.publishableKey) {
+      alert("Veuillez d'abord configurer votre clé publique Stripe")
+      return
+    }
+
+    // Test simple de validation de la clé
+    if (adminConfig.stripe.publishableKey.startsWith("pk_")) {
+      alert("✅ Clé Stripe valide !")
+    } else {
+      alert("❌ Format de clé Stripe invalide")
+    }
+  }
+
+  const resetConfiguration = () => {
+    if (confirm("⚠️ Êtes-vous sûr de vouloir réinitialiser toute la configuration ?")) {
+      localStorage.removeItem("fixeo_admin_config")
+      setAdminConfig({
+        paypal: { clientId: "", clientSecret: "", environment: "sandbox", enabled: false },
+        stripe: { publishableKey: "", secretKey: "", webhookSecret: "", enabled: false },
+        platform: {
+          siteName: "Fixeo.pro",
+          commission: 5,
+          currency: "EUR",
+          taxRate: 20,
+          trialDays: 15,
+          supportEmail: "contact@fixeo.pro",
+        },
+        notifications: { emailEnabled: true, smsEnabled: false, webhookUrl: "", slackWebhook: "" },
+        security: { requireEmailVerification: true, maxLoginAttempts: 5, sessionTimeout: 24 },
+      })
+      alert("Configuration réinitialisée")
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Administration FixeoPro</h1>
-          <p className="text-gray-600">Gérez la configuration de la plateforme et les paramètres de paiement</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Administration Fixeo.pro</h1>
+              <p className="text-gray-600">Panneau de configuration de la plateforme</p>
+            </div>
+            <div className="flex space-x-3">
+              <Button variant="outline" onClick={calculateStats}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualiser
+              </Button>
+              <Button
+                onClick={saveConfiguration}
+                disabled={saveStatus === "saving"}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveStatus === "saving" ? "Sauvegarde..." : saveStatus === "saved" ? "Sauvegardé !" : "Sauvegarder"}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
                 <Users className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Utilisateurs totaux</p>
+                  <p className="text-sm font-medium text-gray-600">Utilisateurs</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
                 </div>
               </div>
@@ -155,8 +265,20 @@ export default function AdminPage() {
               <div className="flex items-center">
                 <TrendingUp className="h-8 w-8 text-purple-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Abonnements actifs</p>
+                  <p className="text-sm font-medium text-gray-600">Abonnés</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.activeSubscriptions}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Globe className="h-8 w-8 text-indigo-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Essais</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.trialUsers}</p>
                 </div>
               </div>
             </CardContent>
@@ -167,7 +289,7 @@ export default function AdminPage() {
               <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Revenu mensuel</p>
+                  <p className="text-sm font-medium text-gray-600">Revenus/mois</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.monthlyRevenue}€</p>
                 </div>
               </div>
@@ -177,30 +299,43 @@ export default function AdminPage() {
 
         {/* Configuration */}
         <Tabs defaultValue="payments" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="payments">Paiements</TabsTrigger>
             <TabsTrigger value="platform">Plateforme</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="security">Sécurité</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           </TabsList>
 
+          {/* Configuration des paiements */}
           <TabsContent value="payments">
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Configuration PayPal */}
+              {/* PayPal */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <CreditCard className="h-5 w-5 mr-2" />
-                    Configuration PayPal
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Configuration PayPal
+                    </div>
+                    <Switch
+                      checked={adminConfig.paypal.enabled}
+                      onCheckedChange={(checked) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          paypal: { ...adminConfig.paypal, enabled: checked },
+                        })
+                      }
+                    />
                   </CardTitle>
-                  <CardDescription>Configurez vos identifiants PayPal pour accepter les paiements</CardDescription>
+                  <CardDescription>Configurez PayPal pour accepter les paiements</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="paypalClientId">Client ID</Label>
+                    <Label htmlFor="paypalClientId">Client ID *</Label>
                     <Input
                       id="paypalClientId"
-                      placeholder="Votre PayPal Client ID"
+                      placeholder="AXxxx..."
                       value={adminConfig.paypal.clientId}
                       onChange={(e) =>
                         setAdminConfig({
@@ -211,11 +346,11 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="paypalClientSecret">Client Secret</Label>
+                    <Label htmlFor="paypalClientSecret">Client Secret *</Label>
                     <Input
                       id="paypalClientSecret"
                       type="password"
-                      placeholder="Votre PayPal Client Secret"
+                      placeholder="EXxxx..."
                       value={adminConfig.paypal.clientSecret}
                       onChange={(e) =>
                         setAdminConfig({
@@ -239,27 +374,41 @@ export default function AdminPage() {
                       }
                     >
                       <option value="sandbox">Sandbox (Test)</option>
-                      <option value="production">Production</option>
+                      <option value="live">Production</option>
                     </select>
                   </div>
+                  <Button onClick={testPayPalConnection} variant="outline" className="w-full">
+                    Tester la connexion PayPal
+                  </Button>
                 </CardContent>
               </Card>
 
-              {/* Configuration Stripe */}
+              {/* Stripe */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <CreditCard className="h-5 w-5 mr-2" />
-                    Configuration Stripe
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CreditCard className="h-5 w-5 mr-2" />
+                      Configuration Stripe
+                    </div>
+                    <Switch
+                      checked={adminConfig.stripe.enabled}
+                      onCheckedChange={(checked) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          stripe: { ...adminConfig.stripe, enabled: checked },
+                        })
+                      }
+                    />
                   </CardTitle>
-                  <CardDescription>Configurez vos clés Stripe pour les paiements par carte</CardDescription>
+                  <CardDescription>Configurez Stripe pour les paiements par carte</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="stripePublishable">Clé publique</Label>
+                    <Label htmlFor="stripePublishable">Clé publique *</Label>
                     <Input
                       id="stripePublishable"
-                      placeholder="pk_test_..."
+                      placeholder="pk_test_... ou pk_live_..."
                       value={adminConfig.stripe.publishableKey}
                       onChange={(e) =>
                         setAdminConfig({
@@ -270,11 +419,11 @@ export default function AdminPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="stripeSecret">Clé secrète</Label>
+                    <Label htmlFor="stripeSecret">Clé secrète *</Label>
                     <Input
                       id="stripeSecret"
                       type="password"
-                      placeholder="sk_test_..."
+                      placeholder="sk_test_... ou sk_live_..."
                       value={adminConfig.stripe.secretKey}
                       onChange={(e) =>
                         setAdminConfig({
@@ -299,19 +448,56 @@ export default function AdminPage() {
                       }
                     />
                   </div>
+                  <Button onClick={testStripeConnection} variant="outline" className="w-full">
+                    Tester la connexion Stripe
+                  </Button>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
+          {/* Configuration plateforme */}
           <TabsContent value="platform">
             <Card>
               <CardHeader>
-                <CardTitle>Paramètres de la plateforme</CardTitle>
-                <CardDescription>Configurez les paramètres généraux de FixeoPro</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Globe className="h-5 w-5 mr-2" />
+                  Paramètres de la plateforme
+                </CardTitle>
+                <CardDescription>Configurez les paramètres généraux de Fixeo.pro</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="siteName">Nom du site</Label>
+                    <Input
+                      id="siteName"
+                      value={adminConfig.platform.siteName}
+                      onChange={(e) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          platform: { ...adminConfig.platform, siteName: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="supportEmail">Email de support</Label>
+                    <Input
+                      id="supportEmail"
+                      type="email"
+                      value={adminConfig.platform.supportEmail}
+                      onChange={(e) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          platform: { ...adminConfig.platform, supportEmail: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-4 gap-4">
                   <div>
                     <Label htmlFor="commission">Commission (%)</Label>
                     <Input
@@ -324,6 +510,38 @@ export default function AdminPage() {
                         setAdminConfig({
                           ...adminConfig,
                           platform: { ...adminConfig.platform, commission: Number.parseInt(e.target.value) || 0 },
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="taxRate">TVA (%)</Label>
+                    <Input
+                      id="taxRate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={adminConfig.platform.taxRate}
+                      onChange={(e) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          platform: { ...adminConfig.platform, taxRate: Number.parseInt(e.target.value) || 0 },
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="trialDays">Jours d'essai</Label>
+                    <Input
+                      id="trialDays"
+                      type="number"
+                      min="0"
+                      max="365"
+                      value={adminConfig.platform.trialDays}
+                      onChange={(e) =>
+                        setAdminConfig({
+                          ...adminConfig,
+                          platform: { ...adminConfig.platform, trialDays: Number.parseInt(e.target.value) || 0 },
                         })
                       }
                     />
@@ -346,72 +564,69 @@ export default function AdminPage() {
                       <option value="GBP">Livre Sterling (GBP)</option>
                     </select>
                   </div>
-                  <div>
-                    <Label htmlFor="taxRate">Taux de TVA (%)</Label>
-                    <Input
-                      id="taxRate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={adminConfig.platform.taxRate}
-                      onChange={(e) =>
-                        setAdminConfig({
-                          ...adminConfig,
-                          platform: { ...adminConfig.platform, taxRate: Number.parseInt(e.target.value) || 0 },
-                        })
-                      }
-                    />
-                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Autres onglets... */}
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>Paramètres de notifications</CardTitle>
-                <CardDescription>Configurez les notifications et webhooks</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Bell className="h-5 w-5 mr-2" />
+                  Paramètres de notifications
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="emailEnabled">Notifications par email</Label>
+                  <Switch
                     id="emailEnabled"
                     checked={adminConfig.notifications.emailEnabled}
-                    onChange={(e) =>
+                    onCheckedChange={(checked) =>
                       setAdminConfig({
                         ...adminConfig,
-                        notifications: { ...adminConfig.notifications, emailEnabled: e.target.checked },
+                        notifications: { ...adminConfig.notifications, emailEnabled: checked },
                       })
                     }
                   />
-                  <Label htmlFor="emailEnabled">Activer les notifications par email</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="smsEnabled">Notifications par SMS</Label>
+                  <Switch
                     id="smsEnabled"
                     checked={adminConfig.notifications.smsEnabled}
-                    onChange={(e) =>
+                    onCheckedChange={(checked) =>
                       setAdminConfig({
                         ...adminConfig,
-                        notifications: { ...adminConfig.notifications, smsEnabled: e.target.checked },
+                        notifications: { ...adminConfig.notifications, smsEnabled: checked },
                       })
                     }
                   />
-                  <Label htmlFor="smsEnabled">Activer les notifications par SMS</Label>
                 </div>
-                <div>
-                  <Label htmlFor="webhookUrl">URL de webhook</Label>
-                  <Input
-                    id="webhookUrl"
-                    placeholder="https://votre-site.com/webhook"
-                    value={adminConfig.notifications.webhookUrl}
-                    onChange={(e) =>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Paramètres de sécurité
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="requireEmailVerification">Vérification email obligatoire</Label>
+                  <Switch
+                    id="requireEmailVerification"
+                    checked={adminConfig.security.requireEmailVerification}
+                    onCheckedChange={(checked) =>
                       setAdminConfig({
                         ...adminConfig,
-                        notifications: { ...adminConfig.notifications, webhookUrl: e.target.value },
+                        security: { ...adminConfig.security, requireEmailVerification: checked },
                       })
                     }
                   />
@@ -423,17 +638,13 @@ export default function AdminPage() {
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>Gestion des utilisateurs</CardTitle>
-                <CardDescription>Visualisez et gérez les utilisateurs de la plateforme</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Database className="h-5 w-5 mr-2" />
+                  Gestion des utilisateurs
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Utilisateurs récents</h3>
-                    <Button variant="outline" onClick={calculateStats}>
-                      Actualiser
-                    </Button>
-                  </div>
                   <div className="grid gap-4">
                     <div className="flex justify-between items-center p-4 border rounded-lg">
                       <div>
@@ -459,13 +670,13 @@ export default function AdminPage() {
         </Tabs>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-4 mt-8">
-          <Button variant="outline" onClick={resetConfig}>
-            Réinitialiser
+        <div className="flex justify-between items-center mt-8 pt-6 border-t">
+          <Button variant="destructive" onClick={resetConfiguration}>
+            Réinitialiser la configuration
           </Button>
-          <Button onClick={saveConfig} className="bg-blue-600 hover:bg-blue-700">
-            Sauvegarder la configuration
-          </Button>
+          <div className="text-sm text-gray-500">
+            Dernière sauvegarde: {saveStatus === "saved" ? "À l'instant" : "Non sauvegardé"}
+          </div>
         </div>
       </div>
     </div>

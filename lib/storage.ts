@@ -74,6 +74,12 @@ export class StorageService {
     }
   }
 
+  // Ajouter une méthode generateId manquante dans la classe StorageService
+
+  static generateId(): string {
+    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
   static saveUser(user: User): User {
     if (!isBrowser) return user
     try {
@@ -81,7 +87,7 @@ export class StorageService {
 
       // Générer un ID unique si nécessaire
       if (!user.id) {
-        user.id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        user.id = `user_${StorageService.generateId()}`
       }
 
       // Ajouter la date de création si elle n'existe pas
@@ -186,7 +192,7 @@ export class StorageService {
 
       // Générer un ID unique si nécessaire
       if (!request.id) {
-        request.id = `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        request.id = `request_${StorageService.generateId()}`
       }
 
       // Ajouter la date de création si elle n'existe pas
@@ -280,6 +286,14 @@ export class StorageService {
       console.error("Erreur lors de la mise à jour de l'abonnement:", error)
       return false
     }
+  }
+
+  // Ajouter une méthode sendVerificationEmail manquante
+
+  static async sendVerificationEmail(email: string, firstName: string): Promise<void> {
+    // Simulation d'envoi d'email
+    console.log(`Email de vérification envoyé à ${email} pour ${firstName}`)
+    return Promise.resolve()
   }
 
   // Initialisation des données de démonstration
