@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { StorageService } from "@/lib/storage"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { StorageService } from "@/lib/storage"
 
 export default function DevenirReparateurPage() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     personal: {
       firstName: "",
@@ -32,11 +33,6 @@ export default function DevenirReparateurPage() {
       specialties: [] as string[],
       description: "",
       website: "",
-      socialMedia: {
-        facebook: "",
-        instagram: "",
-        linkedin: "",
-      },
     },
     subscription: "pro",
     avatar: "",
@@ -208,7 +204,7 @@ export default function DevenirReparateurPage() {
       )
 
       // Redirection vers le profil professionnel
-      window.location.href = "/profil-pro"
+      router.push("/profil-pro")
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error)
       alert("Une erreur est survenue. Veuillez réessayer.")
@@ -243,10 +239,12 @@ export default function DevenirReparateurPage() {
 
   const nextStep = () => {
     setCurrentStep(currentStep + 1)
+    window.scrollTo(0, 0)
   }
 
   const prevStep = () => {
     setCurrentStep(currentStep - 1)
+    window.scrollTo(0, 0)
   }
 
   return (
@@ -511,7 +509,11 @@ export default function DevenirReparateurPage() {
                       formData.subscription === plan.id ? "ring-2 ring-green-500" : "hover:shadow-lg transition-shadow"
                     }`}
                   >
-                    {plan.popular && <Badge className="absolute top-2 right-2 bg-green-500">Recommandé</Badge>}
+                    {plan.popular && (
+                      <div className="absolute top-0 right-0 bg-green-500 text-white px-2 py-1 text-xs font-semibold rounded-bl">
+                        Recommandé
+                      </div>
+                    )}
                     <CardContent className="pt-6">
                       <div className="text-center mb-4">
                         <h3 className="text-lg font-bold">{plan.name}</h3>
@@ -649,67 +651,6 @@ export default function DevenirReparateurPage() {
               <h3 className="text-xl font-semibold mb-2">Développez votre activité</h3>
               <p className="text-gray-600">
                 Augmentez votre visibilité et votre chiffre d'affaires grâce à notre plateforme.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Témoignages */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-center mb-8">Ce que disent nos réparateurs</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
-                <div>
-                  <h3 className="font-semibold">Thomas D.</h3>
-                  <p className="text-sm text-gray-600">Électricien, Paris</p>
-                </div>
-              </div>
-              <p className="text-gray-600">
-                "Depuis que j'ai rejoint FixeoPro, j'ai augmenté mon nombre de clients de 30%. La plateforme est
-                intuitive et les demandes sont vraiment qualifiées."
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
-                <div>
-                  <h3 className="font-semibold">Sophie M.</h3>
-                  <p className="text-sm text-gray-600">Réparatrice informatique, Lyon</p>
-                </div>
-              </div>
-              <p className="text-gray-600">
-                "FixeoPro m'a permis de développer mon activité dans de nouveaux quartiers. Le système de mise en
-                relation est efficace et les clients sont satisfaits."
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-center mb-8">Questions fréquentes</h2>
-          <div className="space-y-4">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="font-semibold mb-2">Comment fonctionne la période d'essai ?</h3>
-              <p className="text-gray-600">
-                Vous bénéficiez de 15 jours d'essai gratuit avec toutes les fonctionnalités du plan que vous avez
-                choisi. Aucun prélèvement n'est effectué pendant cette période.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="font-semibold mb-2">Puis-je changer de formule d'abonnement ?</h3>
-              <p className="text-gray-600">
-                Oui, vous pouvez changer de formule à tout moment depuis votre espace professionnel. Le changement prend
-                effet à la prochaine période de facturation.
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="font-semibold mb-2">Comment sont attribuées les demandes de réparation ?</h3>
-              <p className="text-gray-600">
-                Les demandes sont affichées en fonction de votre zone géographique et de vos spécialités. Vous
-                choisissez librement les demandes auxquelles vous souhaitez répondre.
               </p>
             </div>
           </div>

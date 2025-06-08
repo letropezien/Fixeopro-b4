@@ -1,166 +1,296 @@
-// Simulation d'une base de données locale
-interface User {
-  id: string
-  email: string
-  password: string
-  firstName: string
-  lastName: string
-  phone?: string
-  address?: string
-  city?: string
-  postalCode?: string
-  userType: "client" | "reparateur"
-  isEmailVerified: boolean
-  createdAt: string
-  subscription?: {
-    plan: string
-    status: "active" | "inactive" | "trial"
-    expiresAt: string
-  }
-  professional?: {
-    companyName?: string
-    siret?: string
-    experience: string
-    specialties: string[]
-    description: string
-    website?: string
-  }
-  avatar?: string
-}
-
-interface RepairRequest {
-  id: string
-  clientId: string
-  category: string
-  urgency: string
-  urgencyLabel: string
-  title: string
-  description: string
-  budget: string
-  city: string
-  postalCode: string
-  address?: string
-  createdAt: string
-  status: "open" | "in_progress" | "completed" | "cancelled"
-  responses: number
-  client: {
-    firstName: string
-    lastName: string
-    initials: string
-    email?: string
-    phone?: string
-  }
-}
-
-// Stockage local simulé
-const STORAGE_KEYS = {
-  USERS: "fixeopro_users",
-  REPAIR_REQUESTS: "fixeopro_repair_requests",
-  CURRENT_USER: "fixeopro_current_user",
-}
+// Vérifier si nous sommes dans un environnement navigateur
+const isBrowser = typeof window !== "undefined"
 
 export class StorageService {
-  // Gestion des utilisateurs
-  static getUsers(): User[] {
-    if (typeof window === "undefined") return []
-    const users = localStorage.getItem(STORAGE_KEYS.USERS)
+  // Utilisateurs
+  static getUsers() {
+    if (!isBrowser) return []
+    const users = localStorage.getItem("users")
     return users ? JSON.parse(users) : []
   }
 
-  static saveUser(user: User): void {
-    if (typeof window === "undefined") return
+  static saveUser(user: any) {
+    if (!isBrowser) return
     const users = this.getUsers()
-    const existingIndex = users.findIndex((u) => u.id === user.id)
 
-    if (existingIndex >= 0) {
-      users[existingIndex] = user
+    // Générer un ID unique si l'utilisateur n'en a pas
+    if (!user.id) {
+      user.id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
+
+    // Si l'utilisateur est un réparateur et qu'il vient de s'inscrire, ajouter la période d'essai
+    if (user.userType === "reparateur" && !user.subscription) {
+      user.subscription = {
+        plan: "trial",
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 jours
+        isActive: true,
+      }
+    }
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUserIndex = users.findIndex((u: any) => u.id === user.id)
+
+    if (existingUserIndex >= 0) {
+      // Mettre à jour l'utilisateur existant
+      users[existingUserIndex] = { ...users[existingUserIndex], ...user }
     } else {
+      // Ajouter le nouvel utilisateur
       users.push(user)
     }
 
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users))
+    localStorage.setItem("users", JSON.stringify(users))
+    return user
   }
 
-  static getUserByEmail(email: string): User | null {
+  static getUserByEmail(email: string) {
+    if (!isBrowser) return null
     const users = this.getUsers()
-    return users.find((u) => u.email === email) || null
+    return users.find((user: any) => user.email === email) || null
   }
 
-  static getUserById(id: string): User | null {
+  static getUserById(id: string) {
+    if (!isBrowser) return null
     const users = this.getUsers()
-    return users.find((u) => u.id === id) || null
+    return users.find((user: any) => user.id === id) || null
   }
 
-  // Gestion de l'utilisateur connecté
-  static getCurrentUser(): User | null {
-    if (typeof window === "undefined") return null
-    const currentUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER)
-    return currentUser ? JSON.parse(currentUser) : null
+  static getCurrentUser() {
+    if (!isBrowser) return null
+    const currentUserId = localStorage.getItem("currentUserId")
+    if (!currentUserId) return null
+    return this.getUserById(currentUserId)
   }
 
-  static setCurrentUser(user: User): void {
-    if (typeof window === "undefined") return
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user))
+  static setCurrentUser(userId: string) {
+    if (!isBrowser) return
+    localStorage.setItem("currentUserId", userId)
   }
 
-  static logout(): void {
-    if (typeof window === "undefined") return
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER)
+  static logout() {
+    if (!isBrowser) return
+    localStorage.removeItem("currentUserId")
   }
 
-  // Gestion des demandes de réparation
-  static getRepairRequests(): RepairRequest[] {
-    if (typeof window === "undefined") return []
-    const requests = localStorage.getItem(STORAGE_KEYS.REPAIR_REQUESTS)
+  static updateUserSubscription(userId: string, subscription: any) {
+    if (!isBrowser) return
+    const user = this.getUserById(userId)
+    if (user) {
+      user.subscription = subscription
+      this.saveUser(user)
+    }
+  }
+
+  static isSubscriptionActive(user: any) {
+    if (!user || !user.subscription) return false
+
+    // Si c'est un abonnement payant actif
+    if (user.subscription.isActive && user.subscription.plan !== "trial") {
+      return true
+    }
+
+    // Si c'est une période d'essai, vérifier qu'elle n'est pas expirée
+    if (user.subscription.plan === "trial") {
+      const endDate = new Date(user.subscription.endDate)
+      return endDate > new Date()
+    }
+
+    return false
+  }
+
+  // Demandes de réparation
+  static getRepairRequests() {
+    if (!isBrowser) return []
+    const requests = localStorage.getItem("repairRequests")
     return requests ? JSON.parse(requests) : []
   }
 
-  static saveRepairRequest(request: RepairRequest): void {
-    if (typeof window === "undefined") return
+  static saveRepairRequest(request: any) {
+    if (!isBrowser) return
     const requests = this.getRepairRequests()
-    const existingIndex = requests.findIndex((r) => r.id === request.id)
 
-    if (existingIndex >= 0) {
-      requests[existingIndex] = request
+    // Générer un ID unique si la demande n'en a pas
+    if (!request.id) {
+      request.id = `request_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
+
+    // Ajouter la date de création si elle n'existe pas
+    if (!request.createdAt) {
+      request.createdAt = new Date().toISOString()
+    }
+
+    // Initialiser les réponses si elles n'existent pas
+    if (!request.responses) {
+      request.responses = []
+    }
+
+    // Vérifier si la demande existe déjà
+    const existingRequestIndex = requests.findIndex((r: any) => r.id === request.id)
+
+    if (existingRequestIndex >= 0) {
+      // Mettre à jour la demande existante
+      requests[existingRequestIndex] = { ...requests[existingRequestIndex], ...request }
     } else {
+      // Ajouter la nouvelle demande
       requests.push(request)
     }
 
-    localStorage.setItem(STORAGE_KEYS.REPAIR_REQUESTS, JSON.stringify(requests))
+    localStorage.setItem("repairRequests", JSON.stringify(requests))
+    return request
   }
 
-  static getRepairRequestsByClient(clientId: string): RepairRequest[] {
+  static getRepairRequestById(id: string) {
+    if (!isBrowser) return null
     const requests = this.getRepairRequests()
-    return requests.filter((r) => r.clientId === clientId)
+    return requests.find((request: any) => request.id === id) || null
   }
 
-  // Simulation d'envoi d'email
-  static async sendVerificationEmail(email: string, firstName: string): Promise<boolean> {
-    console.log(`📧 Email de vérification envoyé à ${email} pour ${firstName}`)
-
-    // Simulation d'un délai d'envoi
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Simulation d'un succès (dans un vrai projet, ici on appellerait une API)
-    return true
+  static getRepairRequestsByUserId(userId: string) {
+    if (!isBrowser) return []
+    const requests = this.getRepairRequests()
+    return requests.filter((request: any) => request.userId === userId)
   }
 
-  // Génération d'ID unique
-  static generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2)
+  static addResponseToRequest(requestId: string, response: any) {
+    if (!isBrowser) return
+    const request = this.getRepairRequestById(requestId)
+    if (request) {
+      if (!response.id) {
+        response.id = `response_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      }
+      if (!response.createdAt) {
+        response.createdAt = new Date().toISOString()
+      }
+
+      if (!request.responses) {
+        request.responses = []
+      }
+
+      request.responses.push(response)
+      this.saveRepairRequest(request)
+      return response
+    }
+    return null
   }
 
-  // Ajouter une fonction pour vérifier si un utilisateur est en période d'essai
-  static isInTrialPeriod(user: User): boolean {
-    if (!user.subscription || user.subscription.status !== "trial") return false
-    const expiresAt = new Date(user.subscription.expiresAt)
-    return expiresAt > new Date()
-  }
+  // Données de démonstration
+  static initDemoData() {
+    if (!isBrowser) return
 
-  // Ajouter une fonction pour vérifier si un utilisateur peut contacter des clients
-  static canContactClients(user: User): boolean {
-    if (user.userType !== "reparateur") return false
-    if (user.subscription?.status === "active") return true
-    return this.isInTrialPeriod(user)
+    // Vérifier si des données existent déjà
+    const users = this.getUsers()
+    const requests = this.getRepairRequests()
+
+    if (users.length === 0) {
+      // Créer des utilisateurs de démonstration
+      const demoUsers = [
+        {
+          id: "user_client_1",
+          firstName: "Jean",
+          lastName: "Dupont",
+          email: "client@example.com",
+          password: "password123",
+          userType: "client",
+          city: "Paris",
+          postalCode: "75001",
+          phone: "0123456789",
+        },
+        {
+          id: "user_reparateur_1",
+          firstName: "Thomas",
+          lastName: "Bernard",
+          email: "pro@example.com",
+          password: "password123",
+          userType: "reparateur",
+          city: "Paris",
+          postalCode: "75002",
+          phone: "0123456788",
+          professional: {
+            companyName: "Répar'Tout",
+            siret: "12345678901234",
+            description: "Spécialiste en réparation électroménager depuis 10 ans",
+            experience: "10 ans",
+            specialties: ["électroménager", "électricité"],
+          },
+          subscription: {
+            plan: "trial",
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+            isActive: true,
+          },
+        },
+      ]
+
+      demoUsers.forEach((user) => this.saveUser(user))
+    }
+
+    if (requests.length === 0) {
+      // Créer des demandes de réparation de démonstration
+      const demoRequests = [
+        {
+          id: "request_1",
+          title: "Réparation machine à laver",
+          description: "Ma machine à laver ne démarre plus et fait un bruit étrange",
+          category: "électroménager",
+          city: "Paris",
+          postalCode: "75001",
+          urgency: "urgent",
+          urgencyLabel: "Urgent",
+          userId: "user_client_1",
+          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
+          createdAt: new Date().toISOString(),
+          responses: [],
+        },
+        {
+          id: "request_2",
+          title: "Problème de plomberie",
+          description: "Fuite sous l'évier de la cuisine",
+          category: "plomberie",
+          city: "Lyon",
+          postalCode: "69001",
+          urgency: "same-day",
+          urgencyLabel: "Aujourd'hui",
+          userId: "user_client_1",
+          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
+          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          responses: [],
+        },
+        {
+          id: "request_3",
+          title: "Écran d'ordinateur cassé",
+          description: "L'écran de mon ordinateur portable est fissuré",
+          category: "informatique",
+          city: "Marseille",
+          postalCode: "13001",
+          urgency: "this-week",
+          urgencyLabel: "Cette semaine",
+          userId: "user_client_1",
+          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          responses: [],
+        },
+        {
+          id: "request_4",
+          title: "Réparation iPhone",
+          description: "Écran cassé sur iPhone 13",
+          category: "téléphonie",
+          city: "Toulouse",
+          postalCode: "31000",
+          urgency: "flexible",
+          urgencyLabel: "Flexible",
+          userId: "user_client_1",
+          client: { firstName: "Jean", lastName: "Dupont", id: "user_client_1" },
+          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+          responses: [],
+        },
+      ]
+
+      demoRequests.forEach((request) => this.saveRepairRequest(request))
+    }
   }
+}
+
+// Initialiser les données de démonstration si nous sommes dans un environnement navigateur
+if (isBrowser) {
+  StorageService.initDemoData()
 }

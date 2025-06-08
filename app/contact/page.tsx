@@ -9,343 +9,295 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Mail, Phone, MapPin, Clock, MessageSquare, HelpCircle, Bug, Star } from "lucide-react"
+import { CheckCircle, Mail, Phone, MapPin } from "lucide-react"
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+  const [formState, setFormState] = useState({
+    name: "",
     email: "",
-    phone: "",
     subject: "",
-    category: "",
     message: "",
     userType: "",
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState("")
 
-  const categories = [
-    { value: "support", label: "Support technique", icon: HelpCircle },
-    { value: "billing", label: "Facturation", icon: Mail },
-    { value: "bug", label: "Signaler un bug", icon: Bug },
-    { value: "feature", label: "Suggestion d'amélioration", icon: Star },
-    { value: "partnership", label: "Partenariat", icon: MessageSquare },
-    { value: "other", label: "Autre", icon: MessageSquare },
-  ]
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormState({
+      ...formState,
+      [e.target.name]: e.target.value,
+    })
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSelectChange = (name: string, value: string) => {
+    setFormState({
+      ...formState,
+      [name]: value,
+    })
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError("")
 
     // Validation
-    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.message.trim()) {
-      alert("Veuillez remplir tous les champs obligatoires")
+    if (!formState.name || !formState.email || !formState.subject || !formState.message) {
+      setError("Veuillez remplir tous les champs obligatoires.")
       setIsSubmitting(false)
       return
     }
 
-    try {
-      // Simulation d'envoi
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      console.log("Message de contact:", formData)
-      alert("Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.")
-
-      // Reset du formulaire
-      setFormData({
-        firstName: "",
-        lastName: "",
+    // Simuler l'envoi du formulaire
+    setTimeout(() => {
+      setIsSubmitting(false)
+      setIsSubmitted(true)
+      // Réinitialiser le formulaire
+      setFormState({
+        name: "",
         email: "",
-        phone: "",
         subject: "",
-        category: "",
         message: "",
         userType: "",
       })
-    } catch (error) {
-      alert("Une erreur est survenue. Veuillez réessayer.")
-    } finally {
-      setIsSubmitting(false)
-    }
+    }, 1500)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="container mx-auto px-4">
+        {/* En-tête */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contactez-nous</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Notre équipe est là pour vous aider. N'hésitez pas à nous contacter pour toute question ou suggestion.
+            Une question, une suggestion ou besoin d'aide ? Notre équipe est à votre disposition pour vous répondre dans
+            les plus brefs délais.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Informations de contact */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Mail className="h-5 w-5 mr-2 text-blue-600" />
-                  Email
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-2">Support général</p>
-                <a href="mailto:contact@fixeopro.fr" className="text-blue-600 hover:underline">
-                  contact@fixeopro.fr
-                </a>
-                <p className="text-gray-600 mt-4 mb-2">Support technique</p>
-                <a href="mailto:support@fixeopro.fr" className="text-blue-600 hover:underline">
-                  support@fixeopro.fr
-                </a>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Phone className="h-5 w-5 mr-2 text-green-600" />
-                  Téléphone
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-2">Support client</p>
-                <a href="tel:0123456789" className="text-green-600 hover:underline font-medium">
-                  01 23 45 67 89
-                </a>
-                <p className="text-sm text-gray-500 mt-2">
-                  Du lundi au vendredi
-                  <br />
-                  9h00 - 18h00
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-red-600" />
-                  Adresse
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  FixeoPro SAS
-                  <br />
-                  123 Avenue de la République
-                  <br />
-                  75011 Paris
-                  <br />
-                  France
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-purple-600" />
-                  Horaires
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Lundi - Vendredi</span>
-                    <span>9h00 - 18h00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Samedi</span>
-                    <span>10h00 - 16h00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Dimanche</span>
-                    <span>Fermé</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           {/* Formulaire de contact */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Envoyez-nous un message</CardTitle>
-                <CardDescription>
-                  Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Informations personnelles */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Prénom *</Label>
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Envoyez-nous un message</CardTitle>
+              <CardDescription>
+                Remplissez le formulaire ci-dessous et nous vous répondrons dans les 24 heures ouvrées.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isSubmitted ? (
+                <div className="bg-green-50 p-6 rounded-lg text-center">
+                  <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">Message envoyé avec succès !</h3>
+                  <p className="text-gray-600 mb-4">
+                    Merci de nous avoir contactés. Notre équipe vous répondra dans les plus brefs délais.
+                  </p>
+                  <Button onClick={() => setIsSubmitted(false)}>Envoyer un autre message</Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nom complet *</Label>
                       <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        id="name"
+                        name="name"
+                        placeholder="Votre nom"
+                        value={formState.name}
+                        onChange={handleChange}
                         required
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="lastName">Nom *</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="email">Email *</Label>
                       <Input
                         id="email"
+                        name="email"
                         type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="votre@email.com"
+                        value={formState.email}
+                        onChange={handleChange}
                         required
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="phone">Téléphone</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      />
-                    </div>
                   </div>
 
-                  {/* Type d'utilisateur */}
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="userType">Vous êtes</Label>
-                    <Select
-                      value={formData.userType}
-                      onValueChange={(value) => setFormData({ ...formData, userType: value })}
-                    >
+                    <Select value={formState.userType} onValueChange={(value) => handleSelectChange("userType", value)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez votre profil" />
+                        <SelectValue placeholder="Sélectionnez une option" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="client">Particulier (client)</SelectItem>
-                        <SelectItem value="reparateur">Professionnel (réparateur)</SelectItem>
-                        <SelectItem value="prospect">Futur utilisateur</SelectItem>
-                        <SelectItem value="other">Autre</SelectItem>
+                        <SelectItem value="client">Un client</SelectItem>
+                        <SelectItem value="reparateur">Un réparateur</SelectItem>
+                        <SelectItem value="autre">Autre</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Catégorie */}
-                  <div>
-                    <Label htmlFor="category">Catégorie *</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData({ ...formData, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une catégorie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Sujet */}
-                  <div>
-                    <Label htmlFor="subject">Sujet</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Sujet *</Label>
                     <Input
                       id="subject"
-                      placeholder="Résumé de votre demande"
-                      value={formData.subject}
-                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Message */}
-                  <div>
-                    <Label htmlFor="message">Message *</Label>
-                    <Textarea
-                      id="message"
-                      placeholder="Décrivez votre demande en détail..."
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="min-h-[150px]"
+                      name="subject"
+                      placeholder="Sujet de votre message"
+                      value={formState.subject}
+                      onChange={handleChange}
                       required
                     />
                   </div>
 
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={isSubmitting}>
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message *</Label>
+                    <Textarea
+                      id="message"
+                      name="message"
+                      placeholder="Votre message"
+                      rows={6}
+                      value={formState.message}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+
+                  {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
                     {isSubmitting ? "Envoi en cours..." : "Envoyer le message"}
                   </Button>
                 </form>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Informations de contact */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Nos coordonnées</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start">
+                  <Mail className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+                  <div>
+                    <h3 className="font-medium">Email</h3>
+                    <p className="text-gray-600">contact@fixeopro.fr</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <Phone className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+                  <div>
+                    <h3 className="font-medium">Téléphone</h3>
+                    <p className="text-gray-600">01 23 45 67 89</p>
+                    <p className="text-sm text-gray-500">Du lundi au vendredi, 9h-18h</p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <MapPin className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+                  <div>
+                    <h3 className="font-medium">Adresse</h3>
+                    <p className="text-gray-600">
+                      123 Avenue de la Réparation
+                      <br />
+                      75001 Paris, France
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Horaires d'assistance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Lundi - Vendredi</span>
+                    <span className="font-medium">9h - 18h</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Samedi</span>
+                    <span className="font-medium">10h - 16h</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Dimanche</span>
+                    <span className="font-medium">Fermé</span>
+                  </div>
+                  <div className="pt-2 text-sm text-gray-600">
+                    Les demandes envoyées en dehors des heures d'ouverture seront traitées le jour ouvré suivant.
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Assistance rapide</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600">
+                  Consultez notre section FAQ pour trouver rapidement des réponses aux questions les plus fréquentes.
+                </p>
+                <Button asChild variant="outline" className="w-full">
+                  <a href="/comment-ca-marche#faq">Consulter la FAQ</a>
+                </Button>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* FAQ rapide */}
-        <section className="mt-16">
-          <h2 className="text-3xl font-bold text-center mb-8">Questions fréquentes</h2>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Combien de temps pour une réponse ?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Nous répondons généralement dans les 24h ouvrées. Pour les urgences, contactez-nous par téléphone.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Support technique disponible ?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Oui, notre équipe technique est disponible du lundi au vendredi de 9h à 18h par email et téléphone.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Puis-je suggérer des améliorations ?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Absolument ! Vos suggestions nous aident à améliorer FixeoPro. Utilisez la catégorie "Suggestion
-                  d'amélioration".
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Support pour les professionnels ?</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Les professionnels abonnés bénéficient d'un support prioritaire et d'un accompagnement personnalisé.
-                </p>
-              </CardContent>
-            </Card>
+        {/* Carte */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold mb-6">Notre localisation</h2>
+          <div className="bg-gray-200 rounded-lg h-80 overflow-hidden">
+            {/* Simuler une carte */}
+            <div className="h-full w-full bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center">
+              <div className="bg-white p-4 rounded-lg shadow-md text-center">
+                <MapPin className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <p className="font-medium">FixeoPro</p>
+                <p className="text-sm text-gray-600">123 Avenue de la Réparation, 75001 Paris</p>
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
+
+        {/* FAQ */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-center mb-8">Questions fréquentes</h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Quel est le délai de réponse ?</h3>
+              <p className="text-gray-600 mb-6">
+                Nous nous engageons à répondre à toutes les demandes dans un délai de 24 heures ouvrées. Pour les
+                questions urgentes, nous vous recommandons de nous contacter par téléphone.
+              </p>
+
+              <h3 className="text-lg font-semibold mb-2">Comment suivre ma demande ?</h3>
+              <p className="text-gray-600 mb-6">
+                Après l'envoi de votre message, vous recevrez un email de confirmation avec un numéro de référence. Vous
+                pourrez utiliser ce numéro pour suivre l'état de votre demande.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Puis-je modifier ma demande après l'envoi ?</h3>
+              <p className="text-gray-600 mb-6">
+                Oui, vous pouvez nous envoyer un email avec votre numéro de référence pour ajouter des informations ou
+                modifier votre demande initiale.
+              </p>
+
+              <h3 className="text-lg font-semibold mb-2">Comment devenir partenaire ?</h3>
+              <p className="text-gray-600 mb-6">
+                Si vous souhaitez devenir partenaire de FixeoPro, veuillez nous contacter via ce formulaire en
+                sélectionnant "Partenariat" comme sujet. Notre équipe commerciale vous recontactera rapidement.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
