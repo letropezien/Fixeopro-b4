@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Wrench, Search, MapPin, Star, Clock, Shield, TrendingUp } from "lucide-react"
+import { Wrench, Search, MapPin, Star, Clock, Shield, TrendingUp, BookOpen } from "lucide-react"
 import { CategoryImage } from "@/components/category-image"
 import { RandomRepairers } from "@/components/random-repairers"
 import { CategoriesService } from "@/lib/categories-service"
@@ -274,6 +274,28 @@ export default function HomePage() {
             <Link href="/liste-reparateurs">
               <Button variant="outline" size="lg">
                 Voir tous les réparateurs
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Besoin d'aide Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Besoin d'aide pour commencer ?</h2>
+          <p className="text-lg text-gray-600 mb-8">Consultez nos guides pour bien utiliser la plateforme</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/guide-utilisateur">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+                <BookOpen className="mr-2 h-5 w-5" />
+                Guide utilisateur
+              </Button>
+            </Link>
+            <Link href="/guide-reparateur">
+              <Button size="lg" variant="outline" className="border-green-600 text-green-600 hover:bg-green-50">
+                <Wrench className="mr-2 h-5 w-5" />
+                Guide réparateur
               </Button>
             </Link>
           </div>
