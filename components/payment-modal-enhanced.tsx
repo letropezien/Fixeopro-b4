@@ -36,7 +36,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
   const [appliedPromo, setAppliedPromo] = useState<any>(null)
   const [promoError, setPromoError] = useState("")
   const [promoLoading, setPromoLoading] = useState(false)
-  const [promoCodeUsed, setPromoCodeUsed] = useState(false)
+  const [usePromoCodeResult, setUsePromoCodeResult] = useState<any>(null)
 
   // Configuration de paiement
   const [paymentConfig, setPaymentConfig] = useState(PaymentService.getConfig())
@@ -48,6 +48,9 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     cvv: "",
     name: "",
   })
+
+  // Formater le prix pour éviter le problème /mois/mois
+  const formattedPrice = plan.price.replace("/mois/mois", "/mois").replace("€/mois", "€")
 
   useEffect(() => {
     const config = PaymentService.getConfig()
@@ -62,7 +65,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     }
   }, [])
 
-  const baseAmount = Number.parseFloat(plan.price.replace("€", ""))
+  const baseAmount = Number.parseFloat(plan.price.replace("€", "").replace("/mois", ""))
 
   const discountAmount = appliedPromo
     ? appliedPromo.type === "percentage"
@@ -139,18 +142,15 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
-      // Enregistrer l'utilisation du code promo si applicable
-      const promoCodeUsedResult = { success: false }
-
-      // Move the hook call outside the conditional block
-      let usePromoCodeResult = null
       if (appliedPromo) {
-        usePromoCodeResult = await PromoCodeService.usePromoCode(
-          appliedPromo.id,
-          userId,
-          pricing.baseAmount,
-          pricing.discountAmount,
-          pricing.finalAmount,
+        setUsePromoCodeResult(
+          await PromoCodeService.usePromoCode(
+            appliedPromo.id,
+            userId,
+            pricing.baseAmount,
+            pricing.discountAmount,
+            pricing.finalAmount,
+          ),
         )
       }
 
@@ -195,17 +195,15 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
-      // Enregistrer l'utilisation du code promo si applicable
-      const promoCodeUsedResult = { success: false }
-      // Move the hook call outside the conditional block
-      let usePromoCodeResult = null
       if (appliedPromo) {
-        usePromoCodeResult = await PromoCodeService.usePromoCode(
-          appliedPromo.id,
-          userId,
-          pricing.baseAmount,
-          pricing.discountAmount,
-          pricing.finalAmount,
+        setUsePromoCodeResult(
+          await PromoCodeService.usePromoCode(
+            appliedPromo.id,
+            userId,
+            pricing.baseAmount,
+            pricing.discountAmount,
+            pricing.finalAmount,
+          ),
         )
       }
 
@@ -275,7 +273,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
         <DialogHeader>
           <DialogTitle>Finaliser votre abonnement - Fixeo.pro</DialogTitle>
           <DialogDescription>
-            Abonnement {plan.name} - {plan.price.replace("/mois/mois", "/mois").replace("/mois", "")}/mois
+            Abonnement {plan.name} - {formattedPrice}/mois
           </DialogDescription>
         </DialogHeader>
 
@@ -342,7 +340,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                 )}
               </div>
 
-              {/* Détail des prix */}
+              {/* Détail des prix - SANS TVA */}
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span>Abonnement {plan.name}</span>
