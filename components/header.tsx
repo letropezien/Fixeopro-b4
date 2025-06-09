@@ -46,6 +46,7 @@ export default function Header() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showReadNotifications, setShowReadNotifications] = useState(true)
 
   useEffect(() => {
     // Vérifier l'état de connexion
@@ -300,12 +301,23 @@ export default function Header() {
                     <div className="px-3 py-2 border-b">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">Notifications</h3>
-                        {unreadCount > 0 && (
-                          <Button variant="ghost" size="sm" onClick={markAllAsRead}>
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Tout marquer comme lu
+                        <div className="flex items-center space-x-2">
+                          {unreadCount > 0 && (
+                            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Tout marquer comme lu
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowReadNotifications(!showReadNotifications)}
+                            className="text-xs"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            {showReadNotifications ? "Masquer lues" : "Voir lues"}
                           </Button>
-                        )}
+                        </div>
                       </div>
                       {currentUser?.userType === "reparateur" && currentUser?.professional?.notificationPreferences && (
                         <div className="text-xs text-gray-500 mt-1">
@@ -322,51 +334,74 @@ export default function Header() {
                       </div>
                     ) : (
                       <>
-                        {notifications.map((notification) => (
-                          <DropdownMenuItem
-                            key={notification.id}
-                            className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)}`}
-                            onClick={() => {
-                              markAsRead(notification.id)
-                              // Redirection vers la page de détail de la demande
-                              window.location.href = `/demande/${notification.requestId}`
-                            }}
-                          >
-                            <div className="flex items-start space-x-3 w-full">
-                              <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                  <p
-                                    className={`text-sm font-medium ${!notification.isRead ? "text-gray-900" : "text-gray-700"}`}
-                                  >
-                                    {notification.title}
-                                  </p>
-                                  <div className="flex items-center space-x-1">
-                                    {notification.distance && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {notification.distance.toFixed(1)}km
-                                      </Badge>
-                                    )}
-                                    {!notification.isRead && (
-                                      <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
-                                        Nouveau
-                                      </Badge>
-                                    )}
+                        {notifications
+                          .filter((notification) => showReadNotifications || !notification.isRead)
+                          .map((notification) => (
+                            <DropdownMenuItem
+                              key={notification.id}
+                              className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)}`}
+                              onClick={() => {
+                                markAsRead(notification.id)
+                                window.location.href = `/demande/${notification.requestId}`
+                              }}
+                            >
+                              {/* Contenu de la notification inchangé */}
+                              <div className="flex items-start space-x-3 w-full">
+                                <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p
+                                      className={`text-sm font-medium ${!notification.isRead ? "text-gray-900" : "text-gray-700"}`}
+                                    >
+                                      {notification.title}
+                                    </p>
+                                    <div className="flex items-center space-x-1">
+                                      {notification.distance && (
+                                        <Badge variant="outline" className="text-xs">
+                                          {notification.distance.toFixed(1)}km
+                                        </Badge>
+                                      )}
+                                      {!notification.isRead && (
+                                        <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
+                                          Nouveau
+                                        </Badge>
+                                      )}
+                                      {notification.isRead && (
+                                        <Badge variant="outline" className="text-xs text-gray-500">
+                                          Lu
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
+                                  <p
+                                    className={`text-sm ${!notification.isRead ? "text-gray-800" : "text-gray-600"} line-clamp-2`}
+                                  >
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">{getTimeAgo(notification.createdAt)}</p>
+                                  <p className="text-xs text-blue-600 mt-1 font-medium">
+                                    Cliquer pour voir les détails →
+                                  </p>
                                 </div>
-                                <p
-                                  className={`text-sm ${!notification.isRead ? "text-gray-800" : "text-gray-600"} line-clamp-2`}
-                                >
-                                  {notification.message}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">{getTimeAgo(notification.createdAt)}</p>
-                                <p className="text-xs text-blue-600 mt-1 font-medium">
-                                  Cliquer pour voir les détails →
-                                </p>
                               </div>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
+                            </DropdownMenuItem>
+                          ))}
+
+                        {/* Afficher un message si toutes les notifications sont masquées */}
+                        {!showReadNotifications && notifications.every((n) => n.isRead) && (
+                          <div className="px-3 py-4 text-center text-gray-500">
+                            <Eye className="h-6 w-6 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm">Notifications lues masquées</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowReadNotifications(true)}
+                              className="text-xs mt-2"
+                            >
+                              Afficher les notifications lues
+                            </Button>
+                          </div>
+                        )}
 
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
