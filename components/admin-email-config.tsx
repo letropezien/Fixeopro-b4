@@ -68,7 +68,7 @@ const EMAIL_PRESETS = {
   },
 }
 
-export default function AdminEmailConfig() {
+export function AdminEmailConfig() {
   const [config, setConfig] = useState<EmailConfig>(emailService.loadConfig())
   const [isLoading, setIsLoading] = useState(false)
   const [testEmail, setTestEmail] = useState("")
@@ -856,3 +856,5 @@ export default function AdminEmailConfig() {
     </div>
   )
 }
+
+export default AdminEmailConfig

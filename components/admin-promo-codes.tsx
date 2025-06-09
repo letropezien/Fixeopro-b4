@@ -29,7 +29,7 @@ import {
 import { PromoCodeService, type PromoCode, type PromoCodeUsage } from "@/lib/promo-codes"
 import { useToast } from "@/hooks/use-toast"
 
-export default function AdminPromoCodes() {
+export function AdminPromoCodes() {
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
   const [usages, setUsages] = useState<PromoCodeUsage[]>([])
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -565,3 +565,5 @@ export default function AdminPromoCodes() {
     </div>
   )
 }
+
+export default AdminPromoCodes

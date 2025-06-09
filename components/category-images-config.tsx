@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { CategoryImagesService, type CategoryImage } from "@/lib/category-images"
 import { Upload, Trash2, ImageIcon, Save, RefreshCw } from "lucide-react"
 
-export default function CategoryImagesConfig() {
+export function CategoryImagesConfig() {
   const [categoryImages, setCategoryImages] = useState<CategoryImage[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [uploadingCategory, setUploadingCategory] = useState<string>("")
@@ -295,3 +295,5 @@ export default function CategoryImagesConfig() {
     </div>
   )
 }
+
+export default CategoryImagesConfig
