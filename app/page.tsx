@@ -4,118 +4,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Wrench, Search, MapPin, Star, Clock, Shield, TrendingUp } from "lucide-react"
 import { CategoryImage } from "@/components/category-image"
+import { RandomRepairers } from "@/components/random-repairers"
+import { CategoriesService } from "@/lib/categories-service"
 
 export default function HomePage() {
-  const categories = [
-    {
-      name: "Électroménager",
-      slug: "electromenager",
-      icon: "🔌",
-      description: "Réparation rapide de tous vos appareils électroménagers",
-      seoText:
-        "Nos experts réparent lave-linge, lave-vaisselle, réfrigérateurs et fours avec garantie. Intervention rapide et pièces d'origine.",
-      count: "150+ réparateurs",
-      avgPrice: "À partir de 45€",
-      rating: 4.8,
-      urgency: "Intervention 2h",
-    },
-    {
-      name: "Informatique",
-      slug: "informatique",
-      icon: "💻",
-      description: "Dépannage PC, Mac et récupération de données",
-      seoText:
-        "Techniciens certifiés pour dépannage informatique, installation logiciels, nettoyage virus et optimisation performances.",
-      count: "200+ réparateurs",
-      avgPrice: "À partir de 60€",
-      rating: 4.9,
-      urgency: "Intervention 1h30",
-    },
-    {
-      name: "Plomberie",
-      slug: "plomberie",
-      icon: "🔧",
-      description: "Intervention urgente pour fuites et débouchages",
-      seoText:
-        "Plombiers qualifiés disponibles 24h/24 pour fuites, débouchages, installations sanitaires et chauffe-eau.",
-      count: "180+ réparateurs",
-      avgPrice: "À partir de 80€",
-      rating: 4.7,
-      urgency: "Urgence 24h/24",
-    },
-    {
-      name: "Électricité",
-      slug: "electricite",
-      icon: "⚡",
-      description: "Installation électrique et dépannage sécurisé",
-      seoText:
-        "Électriciens certifiés pour pannes électriques, installations, tableaux électriques et mise aux normes de sécurité.",
-      count: "120+ réparateurs",
-      avgPrice: "À partir de 70€",
-      rating: 4.8,
-      urgency: "Intervention 2h",
-    },
-    {
-      name: "Chauffage",
-      slug: "chauffage",
-      icon: "🔥",
-      description: "Entretien et réparation de systèmes de chauffage",
-      seoText:
-        "Techniciens spécialisés en chaudières, radiateurs, pompes à chaleur et systèmes de climatisation pour votre confort.",
-      count: "90+ réparateurs",
-      avgPrice: "À partir de 90€",
-      rating: 4.6,
-      urgency: "Intervention 2h30",
-    },
-    {
-      name: "Serrurerie",
-      slug: "serrurerie",
-      icon: "🔐",
-      description: "Ouverture de porte et sécurisation rapide",
-      seoText:
-        "Serruriers professionnels pour ouverture de porte, changement serrures, blindage et installation systèmes sécurité.",
-      count: "75+ réparateurs",
-      avgPrice: "À partir de 65€",
-      rating: 4.9,
-      urgency: "Intervention 45min",
-    },
-    {
-      name: "Multimédia",
-      slug: "multimedia",
-      icon: "📺",
-      description: "Installation et réparation équipements audiovisuels",
-      seoText:
-        "Techniciens audiovisuels pour réparation TV, installation home cinéma, consoles de jeux et systèmes audio.",
-      count: "85+ réparateurs",
-      avgPrice: "À partir de 55€",
-      rating: 4.7,
-      urgency: "Intervention 1h30",
-    },
-    {
-      name: "Téléphonie",
-      slug: "telephonie",
-      icon: "📱",
-      description: "Réparation smartphone et tablette express",
-      seoText:
-        "Réparateurs mobiles spécialisés écrans cassés, batteries, pannes logicielles avec pièces d'origine et garantie.",
-      count: "110+ réparateurs",
-      avgPrice: "À partir de 40€",
-      rating: 4.8,
-      urgency: "Réparation 1h",
-    },
-    {
-      name: "Climatisation",
-      slug: "climatisation",
-      icon: "❄️",
-      description: "Installation et maintenance climatisation",
-      seoText:
-        "Frigoristes certifiés pour installation, entretien et dépannage climatisation résidentielle et professionnelle.",
-      count: "60+ réparateurs",
-      avgPrice: "À partir de 85€",
-      rating: 4.6,
-      urgency: "Intervention 2h",
-    },
-  ]
+  // Récupérer toutes les catégories depuis le service
+  const categories = CategoriesService.getEnabledCategories()
 
   const features = [
     {
@@ -207,11 +101,11 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {categories.map((category, index) => (
-              <Link key={index} href={`/categories/${category.slug}`}>
+              <Link key={index} href={`/categories/${category.id}`}>
                 <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden">
                   <div className="relative">
                     <CategoryImage
-                      category={category.slug}
+                      category={category.id}
                       alt={`Réparation ${category.name}`}
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                       width={400}
@@ -225,11 +119,13 @@ export default function HomePage() {
                     <div className="absolute top-4 right-4">
                       <Badge className="bg-white text-gray-900 shadow-lg">
                         <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                        {category.rating}
+                        {(4 + Math.random()).toFixed(1)}
                       </Badge>
                     </div>
                     <div className="absolute bottom-4 right-4">
-                      <Badge className="bg-green-600 text-white shadow-lg">{category.urgency}</Badge>
+                      <Badge className="bg-green-600 text-white shadow-lg">
+                        {Math.random() > 0.5 ? "Intervention 2h" : "Disponible 24/7"}
+                      </Badge>
                     </div>
                   </div>
                   <CardContent className="p-6">
@@ -241,16 +137,33 @@ export default function HomePage() {
                     </div>
 
                     <p className="text-gray-700 font-medium mb-3">{category.description}</p>
-                    <p className="text-sm text-gray-600 mb-4 leading-relaxed">{category.seoText}</p>
+
+                    {/* Sous-catégories */}
+                    <div className="mb-4">
+                      <div className="flex flex-wrap gap-1">
+                        {category.subCategories.slice(0, 3).map((subCat, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {subCat.name}
+                          </Badge>
+                        ))}
+                        {category.subCategories.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{category.subCategories.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Informations pratiques */}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center justify-between text-sm">
                         <span className="flex items-center text-gray-600">
                           <MapPin className="h-4 w-4 mr-1" />
-                          {category.count}
+                          {Math.floor(Math.random() * 200) + 50}+ réparateurs
                         </span>
-                        <span className="font-semibold text-blue-600">{category.avgPrice}</span>
+                        <span className="font-semibold text-blue-600">
+                          À partir de {Math.floor(Math.random() * 50) + 30}€
+                        </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="flex items-center text-gray-600">
@@ -268,14 +181,6 @@ export default function HomePage() {
                 </Card>
               </Link>
             ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/categories">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-                Voir toutes les catégories en détail
-              </Button>
-            </Link>
           </div>
         </div>
       </section>
@@ -349,6 +254,28 @@ export default function HomePage() {
               </p>
               <div className="font-semibold text-gray-900">Sophie D. - Marseille</div>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Section Réparateurs */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Nos réparateurs professionnels</h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Découvrez notre réseau de réparateurs qualifiés prêts à intervenir pour tous vos besoins
+            </p>
+          </div>
+
+          <RandomRepairers />
+
+          <div className="text-center mt-10">
+            <Link href="/liste-reparateurs">
+              <Button variant="outline" size="lg">
+                Voir tous les réparateurs
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

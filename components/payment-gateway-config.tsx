@@ -514,6 +514,17 @@ export function PaymentGatewayConfig() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-medium">Activer la TVA</Label>
+                    <p className="text-sm text-gray-500">Appliquer la TVA sur tous les paiements</p>
+                  </div>
+                  <Switch
+                    checked={config.general.tvaEnabled}
+                    onCheckedChange={(enabled) => updateGeneralConfig({ tvaEnabled: enabled })}
+                  />
+                </div>
+
                 <div>
                   <Label htmlFor="default-currency">Devise par défaut</Label>
                   <select
@@ -538,6 +549,7 @@ export function PaymentGatewayConfig() {
                     step="0.1"
                     value={config.general.taxRate}
                     onChange={(e) => updateGeneralConfig({ taxRate: Number.parseFloat(e.target.value) || 0 })}
+                    disabled={!config.general.tvaEnabled}
                   />
                 </div>
 

@@ -20,6 +20,7 @@ export interface PaymentGatewayConfig {
   general: {
     defaultCurrency: string
     taxRate: number
+    tvaEnabled: boolean
     commission: number
     allowedCurrencies: string[]
     minimumAmount: number
@@ -53,6 +54,7 @@ export class PaymentConfigService {
       general: {
         defaultCurrency: "EUR",
         taxRate: 20,
+        tvaEnabled: true,
         commission: 5,
         allowedCurrencies: ["EUR", "USD", "GBP"],
         minimumAmount: 1,
