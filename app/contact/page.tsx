@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,8 +25,15 @@ import {
   Users,
   Wrench,
 } from "lucide-react"
+import { SiteSettingsService } from "@/lib/site-settings"
 
 export default function ContactPage() {
+  const [siteSettings, setSiteSettings] = useState(SiteSettingsService.getSettings())
+
+  useEffect(() => {
+    setSiteSettings(SiteSettingsService.getSettings())
+  }, [])
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -65,7 +72,7 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: "Téléphone",
-      value: "01 23 45 67 89",
+      value: siteSettings.contactPhone,
       description: "Lun-Ven: 8h-20h, Sam: 9h-17h",
       color: "text-blue-600",
       bgColor: "bg-blue-50",
@@ -73,7 +80,7 @@ export default function ContactPage() {
     {
       icon: Mail,
       title: "Email",
-      value: "contact@fixeopro.com",
+      value: siteSettings.contactEmail,
       description: "Réponse sous 2h en moyenne",
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -89,7 +96,7 @@ export default function ContactPage() {
     {
       icon: Headphones,
       title: "Support technique",
-      value: "01 23 45 67 90",
+      value: siteSettings.supportPhone,
       description: "Pour les réparateurs partenaires",
       color: "text-orange-600",
       bgColor: "bg-orange-50",
@@ -415,9 +422,9 @@ export default function ContactPage() {
                 <div>
                   <p className="font-medium text-gray-900">Siège social</p>
                   <p className="text-gray-600">
-                    123 Rue de la Réparation
+                    {siteSettings.address}
                     <br />
-                    75001 Paris, France
+                    {siteSettings.postalCode} {siteSettings.city}, {siteSettings.country}
                   </p>
                 </div>
                 <div>
