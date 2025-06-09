@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CreditCard, CheckCircle, AlertCircle, Loader2, Tag, X, Gift } from "lucide-react"
+import { CreditCard, CheckCircle, AlertCircle, Loader2, X, Gift } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { PaymentService } from "@/lib/payment-service"
 import { PromoCodeService } from "@/lib/promo-codes"
@@ -275,7 +275,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
         <DialogHeader>
           <DialogTitle>Finaliser votre abonnement - Fixeo.pro</DialogTitle>
           <DialogDescription>
-            Abonnement {plan.name} - {plan.price.replace("/mois", "")}/mois
+            Abonnement {plan.name} - {plan.price.replace("/mois/mois", "/mois").replace("/mois", "")}/mois
           </DialogDescription>
         </DialogHeader>
 
@@ -293,13 +293,11 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
               <CardTitle className="text-lg">Récapitulatif de commande</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Code promo */}
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center">
-                    <Gift className="h-4 w-4 text-purple-600 mr-2" />
-                    <span className="font-medium text-sm">Code promo</span>
-                  </div>
+              {/* Code promo - BIEN VISIBLE */}
+              <div className="border rounded-lg p-4 bg-gray-50 mb-4">
+                <div className="flex items-center mb-3">
+                  <Gift className="h-4 w-4 text-purple-600 mr-2" />
+                  <span className="font-medium text-sm">Code promo</span>
                 </div>
 
                 {!appliedPromo ? (
@@ -318,7 +316,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                         size="sm"
                         className="bg-purple-600 hover:bg-purple-700"
                       >
-                        {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Tag className="h-4 w-4" />}
+                        {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Appliquer"}
                       </Button>
                     </div>
                     {promoError && <p className="text-red-600 text-xs">{promoError}</p>}
@@ -345,7 +343,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
               </div>
 
               {/* Détail des prix */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex justify-between">
                   <span>Abonnement {plan.name}</span>
                   <span className="font-medium">{pricing.baseAmount.toFixed(2)}€/mois</span>
@@ -358,7 +356,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                   </div>
                 )}
 
-                <hr />
+                <hr className="my-2" />
 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
