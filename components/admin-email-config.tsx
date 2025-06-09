@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { emailService, type EmailConfig, type ContactEmail } from "@/lib/email-service"
 import { useToast } from "@/hooks/use-toast"
+import { smtpTester, type SMTPTestResult } from "@/lib/smtp-tester"
 
 // Presets pour les fournisseurs populaires
 const EMAIL_PRESETS = {
@@ -79,6 +80,11 @@ export default function AdminEmailConfig() {
   const [selectedPreset, setSelectedPreset] = useState("ovh_zimbra")
   const [showDebugInfo, setShowDebugInfo] = useState(false)
   const { toast } = useToast()
+
+  const [autoTestLoading, setAutoTestLoading] = useState(false)
+  const [autoTestResults, setAutoTestResults] = useState<SMTPTestResult[]>([])
+  const [showAutoTestDialog, setShowAutoTestDialog] = useState(false)
+  const [diagnosticReport, setDiagnosticReport] = useState<any>(null)
 
   useEffect(() => {
     setEmailHistory(emailService.getEmailHistory())
@@ -229,6 +235,69 @@ export default function AdminEmailConfig() {
         return "bg-yellow-100 text-yellow-800"
       default:
         return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const handleAutoTest = async () => {
+    if (!testEmail) {
+      toast({
+        title: "Email requis",
+        description: "Veuillez saisir une adresse email pour le test automatique.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setAutoTestLoading(true)
+    setAutoTestResults([])
+
+    try {
+      console.log("🚀 Démarrage du test automatique...")
+      const results = await smtpTester.runAutoTest(testEmail)
+      setAutoTestResults(results)
+      setShowAutoTestDialog(true)
+
+      const successCount = results.filter((r) => r.success).length
+      const totalCount = results.length
+
+      if (successCount === totalCount) {
+        toast({
+          title: "Test automatique réussi !",
+          description: `Tous les tests sont passés (${successCount}/${totalCount}). Vérifiez votre email.`,
+        })
+      } else {
+        toast({
+          title: "Test automatique partiellement réussi",
+          description: `${successCount}/${totalCount} tests réussis. Consultez les détails.`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur du test automatique",
+        description: "Impossible d'exécuter le test automatique.",
+        variant: "destructive",
+      })
+    } finally {
+      setAutoTestLoading(false)
+    }
+  }
+
+  const handleDiagnostic = async () => {
+    try {
+      const report = await smtpTester.getDiagnosticReport()
+      setDiagnosticReport(report)
+
+      toast({
+        title: "Diagnostic généré",
+        description: `Statut: ${report.status.toUpperCase()} - ${report.issues.length} problème(s) détecté(s)`,
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur de diagnostic",
+        description: "Impossible de générer le rapport de diagnostic.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -456,7 +525,7 @@ export default function AdminEmailConfig() {
         <TabsContent value="test" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Envoyer un email de test</CardTitle>
+              <CardTitle>Test automatique complet</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -470,10 +539,32 @@ export default function AdminEmailConfig() {
                 />
               </div>
 
-              <Button onClick={handleSendTestEmail} disabled={testLoading || !testEmail}>
-                {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                Envoyer l'email de test
-              </Button>
+              <div className="flex space-x-2">
+                <Button onClick={handleAutoTest} disabled={autoTestLoading || !testEmail} className="flex-1">
+                  {autoTestLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Test automatique complet
+                </Button>
+
+                <Button variant="outline" onClick={handleSendTestEmail} disabled={testLoading || !testEmail}>
+                  {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  Test simple
+                </Button>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-700 mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="font-medium">Test automatique</span>
+                </div>
+                <p className="text-blue-600 text-sm">
+                  Le test automatique vérifie : validation config, DNS, connexion TCP, authentification SMTP, et envoi
+                  d'email.
+                </p>
+              </div>
 
               {!config.testMode && (
                 <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -488,16 +579,52 @@ export default function AdminEmailConfig() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
 
-              {config.testMode && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="font-medium">Mode test activé</span>
+          <Card>
+            <CardHeader>
+              <CardTitle>Diagnostic de configuration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={handleDiagnostic} variant="outline">
+                <Bug className="h-4 w-4 mr-2" />
+                Générer un diagnostic
+              </Button>
+
+              {diagnosticReport && (
+                <div className="space-y-3">
+                  <div
+                    className={`p-4 rounded-lg border ${
+                      diagnosticReport.status === "ok"
+                        ? "bg-green-50 border-green-200"
+                        : diagnosticReport.status === "warning"
+                          ? "bg-yellow-50 border-yellow-200"
+                          : "bg-red-50 border-red-200"
+                    }`}
+                  >
+                    <h4 className="font-medium mb-2">Statut : {diagnosticReport.status.toUpperCase()}</h4>
+
+                    {diagnosticReport.issues.length > 0 && (
+                      <div className="mb-3">
+                        <h5 className="font-medium text-red-700 mb-1">Problèmes détectés :</h5>
+                        <ul className="text-red-600 text-sm space-y-1">
+                          {diagnosticReport.issues.map((issue: string, index: number) => (
+                            <li key={index}>• {issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div>
+                      <h5 className="font-medium text-blue-700 mb-1">Recommandations :</h5>
+                      <ul className="text-blue-600 text-sm space-y-1">
+                        {diagnosticReport.recommendations.map((rec: string, index: number) => (
+                          <li key={index}>• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <p className="text-blue-600 text-sm mt-1">
-                    L'email ne sera pas réellement envoyé, mais apparaîtra dans l'historique et la console.
-                  </p>
                 </div>
               )}
             </CardContent>
@@ -605,6 +732,67 @@ export default function AdminEmailConfig() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog pour les résultats du test automatique */}
+      <Dialog open={showAutoTestDialog} onOpenChange={setShowAutoTestDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Résultats du test automatique SMTP</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {autoTestResults.map((result, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg border ${
+                  result.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                    {result.success ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    )}
+                    <h4 className="font-medium">{result.step}</h4>
+                  </div>
+                  <Badge variant="outline">{result.timing}ms</Badge>
+                </div>
+
+                <p className={`text-sm mb-2 ${result.success ? "text-green-700" : "text-red-700"}`}>{result.message}</p>
+
+                {result.error && (
+                  <div className="bg-red-100 border border-red-200 rounded p-2 mb-2">
+                    <p className="text-red-700 text-sm font-medium">Erreur :</p>
+                    <p className="text-red-600 text-sm">{result.error}</p>
+                  </div>
+                )}
+
+                {result.details && (
+                  <details className="text-sm">
+                    <summary className="cursor-pointer text-gray-600 hover:text-gray-800">Voir les détails</summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
+                      {JSON.stringify(result.details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ))}
+
+            {autoTestResults.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-700 mb-2">Résumé du test :</h4>
+                <p className="text-blue-600 text-sm">
+                  {autoTestResults.filter((r) => r.success).length} / {autoTestResults.length} tests réussis
+                </p>
+                <p className="text-blue-600 text-sm">
+                  Temps total : {autoTestResults.reduce((sum, r) => sum + (r.timing || 0), 0)}ms
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog pour voir les détails d'un email */}
       <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
