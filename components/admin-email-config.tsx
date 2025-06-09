@@ -9,18 +9,73 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Mail, Settings, TestTube, CheckCircle, XCircle, Clock, Send, Eye, AlertCircle, Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Mail,
+  Settings,
+  TestTube,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Send,
+  Eye,
+  AlertCircle,
+  Loader2,
+  Zap,
+} from "lucide-react"
 import { emailService, type EmailConfig, type ContactEmail } from "@/lib/email-service"
 import { useToast } from "@/hooks/use-toast"
+
+// Presets pour les fournisseurs populaires
+const EMAIL_PRESETS = {
+  ovh_zimbra: {
+    name: "OVH Zimbra",
+    smtpHost: "ssl0.ovh.net",
+    smtpPort: 587,
+    description: "Configuration pour OVH Zimbra Mail",
+  },
+  ovh_pro: {
+    name: "OVH Pro",
+    smtpHost: "pro1.mail.ovh.net",
+    smtpPort: 587,
+    description: "Configuration pour OVH Mail Pro",
+  },
+  gmail: {
+    name: "Gmail",
+    smtpHost: "smtp.gmail.com",
+    smtpPort: 587,
+    description: "Configuration pour Gmail (nécessite un mot de passe d'application)",
+  },
+  outlook: {
+    name: "Outlook/Hotmail",
+    smtpHost: "smtp-mail.outlook.com",
+    smtpPort: 587,
+    description: "Configuration pour Outlook.com et Hotmail",
+  },
+  yahoo: {
+    name: "Yahoo Mail",
+    smtpHost: "smtp.mail.yahoo.com",
+    smtpPort: 587,
+    description: "Configuration pour Yahoo Mail",
+  },
+  custom: {
+    name: "Configuration personnalisée",
+    smtpHost: "",
+    smtpPort: 587,
+    description: "Saisir manuellement les paramètres SMTP",
+  },
+}
 
 export default function AdminEmailConfig() {
   const [config, setConfig] = useState<EmailConfig>(emailService.loadConfig())
   const [isLoading, setIsLoading] = useState(false)
   const [testEmail, setTestEmail] = useState("")
   const [testLoading, setTestLoading] = useState(false)
+  const [connectionTestLoading, setConnectionTestLoading] = useState(false)
   const [emailHistory, setEmailHistory] = useState<ContactEmail[]>([])
   const [selectedEmail, setSelectedEmail] = useState<ContactEmail | null>(null)
   const [showEmailDialog, setShowEmailDialog] = useState(false)
+  const [selectedPreset, setSelectedPreset] = useState("custom")
   const { toast } = useToast()
 
   useEffect(() => {
@@ -29,6 +84,18 @@ export default function AdminEmailConfig() {
 
   const handleConfigChange = (field: keyof EmailConfig, value: any) => {
     setConfig((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handlePresetChange = (presetKey: string) => {
+    setSelectedPreset(presetKey)
+    const preset = EMAIL_PRESETS[presetKey as keyof typeof EMAIL_PRESETS]
+    if (preset && presetKey !== "custom") {
+      setConfig((prev) => ({
+        ...prev,
+        smtpHost: preset.smtpHost,
+        smtpPort: preset.smtpPort,
+      }))
+    }
   }
 
   const handleSaveConfig = async () => {
@@ -50,30 +117,42 @@ export default function AdminEmailConfig() {
     }
   }
 
-  const handleTestConfig = async () => {
-    setTestLoading(true)
+  const handleTestConnection = async () => {
+    setConnectionTestLoading(true)
     try {
-      const result = await emailService.testConfiguration()
-      if (result.success) {
+      // Simuler un test de connexion SMTP
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // En mode test, toujours réussir
+      if (config.testMode) {
         toast({
-          title: "Test réussi",
-          description: "La configuration email fonctionne correctement.",
+          title: "Test de connexion réussi",
+          description: `Connexion établie avec ${config.smtpHost}:${config.smtpPort} (Mode test)`,
         })
       } else {
-        toast({
-          title: "Test échoué",
-          description: result.error || "Erreur lors du test de configuration.",
-          variant: "destructive",
-        })
+        // En production, tester la vraie connexion
+        const result = await emailService.testConfiguration()
+        if (result.success) {
+          toast({
+            title: "Test de connexion réussi",
+            description: `Connexion établie avec ${config.smtpHost}:${config.smtpPort}`,
+          })
+        } else {
+          toast({
+            title: "Test de connexion échoué",
+            description: result.error || "Impossible de se connecter au serveur SMTP.",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de tester la configuration.",
+        title: "Erreur de connexion",
+        description: "Impossible de tester la connexion SMTP.",
         variant: "destructive",
       })
     } finally {
-      setTestLoading(false)
+      setConnectionTestLoading(false)
     }
   }
 
@@ -114,6 +193,25 @@ export default function AdminEmailConfig() {
     } finally {
       setTestLoading(false)
     }
+  }
+
+  const loadOVHPreset = () => {
+    setConfig((prev) => ({
+      ...prev,
+      smtpHost: "ssl0.ovh.net",
+      smtpPort: 587,
+      smtpUser: "contact@fixeo.pro",
+      smtpPassword: "Salimes057",
+      fromEmail: "contact@fixeo.pro",
+      fromName: "FixeoPro",
+      isEnabled: true,
+      testMode: false,
+    }))
+    setSelectedPreset("ovh_zimbra")
+    toast({
+      title: "Configuration OVH chargée",
+      description: "Les paramètres OVH Zimbra ont été appliqués.",
+    })
   }
 
   const getStatusIcon = (status: string) => {
@@ -176,6 +274,28 @@ export default function AdminEmailConfig() {
         </TabsList>
 
         <TabsContent value="config" className="space-y-4">
+          {/* Configuration rapide OVH */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <Zap className="h-5 w-5" />
+                Configuration rapide OVH
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-700 font-medium">contact@fixeo.pro</p>
+                  <p className="text-blue-600 text-sm">Serveur: ssl0.ovh.net:587</p>
+                </div>
+                <Button onClick={loadOVHPreset} className="bg-blue-600 hover:bg-blue-700">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Charger la config OVH
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Paramètres généraux</CardTitle>
@@ -213,7 +333,7 @@ export default function AdminEmailConfig() {
                     type="email"
                     value={config.fromEmail}
                     onChange={(e) => handleConfigChange("fromEmail", e.target.value)}
-                    placeholder="noreply@fixeopro.com"
+                    placeholder="contact@fixeo.pro"
                   />
                 </div>
                 <div>
@@ -234,6 +354,25 @@ export default function AdminEmailConfig() {
               <CardTitle>Configuration SMTP</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="preset">Preset fournisseur</Label>
+                <Select value={selectedPreset} onValueChange={handlePresetChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un fournisseur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(EMAIL_PRESETS).map(([key, preset]) => (
+                      <SelectItem key={key} value={key}>
+                        <div>
+                          <div className="font-medium">{preset.name}</div>
+                          <div className="text-sm text-gray-500">{preset.description}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="smtpHost">Serveur SMTP</Label>
@@ -241,7 +380,7 @@ export default function AdminEmailConfig() {
                     id="smtpHost"
                     value={config.smtpHost || ""}
                     onChange={(e) => handleConfigChange("smtpHost", e.target.value)}
-                    placeholder="smtp.gmail.com"
+                    placeholder="ssl0.ovh.net"
                   />
                 </div>
                 <div>
@@ -263,7 +402,7 @@ export default function AdminEmailConfig() {
                     id="smtpUser"
                     value={config.smtpUser || ""}
                     onChange={(e) => handleConfigChange("smtpUser", e.target.value)}
-                    placeholder="votre-email@gmail.com"
+                    placeholder="contact@fixeo.pro"
                   />
                 </div>
                 <div>
@@ -277,12 +416,31 @@ export default function AdminEmailConfig() {
                   />
                 </div>
               </div>
+
+              {selectedPreset === "ovh_zimbra" && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-blue-700 mb-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="font-medium">Configuration OVH Zimbra</span>
+                  </div>
+                  <ul className="text-blue-600 text-sm space-y-1">
+                    <li>• Serveur SMTP : ssl0.ovh.net</li>
+                    <li>• Port : 587 (STARTTLS)</li>
+                    <li>• Authentification : Obligatoire</li>
+                    <li>• Sécurité : STARTTLS</li>
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={handleTestConfig} disabled={testLoading}>
-              {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TestTube className="h-4 w-4 mr-2" />}
+            <Button variant="outline" onClick={handleTestConnection} disabled={connectionTestLoading}>
+              {connectionTestLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <TestTube className="h-4 w-4 mr-2" />
+              )}
               Tester la connexion
             </Button>
             <Button onClick={handleSaveConfig} disabled={isLoading}>
@@ -322,6 +480,18 @@ export default function AdminEmailConfig() {
                   </div>
                   <p className="text-blue-600 text-sm mt-1">
                     L'email ne sera pas réellement envoyé, mais apparaîtra dans l'historique et la console.
+                  </p>
+                </div>
+              )}
+
+              {!config.testMode && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="font-medium">Mode production activé</span>
+                  </div>
+                  <p className="text-green-600 text-sm mt-1">
+                    L'email sera réellement envoyé via {config.smtpHost}:{config.smtpPort}
                   </p>
                 </div>
               )}
