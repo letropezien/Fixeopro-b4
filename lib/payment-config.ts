@@ -6,7 +6,6 @@ export interface PaymentGatewayConfig {
     clientSecret: string
     webhookId?: string
     currency: string
-    testMode: boolean
   }
   stripe: {
     enabled: boolean
@@ -15,21 +14,19 @@ export interface PaymentGatewayConfig {
     secretKey: string
     webhookSecret: string
     currency: string
-    testMode: boolean
   }
   general: {
     defaultCurrency: string
     taxRate: number
-    tvaEnabled: boolean
     commission: number
-    allowedCurrencies: string[]
     minimumAmount: number
     maximumAmount: number
+    tvaEnabled: boolean
   }
 }
 
 export class PaymentConfigService {
-  private static CONFIG_KEY = "fixeo_payment_gateways"
+  private static readonly STORAGE_KEY = "fixeopro_payment_config"
 
   static getDefaultConfig(): PaymentGatewayConfig {
     return {
@@ -40,7 +37,6 @@ export class PaymentConfigService {
         clientSecret: "",
         webhookId: "",
         currency: "EUR",
-        testMode: true,
       },
       stripe: {
         enabled: false,
@@ -49,44 +45,39 @@ export class PaymentConfigService {
         secretKey: "",
         webhookSecret: "",
         currency: "EUR",
-        testMode: true,
       },
       general: {
         defaultCurrency: "EUR",
         taxRate: 20,
+        commission: 10,
+        minimumAmount: 10,
+        maximumAmount: 5000,
         tvaEnabled: true,
-        commission: 5,
-        allowedCurrencies: ["EUR", "USD", "GBP"],
-        minimumAmount: 1,
-        maximumAmount: 10000,
       },
     }
   }
 
   static getConfig(): PaymentGatewayConfig {
-    if (typeof window === "undefined") {
-      return this.getDefaultConfig()
-    }
-
     try {
-      const config = localStorage.getItem(this.CONFIG_KEY)
-      if (config) {
-        const parsed = JSON.parse(config)
-        return { ...this.getDefaultConfig(), ...parsed }
+      const storedConfig = localStorage.getItem(this.STORAGE_KEY)
+      if (!storedConfig) {
+        const defaultConfig = this.getDefaultConfig()
+        this.saveConfig(defaultConfig)
+        return defaultConfig
       }
-      return this.getDefaultConfig()
+      return JSON.parse(storedConfig)
     } catch (error) {
-      console.error("Erreur lors de la récupération de la configuration:", error)
+      console.error("Error loading payment config:", error)
       return this.getDefaultConfig()
     }
   }
 
   static saveConfig(config: PaymentGatewayConfig): boolean {
     try {
-      localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config))
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(config))
       return true
     } catch (error) {
-      console.error("Erreur lors de la sauvegarde:", error)
+      console.error("Error saving payment config:", error)
       return false
     }
   }
@@ -94,16 +85,24 @@ export class PaymentConfigService {
   static validatePayPalConfig(config: PaymentGatewayConfig["paypal"]): string[] {
     const errors: string[] = []
 
-    if (config.enabled) {
-      if (!config.clientId) {
-        errors.push("Client ID PayPal requis")
-      }
-      if (!config.clientSecret) {
-        errors.push("Client Secret PayPal requis")
-      }
-      if (config.clientId && !config.clientId.startsWith(config.mode === "sandbox" ? "AX" : "AX")) {
-        errors.push("Format Client ID PayPal invalide")
-      }
+    if (!config.enabled) {
+      return errors
+    }
+
+    if (!config.clientId) {
+      errors.push("Client ID est requis")
+    } else if (!config.clientId.startsWith("A")) {
+      errors.push("Client ID invalide (doit commencer par 'A')")
+    }
+
+    if (!config.clientSecret) {
+      errors.push("Client Secret est requis")
+    } else if (!config.clientSecret.startsWith("E")) {
+      errors.push("Client Secret invalide (doit commencer par 'E')")
+    }
+
+    if (config.webhookId && !config.webhookId.startsWith("WH-")) {
+      errors.push("Webhook ID invalide (doit commencer par 'WH-')")
     }
 
     return errors
@@ -112,22 +111,32 @@ export class PaymentConfigService {
   static validateStripeConfig(config: PaymentGatewayConfig["stripe"]): string[] {
     const errors: string[] = []
 
-    if (config.enabled) {
-      if (!config.publishableKey) {
-        errors.push("Clé publique Stripe requise")
+    if (!config.enabled) {
+      return errors
+    }
+
+    if (!config.publishableKey) {
+      errors.push("Clé publique est requise")
+    } else {
+      const prefix = config.mode === "test" ? "pk_test_" : "pk_live_"
+      if (!config.publishableKey.startsWith(prefix)) {
+        errors.push(`Clé publique invalide (doit commencer par '${prefix}')`)
       }
-      if (!config.secretKey) {
-        errors.push("Clé secrète Stripe requise")
+    }
+
+    if (!config.secretKey) {
+      errors.push("Clé secrète est requise")
+    } else {
+      const prefix = config.mode === "test" ? "sk_test_" : "sk_live_"
+      if (!config.secretKey.startsWith(prefix)) {
+        errors.push(`Clé secrète invalide (doit commencer par '${prefix}')`)
       }
-      if (config.publishableKey && !config.publishableKey.startsWith("pk_")) {
-        errors.push("Format clé publique Stripe invalide")
-      }
-      if (config.secretKey && !config.secretKey.startsWith("sk_")) {
-        errors.push("Format clé secrète Stripe invalide")
-      }
-      if (config.testMode && config.publishableKey && !config.publishableKey.includes("test")) {
-        errors.push("Utilisez les clés de test Stripe en mode test")
-      }
+    }
+
+    if (!config.webhookSecret) {
+      errors.push("Webhook Secret est requis")
+    } else if (!config.webhookSecret.startsWith("whsec_")) {
+      errors.push("Webhook Secret invalide (doit commencer par 'whsec_')")
     }
 
     return errors
@@ -137,54 +146,62 @@ export class PaymentConfigService {
     success: boolean
     message: string
   }> {
-    try {
-      // Simulation du test de connexion PayPal
-      if (!config.clientId || !config.clientSecret) {
-        return { success: false, message: "Identifiants PayPal manquants" }
-      }
+    // Simulation d'un test de connexion
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (!config.clientId || !config.clientSecret) {
+          resolve({
+            success: false,
+            message: "Client ID et Client Secret sont requis",
+          })
+          return
+        }
 
-      // Ici, vous feriez un vrai appel à l'API PayPal
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Simulation d'un test réussi
-      return { success: true, message: "Connexion PayPal réussie" }
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion PayPal" }
-    }
+        if (config.clientId.startsWith("A") && config.clientSecret.startsWith("E")) {
+          resolve({
+            success: true,
+            message: "Connexion à PayPal établie avec succès",
+          })
+        } else {
+          resolve({
+            success: false,
+            message: "Identifiants PayPal invalides",
+          })
+        }
+      }, 1000)
+    })
   }
 
   static async testStripeConnection(config: PaymentGatewayConfig["stripe"]): Promise<{
     success: boolean
     message: string
   }> {
-    try {
-      // Simulation du test de connexion Stripe
-      if (!config.publishableKey || !config.secretKey) {
-        return { success: false, message: "Clés Stripe manquantes" }
-      }
+    // Simulation d'un test de connexion
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        if (!config.publishableKey || !config.secretKey) {
+          resolve({
+            success: false,
+            message: "Clé publique et Clé secrète sont requises",
+          })
+          return
+        }
 
-      // Ici, vous feriez un vrai appel à l'API Stripe
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+        const pubPrefix = config.mode === "test" ? "pk_test_" : "pk_live_"
+        const secPrefix = config.mode === "test" ? "sk_test_" : "sk_live_"
 
-      // Simulation d'un test réussi
-      return { success: true, message: "Connexion Stripe réussie" }
-    } catch (error) {
-      return { success: false, message: "Erreur de connexion Stripe" }
-    }
-  }
-
-  static getEnabledGateways(): string[] {
-    const config = this.getConfig()
-    const enabled: string[] = []
-
-    if (config.paypal.enabled) enabled.push("paypal")
-    if (config.stripe.enabled) enabled.push("stripe")
-
-    return enabled
-  }
-
-  static isGatewayEnabled(gateway: "paypal" | "stripe"): boolean {
-    const config = this.getConfig()
-    return config[gateway].enabled
+        if (config.publishableKey.startsWith(pubPrefix) && config.secretKey.startsWith(secPrefix)) {
+          resolve({
+            success: true,
+            message: "Connexion à Stripe établie avec succès",
+          })
+        } else {
+          resolve({
+            success: false,
+            message: "Identifiants Stripe invalides",
+          })
+        }
+      }, 1000)
+    })
   }
 }

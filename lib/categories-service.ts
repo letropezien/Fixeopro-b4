@@ -2,7 +2,6 @@ export interface SubCategory {
   id: string
   name: string
   description?: string
-  keywords?: string[]
 }
 
 export interface Category {
@@ -10,398 +9,374 @@ export interface Category {
   name: string
   icon: string
   description: string
-  subCategories: SubCategory[]
   enabled: boolean
+  subCategories: SubCategory[]
+}
+
+export interface CategorySettings {
+  tvaEnabled: boolean
+  tvaRate: number
 }
 
 export class CategoriesService {
   private static readonly STORAGE_KEY = "fixeopro_categories"
-  private static readonly SETTINGS_KEY = "fixeopro_category_settings"
+  private static readonly SETTINGS_KEY = "fixeopro_categories_settings"
 
   static getDefaultCategories(): Category[] {
     return [
       {
         id: "electromenager",
         name: "Électroménager",
-        icon: "🔌",
-        description: "Réparation et dépannage d'appareils électroménagers",
+        icon: "🧰",
+        description: "Réparation d'appareils électroménagers",
         enabled: true,
         subCategories: [
-          { id: "lave-linge", name: "Lave-linge", description: "Réparation lave-linge, tambour, pompe" },
-          { id: "lave-vaisselle", name: "Lave-vaisselle", description: "Dépannage lave-vaisselle, bras lavage" },
-          { id: "refrigerateur", name: "Réfrigérateur", description: "Réparation frigo, congélateur, thermostat" },
-          { id: "four", name: "Four", description: "Réparation four électrique, gaz, micro-ondes" },
-          { id: "micro-ondes", name: "Micro-ondes", description: "Dépannage micro-ondes, magnétron" },
-          { id: "aspirateur", name: "Aspirateur", description: "Réparation aspirateur, moteur, brosse" },
-          { id: "seche-linge", name: "Sèche-linge", description: "Dépannage sèche-linge, résistance" },
-          { id: "cafetiere", name: "Cafetière", description: "Réparation machine à café, expresso" },
-          { id: "robot-cuisine", name: "Robot de cuisine", description: "Dépannage robot, mixeur, blender" },
-          { id: "fer-repasser", name: "Fer à repasser", description: "Réparation fer, centrale vapeur" },
+          { id: "lave-linge", name: "Lave-linge", description: "Réparation de machines à laver" },
+          { id: "lave-vaisselle", name: "Lave-vaisselle", description: "Réparation de lave-vaisselles" },
+          { id: "refrigerateur", name: "Réfrigérateur", description: "Réparation de réfrigérateurs et congélateurs" },
+          { id: "four", name: "Four", description: "Réparation de fours et micro-ondes" },
+          { id: "plaque-cuisson", name: "Plaque de cuisson", description: "Réparation de plaques de cuisson" },
+          { id: "hotte", name: "Hotte", description: "Réparation de hottes aspirantes" },
+          { id: "seche-linge", name: "Sèche-linge", description: "Réparation de sèche-linges" },
+          { id: "aspirateur", name: "Aspirateur", description: "Réparation d'aspirateurs" },
+          { id: "petit-electromenager", name: "Petit électroménager", description: "Réparation de petits appareils" },
+          { id: "autre-electromenager", name: "Autre électroménager", description: "Autres appareils électroménagers" },
         ],
       },
       {
         id: "informatique",
         name: "Informatique",
         icon: "💻",
-        description: "Dépannage informatique et réparation d'ordinateurs",
+        description: "Réparation d'ordinateurs et matériel informatique",
         enabled: true,
         subCategories: [
-          {
-            id: "ordinateur-portable",
-            name: "Ordinateur portable",
-            description: "Réparation PC portable, écran, clavier",
-          },
-          { id: "ordinateur-fixe", name: "Ordinateur fixe", description: "Dépannage PC fixe, tour, composants" },
-          { id: "mac", name: "Mac", description: "Réparation MacBook, iMac, Mac mini" },
-          { id: "imprimante", name: "Imprimante", description: "Dépannage imprimante, scanner, cartouches" },
-          { id: "ecran", name: "Écran", description: "Réparation moniteur, écran LCD, LED" },
-          { id: "disque-dur", name: "Disque dur", description: "Récupération données, SSD, HDD" },
-          { id: "virus", name: "Virus", description: "Nettoyage virus, malware, optimisation" },
-          { id: "reseau", name: "Réseau", description: "Configuration WiFi, box, routeur" },
-          { id: "logiciel", name: "Logiciel", description: "Installation, configuration logiciels" },
-          { id: "sauvegarde", name: "Sauvegarde", description: "Sauvegarde données, cloud, NAS" },
+          { id: "pc-portable", name: "PC Portable", description: "Réparation d'ordinateurs portables" },
+          { id: "pc-fixe", name: "PC Fixe", description: "Réparation d'ordinateurs de bureau" },
+          { id: "mac", name: "Mac", description: "Réparation d'ordinateurs Apple" },
+          { id: "imprimante", name: "Imprimante", description: "Réparation d'imprimantes et scanners" },
+          { id: "reseau", name: "Réseau", description: "Installation et dépannage réseau" },
+          { id: "logiciel", name: "Logiciel", description: "Dépannage logiciel et système d'exploitation" },
+          { id: "virus", name: "Virus", description: "Suppression de virus et malwares" },
+          { id: "donnees", name: "Données", description: "Récupération de données" },
+          { id: "peripherique", name: "Périphérique", description: "Réparation de périphériques" },
+          { id: "autre-informatique", name: "Autre informatique", description: "Autres problèmes informatiques" },
         ],
       },
       {
         id: "telephonie",
         name: "Téléphonie",
         icon: "📱",
-        description: "Réparation smartphone, tablette et accessoires",
+        description: "Réparation de smartphones et téléphones",
         enabled: true,
         subCategories: [
-          { id: "iphone", name: "iPhone", description: "Réparation iPhone, écran, batterie" },
-          { id: "samsung", name: "Samsung", description: "Dépannage Samsung Galaxy, écran, charge" },
-          { id: "huawei", name: "Huawei", description: "Réparation Huawei, Honor, écran tactile" },
-          { id: "xiaomi", name: "Xiaomi", description: "Dépannage Xiaomi, Redmi, batterie" },
-          { id: "tablette", name: "Tablette", description: "Réparation iPad, tablette Android" },
-          { id: "ecran-tactile", name: "Écran tactile", description: "Remplacement écran cassé, tactile" },
-          { id: "batterie", name: "Batterie", description: "Changement batterie, autonomie" },
-          { id: "connecteur-charge", name: "Connecteur de charge", description: "Réparation prise charge, USB-C" },
-          { id: "appareil-photo", name: "Appareil photo", description: "Réparation caméra, objectif" },
-          { id: "haut-parleur", name: "Haut-parleur", description: "Dépannage son, micro, écouteurs" },
+          { id: "iphone", name: "iPhone", description: "Réparation d'iPhone" },
+          { id: "samsung", name: "Samsung", description: "Réparation de téléphones Samsung" },
+          { id: "huawei", name: "Huawei", description: "Réparation de téléphones Huawei" },
+          { id: "xiaomi", name: "Xiaomi", description: "Réparation de téléphones Xiaomi" },
+          { id: "ecran", name: "Écran", description: "Remplacement d'écrans cassés" },
+          { id: "batterie", name: "Batterie", description: "Remplacement de batteries" },
+          { id: "connecteur", name: "Connecteur", description: "Réparation de connecteurs" },
+          { id: "tablette", name: "Tablette", description: "Réparation de tablettes" },
+          { id: "telephone-fixe", name: "Téléphone fixe", description: "Réparation de téléphones fixes" },
+          { id: "autre-telephonie", name: "Autre téléphonie", description: "Autres problèmes de téléphonie" },
         ],
       },
       {
         id: "electronique",
         name: "Électronique",
         icon: "📺",
-        description: "Réparation TV, audio et électronique grand public",
+        description: "Réparation d'appareils électroniques",
         enabled: true,
         subCategories: [
-          { id: "television", name: "Télévision", description: "Réparation TV LCD, LED, OLED, plasma" },
-          { id: "console-jeux", name: "Console de jeux", description: "Dépannage PlayStation, Xbox, Nintendo" },
-          { id: "chaine-hifi", name: "Chaîne Hi-Fi", description: "Réparation chaîne, amplificateur" },
-          { id: "enceinte", name: "Enceinte", description: "Dépannage enceinte, bluetooth, son" },
-          { id: "casque", name: "Casque", description: "Réparation casque audio, écouteurs" },
-          { id: "appareil-photo", name: "Appareil photo", description: "Dépannage reflex, compact, objectif" },
-          { id: "camescope", name: "Caméscope", description: "Réparation caméra, vidéo" },
-          { id: "drone", name: "Drone", description: "Dépannage drone, hélice, caméra" },
-          { id: "montre-connectee", name: "Montre connectée", description: "Réparation smartwatch, bracelet" },
-          { id: "home-cinema", name: "Home cinéma", description: "Installation, dépannage système audio" },
+          { id: "tv", name: "TV", description: "Réparation de téléviseurs" },
+          { id: "console", name: "Console de jeux", description: "Réparation de consoles de jeux" },
+          { id: "audio", name: "Audio", description: "Réparation d'équipements audio" },
+          { id: "appareil-photo", name: "Appareil photo", description: "Réparation d'appareils photo" },
+          { id: "drone", name: "Drone", description: "Réparation de drones" },
+          { id: "home-cinema", name: "Home cinéma", description: "Réparation de systèmes home cinéma" },
+          { id: "enceinte", name: "Enceinte", description: "Réparation d'enceintes" },
+          { id: "casque", name: "Casque audio", description: "Réparation de casques audio" },
+          { id: "autre-electronique", name: "Autre électronique", description: "Autres appareils électroniques" },
         ],
       },
       {
         id: "plomberie",
         name: "Plomberie",
-        icon: "🔧",
-        description: "Intervention plomberie, fuite, débouchage",
+        icon: "🚿",
+        description: "Réparation et installation de plomberie",
         enabled: true,
         subCategories: [
-          { id: "fuite-eau", name: "Fuite d'eau", description: "Réparation fuite, canalisation, joint" },
-          { id: "debouchage", name: "Débouchage", description: "Débouchage évier, WC, canalisation" },
-          { id: "chauffe-eau", name: "Chauffe-eau", description: "Dépannage ballon eau chaude, résistance" },
-          { id: "robinetterie", name: "Robinetterie", description: "Réparation robinet, mitigeur, cartouche" },
-          { id: "wc", name: "WC", description: "Dépannage toilettes, chasse d'eau, mécanisme" },
-          { id: "douche", name: "Douche", description: "Réparation douche, pommeau, flexible" },
-          { id: "baignoire", name: "Baignoire", description: "Dépannage baignoire, vidage, joint" },
-          {
-            id: "lave-vaisselle-plomberie",
-            name: "Raccordement lave-vaisselle",
-            description: "Installation, raccordement",
-          },
-          { id: "lave-linge-plomberie", name: "Raccordement lave-linge", description: "Installation, évacuation" },
-          { id: "canalisation", name: "Canalisation", description: "Réparation tuyau, PVC, cuivre" },
+          { id: "fuite", name: "Fuite d'eau", description: "Réparation de fuites d'eau" },
+          { id: "debouchage", name: "Débouchage", description: "Débouchage de canalisations" },
+          { id: "chauffe-eau", name: "Chauffe-eau", description: "Réparation de chauffe-eau" },
+          { id: "robinetterie", name: "Robinetterie", description: "Réparation et installation de robinetterie" },
+          { id: "wc", name: "WC", description: "Réparation de toilettes" },
+          { id: "douche", name: "Douche", description: "Installation et réparation de douches" },
+          { id: "baignoire", name: "Baignoire", description: "Installation et réparation de baignoires" },
+          { id: "evier", name: "Évier", description: "Installation et réparation d'éviers" },
+          { id: "canalisation", name: "Canalisation", description: "Réparation de canalisations" },
+          { id: "autre-plomberie", name: "Autre plomberie", description: "Autres problèmes de plomberie" },
         ],
       },
       {
         id: "electricite",
         name: "Électricité",
         icon: "⚡",
-        description: "Installation électrique, dépannage, mise aux normes",
+        description: "Réparation et installation électrique",
         enabled: true,
         subCategories: [
-          { id: "panne-electrique", name: "Panne électrique", description: "Dépannage coupure, court-circuit" },
-          { id: "tableau-electrique", name: "Tableau électrique", description: "Réparation disjoncteur, différentiel" },
-          {
-            id: "prise-electrique",
-            name: "Prise électrique",
-            description: "Installation, réparation prise, interrupteur",
-          },
-          { id: "eclairage", name: "Éclairage", description: "Installation luminaire, LED, variateur" },
-          { id: "chauffage-electrique", name: "Chauffage électrique", description: "Dépannage radiateur, convecteur" },
-          { id: "volet-roulant", name: "Volet roulant", description: "Réparation moteur, télécommande" },
-          { id: "portail-electrique", name: "Portail électrique", description: "Dépannage automatisme, moteur" },
-          { id: "alarme", name: "Alarme", description: "Installation, dépannage système alarme" },
-          { id: "videophone", name: "Visiophone", description: "Installation interphone, portier vidéo" },
-          { id: "mise-aux-normes", name: "Mise aux normes", description: "Conformité électrique, diagnostic" },
+          { id: "panne", name: "Panne électrique", description: "Réparation de pannes électriques" },
+          { id: "tableau", name: "Tableau électrique", description: "Installation et mise aux normes de tableaux" },
+          { id: "prise", name: "Prise", description: "Installation et réparation de prises" },
+          { id: "interrupteur", name: "Interrupteur", description: "Installation et réparation d'interrupteurs" },
+          { id: "eclairage", name: "Éclairage", description: "Installation et réparation d'éclairage" },
+          { id: "court-circuit", name: "Court-circuit", description: "Réparation de courts-circuits" },
+          { id: "installation", name: "Installation complète", description: "Installation électrique complète" },
+          { id: "diagnostic", name: "Diagnostic", description: "Diagnostic électrique" },
+          { id: "domotique", name: "Domotique", description: "Installation de systèmes domotiques" },
+          { id: "autre-electricite", name: "Autre électricité", description: "Autres problèmes électriques" },
         ],
       },
       {
         id: "chauffage",
         name: "Chauffage",
         icon: "🔥",
-        description: "Entretien et réparation systèmes de chauffage",
+        description: "Réparation et installation de chauffage",
         enabled: true,
         subCategories: [
-          { id: "chaudiere-gaz", name: "Chaudière gaz", description: "Dépannage chaudière gaz, entretien" },
-          { id: "chaudiere-fioul", name: "Chaudière fioul", description: "Réparation chaudière mazout, brûleur" },
-          { id: "pompe-chaleur", name: "Pompe à chaleur", description: "Dépannage PAC air/eau, géothermie" },
-          { id: "radiateur", name: "Radiateur", description: "Réparation radiateur, purge, thermostat" },
-          { id: "plancher-chauffant", name: "Plancher chauffant", description: "Dépannage sol chauffant, régulation" },
-          { id: "poele-bois", name: "Poêle à bois", description: "Entretien poêle, conduit, ramonage" },
-          { id: "poele-granules", name: "Poêle à granulés", description: "Dépannage poêle pellets, vis sans fin" },
-          { id: "insert", name: "Insert", description: "Réparation insert, foyer fermé" },
-          { id: "cheminee", name: "Cheminée", description: "Entretien cheminée, conduit, fumée" },
-          { id: "regulation", name: "Régulation", description: "Programmateur, thermostat, sonde" },
+          { id: "chaudiere", name: "Chaudière", description: "Réparation et entretien de chaudières" },
+          { id: "radiateur", name: "Radiateur", description: "Installation et réparation de radiateurs" },
+          { id: "pompe-chaleur", name: "Pompe à chaleur", description: "Installation et réparation de PAC" },
+          { id: "thermostat", name: "Thermostat", description: "Installation et réparation de thermostats" },
+          { id: "plancher-chauffant", name: "Plancher chauffant", description: "Installation et réparation" },
+          { id: "cheminee", name: "Cheminée", description: "Installation et réparation de cheminées" },
+          { id: "poele", name: "Poêle", description: "Installation et réparation de poêles" },
+          { id: "entretien", name: "Entretien", description: "Entretien de systèmes de chauffage" },
+          { id: "autre-chauffage", name: "Autre chauffage", description: "Autres problèmes de chauffage" },
         ],
       },
       {
         id: "climatisation",
         name: "Climatisation",
         icon: "❄️",
-        description: "Installation et dépannage climatisation",
+        description: "Réparation et installation de climatisation",
         enabled: true,
         subCategories: [
-          { id: "climatiseur-split", name: "Climatiseur split", description: "Dépannage clim split, unité extérieure" },
-          { id: "climatiseur-mobile", name: "Climatiseur mobile", description: "Réparation clim portable, gaz" },
-          { id: "climatiseur-reversible", name: "Climatiseur réversible", description: "Dépannage clim chaud/froid" },
-          { id: "ventilation", name: "Ventilation", description: "VMC, extracteur, aération" },
-          { id: "recharge-gaz", name: "Recharge gaz", description: "Recharge fluide frigorigène, R32" },
-          { id: "nettoyage-clim", name: "Nettoyage climatisation", description: "Entretien, désinfection, filtre" },
-          {
-            id: "installation-clim",
-            name: "Installation climatisation",
-            description: "Pose climatiseur, raccordement",
-          },
-          {
-            id: "thermostat-clim",
-            name: "Thermostat climatisation",
-            description: "Programmateur, régulation température",
-          },
+          { id: "clim-split", name: "Climatiseur split", description: "Installation et réparation de splits" },
+          { id: "clim-mobile", name: "Climatiseur mobile", description: "Réparation de climatiseurs mobiles" },
+          { id: "clim-reversible", name: "Climatiseur réversible", description: "Installation et réparation" },
+          { id: "entretien-clim", name: "Entretien", description: "Entretien de climatiseurs" },
+          { id: "recharge-gaz", name: "Recharge gaz", description: "Recharge de gaz climatiseur" },
+          { id: "ventilation", name: "Ventilation", description: "Installation et réparation de VMC" },
+          { id: "autre-climatisation", name: "Autre climatisation", description: "Autres problèmes de climatisation" },
         ],
       },
       {
         id: "serrurerie",
         name: "Serrurerie",
-        icon: "🔐",
-        description: "Ouverture porte, serrure, sécurisation",
+        icon: "🔒",
+        description: "Réparation et installation de serrures",
         enabled: true,
         subCategories: [
-          {
-            id: "ouverture-porte",
-            name: "Ouverture de porte",
-            description: "Porte claquée, clé cassée, serrure bloquée",
-          },
-          {
-            id: "changement-serrure",
-            name: "Changement serrure",
-            description: "Remplacement serrure, cylindre, barillet",
-          },
-          {
-            id: "blindage-porte",
-            name: "Blindage de porte",
-            description: "Porte blindée, sécurisation, anti-effraction",
-          },
-          { id: "cles", name: "Clés", description: "Reproduction clés, clé cassée, double" },
-          { id: "serrure-3-points", name: "Serrure 3 points", description: "Installation serrure multipoints" },
-          {
-            id: "serrure-electronique",
-            name: "Serrure électronique",
-            description: "Serrure connectée, digicode, badge",
-          },
-          { id: "coffre-fort", name: "Coffre-fort", description: "Ouverture, installation coffre-fort" },
-          { id: "rideau-metallique", name: "Rideau métallique", description: "Dépannage rideau, moteur, lames" },
-          { id: "grille-securite", name: "Grille de sécurité", description: "Installation grille, protection fenêtre" },
+          { id: "ouverture-porte", name: "Ouverture de porte", description: "Ouverture de portes claquées" },
+          { id: "changement-serrure", name: "Changement de serrure", description: "Remplacement de serrures" },
+          { id: "blindage", name: "Blindage", description: "Installation de portes blindées" },
+          { id: "coffre-fort", name: "Coffre-fort", description: "Ouverture et réparation de coffres-forts" },
+          { id: "cle", name: "Reproduction de clés", description: "Reproduction de clés" },
+          { id: "verrou", name: "Verrou", description: "Installation de verrous" },
+          { id: "porte-garage", name: "Porte de garage", description: "Réparation de portes de garage" },
+          { id: "portail", name: "Portail", description: "Réparation et motorisation de portails" },
+          { id: "autre-serrurerie", name: "Autre serrurerie", description: "Autres problèmes de serrurerie" },
         ],
       },
       {
         id: "vitrerie",
         name: "Vitrerie",
         icon: "🪟",
-        description: "Remplacement vitre, miroiterie, double vitrage",
+        description: "Réparation et installation de vitres",
         enabled: true,
         subCategories: [
-          { id: "vitre-cassee", name: "Vitre cassée", description: "Remplacement vitre, carreau, glace" },
-          { id: "double-vitrage", name: "Double vitrage", description: "Réparation double vitrage, buée, joint" },
-          { id: "miroir", name: "Miroir", description: "Pose miroir, découpe sur mesure" },
-          { id: "baie-vitree", name: "Baie vitrée", description: "Réparation porte-fenêtre, coulissant" },
-          { id: "velux", name: "Velux", description: "Dépannage fenêtre de toit, mécanisme" },
-          { id: "vitrine", name: "Vitrine", description: "Remplacement vitrine magasin, commerce" },
-          { id: "pare-brise", name: "Pare-brise", description: "Réparation impact, remplacement" },
-          { id: "verre-securite", name: "Verre sécurisé", description: "Verre trempé, feuilleté, anti-effraction" },
+          { id: "vitre-cassee", name: "Vitre cassée", description: "Remplacement de vitres cassées" },
+          { id: "double-vitrage", name: "Double vitrage", description: "Installation de double vitrage" },
+          { id: "fenetre", name: "Fenêtre", description: "Installation et réparation de fenêtres" },
+          { id: "baie-vitree", name: "Baie vitrée", description: "Installation et réparation de baies vitrées" },
+          { id: "vitrine", name: "Vitrine", description: "Réparation et installation de vitrines" },
+          { id: "miroir", name: "Miroir", description: "Installation de miroirs" },
+          { id: "verre-securite", name: "Verre de sécurité", description: "Installation de verre sécurisé" },
+          { id: "autre-vitrerie", name: "Autre vitrerie", description: "Autres problèmes de vitrerie" },
         ],
       },
       {
         id: "menuiserie",
         name: "Menuiserie",
         icon: "🪚",
-        description: "Réparation bois, fenêtre, porte, meuble",
+        description: "Réparation et installation de menuiserie",
         enabled: true,
         subCategories: [
-          { id: "porte-bois", name: "Porte en bois", description: "Réparation porte, gond, serrure" },
-          { id: "fenetre-bois", name: "Fenêtre bois", description: "Dépannage fenêtre, crémone, joint" },
-          { id: "volet-bois", name: "Volet bois", description: "Réparation volet battant, persienne" },
-          { id: "parquet", name: "Parquet", description: "Réparation parquet, lame, ponçage" },
-          { id: "escalier", name: "Escalier", description: "Dépannage escalier, marche, rampe" },
-          { id: "placard", name: "Placard", description: "Réparation placard, porte coulissante" },
-          { id: "meuble", name: "Meuble", description: "Réparation meuble, tiroir, charnière" },
-          { id: "cloison", name: "Cloison", description: "Réparation cloison, placo, isolation" },
-          { id: "terrasse-bois", name: "Terrasse bois", description: "Entretien terrasse, lame, structure" },
+          { id: "porte", name: "Porte", description: "Installation et réparation de portes" },
+          { id: "fenetre-bois", name: "Fenêtre bois", description: "Installation et réparation de fenêtres en bois" },
+          { id: "placard", name: "Placard", description: "Installation et réparation de placards" },
+          { id: "parquet", name: "Parquet", description: "Installation et réparation de parquets" },
+          { id: "escalier", name: "Escalier", description: "Installation et réparation d'escaliers" },
+          { id: "meuble", name: "Meuble sur mesure", description: "Fabrication de meubles sur mesure" },
+          { id: "cuisine", name: "Cuisine", description: "Installation de cuisines" },
+          { id: "terrasse-bois", name: "Terrasse bois", description: "Installation de terrasses en bois" },
+          { id: "autre-menuiserie", name: "Autre menuiserie", description: "Autres travaux de menuiserie" },
         ],
       },
       {
         id: "jardinage",
         name: "Jardinage",
         icon: "🌱",
-        description: "Entretien jardin, réparation outils de jardinage",
+        description: "Réparation d'outils de jardinage",
         enabled: true,
         subCategories: [
-          { id: "tondeuse", name: "Tondeuse", description: "Réparation tondeuse, moteur, lame" },
-          { id: "taille-haie", name: "Taille-haie", description: "Dépannage taille-haie, lame, moteur" },
-          { id: "tronconneuse", name: "Tronçonneuse", description: "Réparation tronçonneuse, chaîne, guide" },
-          { id: "debroussailleuse", name: "Débroussailleuse", description: "Dépannage débroussailleuse, fil, tête" },
-          { id: "motoculteur", name: "Motoculteur", description: "Réparation motobineuse, fraise, moteur" },
-          { id: "souffleur", name: "Souffleur", description: "Dépannage souffleur, aspirateur feuilles" },
-          { id: "arrosage", name: "Arrosage", description: "Système arrosage automatique, programmateur" },
-          { id: "serre", name: "Serre", description: "Réparation serre, vitrage, structure" },
-          { id: "portail-jardin", name: "Portail jardin", description: "Dépannage portail, gond, serrure" },
-          { id: "abri-jardin", name: "Abri de jardin", description: "Réparation cabane, toiture, porte" },
+          { id: "tondeuse", name: "Tondeuse", description: "Réparation de tondeuses" },
+          { id: "taille-haie", name: "Taille-haie", description: "Réparation de taille-haies" },
+          { id: "tronconneuse", name: "Tronçonneuse", description: "Réparation de tronçonneuses" },
+          { id: "debroussailleuse", name: "Débroussailleuse", description: "Réparation de débroussailleuses" },
+          { id: "motoculteur", name: "Motoculteur", description: "Réparation de motoculteurs" },
+          { id: "souffleur", name: "Souffleur", description: "Réparation de souffleurs" },
+          { id: "arrosage", name: "Système d'arrosage", description: "Réparation de systèmes d'arrosage" },
+          { id: "robot-tondeuse", name: "Robot tondeuse", description: "Réparation de robots tondeuses" },
+          { id: "autre-jardinage", name: "Autre jardinage", description: "Autres outils de jardinage" },
         ],
       },
       {
         id: "automobile",
         name: "Automobile",
         icon: "🚗",
-        description: "Réparation automobile, diagnostic, entretien",
+        description: "Réparation automobile",
         enabled: true,
         subCategories: [
-          { id: "diagnostic-auto", name: "Diagnostic", description: "Diagnostic électronique, panne moteur" },
-          { id: "batterie-auto", name: "Batterie", description: "Remplacement batterie, alternateur" },
-          { id: "freinage", name: "Freinage", description: "Réparation frein, plaquette, disque" },
-          { id: "embrayage", name: "Embrayage", description: "Dépannage embrayage, pédale, disque" },
-          { id: "climatisation-auto", name: "Climatisation auto", description: "Recharge clim, compresseur, gaz" },
-          { id: "echappement", name: "Échappement", description: "Réparation pot échappement, silencieux" },
-          { id: "suspension", name: "Suspension", description: "Amortisseur, ressort, triangle" },
-          { id: "carrosserie", name: "Carrosserie", description: "Réparation carrosserie, rayure, bosse" },
-          { id: "vitrage-auto", name: "Vitrage auto", description: "Pare-brise, vitre latérale, impact" },
-          { id: "electronique-auto", name: "Électronique auto", description: "Autoradio, GPS, calculateur" },
+          { id: "diagnostic", name: "Diagnostic", description: "Diagnostic automobile" },
+          { id: "batterie-auto", name: "Batterie", description: "Remplacement de batteries" },
+          { id: "freinage", name: "Freinage", description: "Réparation de systèmes de freinage" },
+          { id: "vidange", name: "Vidange", description: "Vidange et entretien" },
+          { id: "pneu", name: "Pneus", description: "Changement et réparation de pneus" },
+          { id: "carrosserie", name: "Carrosserie", description: "Réparation de carrosserie" },
+          { id: "electrique-auto", name: "Électrique", description: "Réparation électrique automobile" },
+          { id: "climatisation-auto", name: "Climatisation", description: "Réparation de climatisation automobile" },
+          { id: "mecanique", name: "Mécanique", description: "Réparation mécanique" },
+          { id: "autre-automobile", name: "Autre automobile", description: "Autres réparations automobiles" },
         ],
       },
       {
         id: "nettoyage",
         name: "Nettoyage",
-        icon: "🧽",
-        description: "Services de nettoyage et entretien",
+        icon: "🧹",
+        description: "Services de nettoyage",
         enabled: true,
         subCategories: [
-          { id: "nettoyage-maison", name: "Nettoyage maison", description: "Ménage, entretien domicile" },
-          { id: "nettoyage-bureau", name: "Nettoyage bureau", description: "Entretien locaux professionnels" },
-          { id: "nettoyage-vitres", name: "Nettoyage vitres", description: "Lavage vitres, baies vitrées" },
-          { id: "nettoyage-moquette", name: "Nettoyage moquette", description: "Shampoing moquette, tapis" },
-          { id: "nettoyage-facade", name: "Nettoyage façade", description: "Ravalement, nettoyage mur extérieur" },
-          { id: "demoussage", name: "Démoussage", description: "Démoussage toiture, terrasse" },
-          { id: "desinfection", name: "Désinfection", description: "Désinfection, traitement sanitaire" },
+          { id: "nettoyage-maison", name: "Maison", description: "Nettoyage de maisons" },
+          { id: "nettoyage-bureau", name: "Bureau", description: "Nettoyage de bureaux" },
+          { id: "nettoyage-vitres", name: "Vitres", description: "Nettoyage de vitres" },
+          { id: "nettoyage-moquette", name: "Moquette", description: "Nettoyage de moquettes" },
+          { id: "nettoyage-canape", name: "Canapé", description: "Nettoyage de canapés" },
+          { id: "desinfection", name: "Désinfection", description: "Services de désinfection" },
+          { id: "autre-nettoyage", name: "Autre nettoyage", description: "Autres services de nettoyage" },
         ],
       },
       {
         id: "demenagement",
         name: "Déménagement",
         icon: "📦",
-        description: "Services de déménagement et transport",
+        description: "Services de déménagement",
         enabled: true,
         subCategories: [
-          { id: "demenagement-complet", name: "Déménagement complet", description: "Déménagement clé en main" },
-          { id: "transport-meuble", name: "Transport meuble", description: "Livraison, transport mobilier" },
-          { id: "emballage", name: "Emballage", description: "Emballage, protection objets fragiles" },
-          { id: "stockage", name: "Stockage", description: "Garde-meuble, self-stockage" },
-          { id: "monte-meuble", name: "Monte-meuble", description: "Monte-charge, grue, manutention" },
-          { id: "nettoyage-fin-bail", name: "Nettoyage fin de bail", description: "Ménage état des lieux" },
+          { id: "demenagement-complet", name: "Déménagement complet", description: "Service complet de déménagement" },
+          { id: "transport-meuble", name: "Transport de meubles", description: "Transport de meubles spécifiques" },
+          { id: "montage-meuble", name: "Montage de meubles", description: "Montage et démontage de meubles" },
+          { id: "emballage", name: "Emballage", description: "Services d'emballage" },
+          { id: "garde-meuble", name: "Garde-meuble", description: "Services de garde-meuble" },
+          { id: "autre-demenagement", name: "Autre déménagement", description: "Autres services de déménagement" },
         ],
       },
     ]
   }
 
-  static getCategories(): Category[] {
-    if (typeof window === "undefined") return this.getDefaultCategories()
+  static getDefaultSettings(): CategorySettings {
+    return {
+      tvaEnabled: true,
+      tvaRate: 20,
+    }
+  }
 
+  static getCategories(): Category[] {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY)
-      if (stored) {
-        const categories = JSON.parse(stored)
-        // Fusionner avec les catégories par défaut pour les nouvelles
+      const storedCategories = localStorage.getItem(this.STORAGE_KEY)
+      if (!storedCategories) {
         const defaultCategories = this.getDefaultCategories()
-        const mergedCategories = defaultCategories.map((defaultCat) => {
-          const storedCat = categories.find((cat: Category) => cat.id === defaultCat.id)
-          return storedCat ? { ...defaultCat, ...storedCat } : defaultCat
-        })
-        return mergedCategories
+        this.saveCategories(defaultCategories)
+        return defaultCategories
       }
-      return this.getDefaultCategories()
-    } catch {
+      return JSON.parse(storedCategories)
+    } catch (error) {
+      console.error("Error loading categories:", error)
       return this.getDefaultCategories()
     }
   }
 
-  static saveCategories(categories: Category[]): void {
-    if (typeof window === "undefined") return
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(categories))
+  static getSettings(): CategorySettings {
+    try {
+      const storedSettings = localStorage.getItem(this.SETTINGS_KEY)
+      if (!storedSettings) {
+        const defaultSettings = this.getDefaultSettings()
+        this.saveSettings(defaultSettings)
+        return defaultSettings
+      }
+      return JSON.parse(storedSettings)
+    } catch (error) {
+      console.error("Error loading category settings:", error)
+      return this.getDefaultSettings()
+    }
   }
 
-  static getCategoryById(id: string): Category | null {
+  static saveCategories(categories: Category[]): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(categories))
+    } catch (error) {
+      console.error("Error saving categories:", error)
+    }
+  }
+
+  static saveSettings(settings: CategorySettings): void {
+    try {
+      localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings))
+    } catch (error) {
+      console.error("Error saving category settings:", error)
+    }
+  }
+
+  static getCategoryById(id: string): Category | undefined {
     const categories = this.getCategories()
-    return categories.find((cat) => cat.id === id) || null
+    return categories.find((cat) => cat.id === id)
+  }
+
+  static updateCategory(id: string, updates: Partial<Category>): void {
+    const categories = this.getCategories()
+    const index = categories.findIndex((cat) => cat.id === id)
+    if (index !== -1) {
+      categories[index] = { ...categories[index], ...updates }
+      this.saveCategories(categories)
+    }
+  }
+
+  static toggleCategoryStatus(id: string): void {
+    const categories = this.getCategories()
+    const index = categories.findIndex((cat) => cat.id === id)
+    if (index !== -1) {
+      categories[index].enabled = !categories[index].enabled
+      this.saveCategories(categories)
+    }
   }
 
   static getEnabledCategories(): Category[] {
     return this.getCategories().filter((cat) => cat.enabled)
   }
 
-  static getSubCategoriesByCategory(categoryId: string): SubCategory[] {
+  static getSubCategoryById(categoryId: string, subCategoryId: string): SubCategory | undefined {
     const category = this.getCategoryById(categoryId)
-    return category?.subCategories || []
-  }
-
-  static toggleCategoryStatus(categoryId: string): void {
-    const categories = this.getCategories()
-    const categoryIndex = categories.findIndex((cat) => cat.id === categoryId)
-    if (categoryIndex >= 0) {
-      categories[categoryIndex].enabled = !categories[categoryIndex].enabled
-      this.saveCategories(categories)
-    }
-  }
-
-  static updateCategory(categoryId: string, updates: Partial<Category>): void {
-    const categories = this.getCategories()
-    const categoryIndex = categories.findIndex((cat) => cat.id === categoryId)
-    if (categoryIndex >= 0) {
-      categories[categoryIndex] = { ...categories[categoryIndex], ...updates }
-      this.saveCategories(categories)
-    }
-  }
-
-  static getSettings() {
-    if (typeof window === "undefined") return { tvaEnabled: true, tvaRate: 20 }
-
-    try {
-      const stored = localStorage.getItem(this.SETTINGS_KEY)
-      return stored ? JSON.parse(stored) : { tvaEnabled: true, tvaRate: 20 }
-    } catch {
-      return { tvaEnabled: true, tvaRate: 20 }
-    }
-  }
-
-  static saveSettings(settings: { tvaEnabled: boolean; tvaRate: number }): void {
-    if (typeof window === "undefined") return
-    localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings))
+    return category?.subCategories.find((sub) => sub.id === subCategoryId)
   }
 }
