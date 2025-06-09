@@ -112,13 +112,12 @@ export default function RepairerProfilePage() {
                   alt={`${repairer.firstName} ${repairer.lastName}`}
                 />
                 <AvatarFallback className="text-2xl bg-blue-100 text-blue-800">
-                  {repairer.firstName?.[0]}
-                  {repairer.lastName?.[0]}
+                  {repairer.professional?.companyName?.[0] || "R"}
                 </AvatarFallback>
               </Avatar>
 
               <h1 className="text-xl font-bold text-gray-900">
-                {repairer.firstName} {repairer.lastName}
+                {repairer.professional?.companyName || "Réparateur professionnel"}
               </h1>
 
               {repairer.professional?.companyName && (
@@ -173,10 +172,29 @@ export default function RepairerProfilePage() {
                 </div>
               </div>
 
-              <Button className="w-full mt-6">
+              <Button
+                className="w-full mt-6"
+                onClick={() => {
+                  // Ouvrir une modal de contact ou rediriger
+                  window.location.href = `mailto:${repairer.email}?subject=Contact via FixeoPro&body=Bonjour, je souhaite vous contacter concernant vos services de réparation.`
+                }}
+              >
                 <Phone className="mr-2 h-4 w-4" />
-                Contacter
+                Contacter par email
               </Button>
+
+              {repairer.phone && (
+                <Button
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={() => {
+                    window.location.href = `tel:${repairer.phone}`
+                  }}
+                >
+                  <Phone className="mr-2 h-4 w-4" />
+                  Appeler
+                </Button>
+              )}
             </CardContent>
           </Card>
 
