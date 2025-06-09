@@ -13,7 +13,19 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Wrench, Menu, User, Settings, LogOut, Bell, Shield, Eye, MessageSquare, CheckCircle } from "lucide-react"
+import {
+  Wrench,
+  Menu,
+  User,
+  Settings,
+  LogOut,
+  Bell,
+  Shield,
+  Eye,
+  MessageSquare,
+  CheckCircle,
+  MapPin,
+} from "lucide-react"
 import { StorageService } from "@/lib/storage"
 
 interface Notification {
@@ -24,6 +36,7 @@ interface Notification {
   requestId: string
   isRead: boolean
   createdAt: string
+  distance?: number
   data?: any
 }
 
@@ -54,31 +67,67 @@ export default function Header() {
     const allNotifications: Notification[] = []
 
     if (user.userType === "reparateur") {
-      // Notifications pour les réparateurs
-      const requests = StorageService.getRepairRequests()
-      const specialties = user.professional?.specialties || []
+      // Utiliser les préférences de notification pour filtrer les demandes
+      const filteredRequests = StorageService.getFilteredRequestsForRepairer(user)
 
-      // Nouvelles demandes dans les spécialités
-      const relevantRequests = requests.filter(
-        (request) =>
-          request.status === "open" &&
-          specialties.some((specialty) => request.category.toLowerCase().includes(specialty.toLowerCase())),
-      )
+      // Ajouter les demandes filtrées comme notifications
+      filteredRequests.slice(0, 5).forEach((request) => {
+        let distance = null
+        if (user.coordinates && request.coordinates) {
+          distance = StorageService.calculateDistance(
+            user.coordinates.lat,
+            user.coordinates.lng,
+            request.coordinates.lat,
+            request.coordinates.lng,
+          )
+        }
 
-      relevantRequests.slice(0, 5).forEach((request) => {
         allNotifications.push({
-          id: `new_request_${request.id}`,
+          id: `filtered_request_${request.id}`,
           type: "new_request",
-          title: "Nouvelle demande dans votre spécialité",
-          message: `${request.title} - ${request.city}`,
+          title: "Nouvelle demande dans votre zone",
+          message: `${request.title} - ${request.city}${distance ? ` (${distance.toFixed(1)}km)` : ""}`,
           requestId: request.id,
           isRead: false,
           createdAt: request.createdAt,
+          distance: distance,
+          data: request,
+        })
+      })
+
+      // Ajouter aussi toutes les nouvelles demandes (non filtrées) mais avec un indicateur différent
+      const allRequests = StorageService.getRepairRequests()
+      const recentRequests = allRequests
+        .filter(
+          (request) => request.status === "open" && !filteredRequests.some((filtered) => filtered.id === request.id),
+        )
+        .slice(0, 3)
+
+      recentRequests.forEach((request) => {
+        let distance = null
+        if (user.coordinates && request.coordinates) {
+          distance = StorageService.calculateDistance(
+            user.coordinates.lat,
+            user.coordinates.lng,
+            request.coordinates.lat,
+            request.coordinates.lng,
+          )
+        }
+
+        allNotifications.push({
+          id: `other_request_${request.id}`,
+          type: "request_update",
+          title: "Autre demande disponible",
+          message: `${request.title} - ${request.city}${distance ? ` (${distance.toFixed(1)}km)` : ""}`,
+          requestId: request.id,
+          isRead: true, // Marquées comme lues par défaut car hors critères
+          createdAt: request.createdAt,
+          distance: distance,
           data: request,
         })
       })
     } else {
-      // Notifications pour les clients
+      // Notifications pour les clients (inchangé)
       const clientRequests = StorageService.getRepairRequestsByClient(user.id)
 
       clientRequests.forEach((request) => {
@@ -102,7 +151,7 @@ export default function Header() {
     // Trier par date (plus récent en premier)
     allNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    setNotifications(allNotifications.slice(0, 5)) // Limiter à 5 notifications
+    setNotifications(allNotifications.slice(0, 8)) // Limiter à 8 notifications
     setUnreadCount(allNotifications.filter((n) => !n.isRead).length)
   }
 
@@ -137,9 +186,21 @@ export default function Header() {
         return <Bell className="h-4 w-4 text-blue-600" />
       case "new_response":
         return <MessageSquare className="h-4 w-4 text-green-600" />
+      case "request_update":
+        return <Eye className="h-4 w-4 text-gray-500" />
       default:
         return <Bell className="h-4 w-4 text-gray-600" />
     }
+  }
+
+  const getNotificationStyle = (notification: Notification) => {
+    if (notification.type === "new_request") {
+      return "bg-blue-50 border-l-4 border-l-blue-500"
+    }
+    if (notification.type === "request_update") {
+      return "bg-gray-50 border-l-4 border-l-gray-300"
+    }
+    return notification.isRead ? "bg-gray-50" : "bg-blue-50"
   }
 
   const handleLogout = () => {
@@ -235,7 +296,7 @@ export default function Header() {
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80" align="end">
+                  <DropdownMenuContent className="w-96" align="end">
                     <div className="px-3 py-2 border-b">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">Notifications</h3>
@@ -246,6 +307,12 @@ export default function Header() {
                           </Button>
                         )}
                       </div>
+                      {currentUser?.userType === "reparateur" && currentUser?.professional?.notificationPreferences && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          <MapPin className="h-3 w-3 inline mr-1" />
+                          Rayon: {currentUser.professional.notificationPreferences.maxDistance}km
+                        </div>
+                      )}
                     </div>
 
                     {notifications.length === 0 ? (
@@ -258,7 +325,7 @@ export default function Header() {
                         {notifications.map((notification) => (
                           <DropdownMenuItem
                             key={notification.id}
-                            className={`px-3 py-3 cursor-pointer ${!notification.isRead ? "bg-blue-50" : ""}`}
+                            className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)}`}
                             onClick={() => markAsRead(notification.id)}
                           >
                             <div className="flex items-start space-x-3 w-full">
@@ -270,11 +337,18 @@ export default function Header() {
                                   >
                                     {notification.title}
                                   </p>
-                                  {!notification.isRead && (
-                                    <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
-                                      Nouveau
-                                    </Badge>
-                                  )}
+                                  <div className="flex items-center space-x-1">
+                                    {notification.distance && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {notification.distance.toFixed(1)}km
+                                      </Badge>
+                                    )}
+                                    {!notification.isRead && (
+                                      <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
+                                        Nouveau
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
                                 <p
                                   className={`text-sm ${!notification.isRead ? "text-gray-800" : "text-gray-600"} line-clamp-2`}

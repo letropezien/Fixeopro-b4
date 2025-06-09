@@ -38,12 +38,22 @@ export interface User {
       instagram?: string
       linkedin?: string
     }
+    notificationPreferences?: {
+      maxDistance: number // Distance en kilomètres
+      categories: string[] // Catégories pour lesquelles recevoir des notifications
+      enableNotifications: boolean
+      urgencyLevels: string[] // Niveaux d'urgence acceptés
+    }
   }
   avatar?: string
   emailVerifiedAt?: string // Date de vérification de l'email
   emailVerifiedBy?: "user" | "admin" // Qui a vérifié l'email
   passwordChangedAt?: string // Date du dernier changement de mot de passe
   passwordChangedBy?: "user" | "admin" // Qui a changé le mot de passe
+  coordinates?: {
+    lat: number
+    lng: number
+  }
 }
 
 export interface RepairResponse {
@@ -185,6 +195,16 @@ export class StorageService {
           status: "trial",
           startDate: trialStartDate.toISOString(),
           endDate: trialEndDate.toISOString(),
+        }
+      }
+
+      // Ajouter des préférences de notification par défaut pour les réparateurs
+      if (user.userType === "reparateur" && user.professional && !user.professional.notificationPreferences) {
+        user.professional.notificationPreferences = {
+          maxDistance: 25, // 25km par défaut
+          categories: user.professional.specialties || [],
+          enableNotifications: true,
+          urgencyLevels: ["urgent", "same-day", "this-week", "flexible"],
         }
       }
 
@@ -560,6 +580,47 @@ export class StorageService {
     return requests.find((r) => r.id === id) || null
   }
 
+  // Nouvelle méthode pour obtenir les demandes filtrées pour un réparateur
+  static getFilteredRequestsForRepairer(reparateur: User): RepairRequest[] {
+    if (reparateur.userType !== "reparateur" || !reparateur.professional?.notificationPreferences) {
+      return []
+    }
+
+    const requests = this.getRepairRequests()
+    const preferences = reparateur.professional.notificationPreferences
+
+    if (!preferences.enableNotifications) {
+      return []
+    }
+
+    return requests.filter((request) => {
+      // Filtrer par statut (seulement les demandes ouvertes)
+      if (request.status !== "open") return false
+
+      // Filtrer par catégorie
+      const categoryMatch = preferences.categories.some((category) =>
+        request.category.toLowerCase().includes(category.toLowerCase()),
+      )
+      if (!categoryMatch) return false
+
+      // Filtrer par niveau d'urgence
+      if (!preferences.urgencyLevels.includes(request.urgency)) return false
+
+      // Filtrer par distance
+      if (reparateur.coordinates && request.coordinates) {
+        const distance = this.calculateDistance(
+          reparateur.coordinates.lat,
+          reparateur.coordinates.lng,
+          request.coordinates.lat,
+          request.coordinates.lng,
+        )
+        if (distance > preferences.maxDistance) return false
+      }
+
+      return true
+    })
+  }
+
   // Nouvelle méthode pour ajouter une réponse à une demande
   static addResponseToRequest(requestId: string, response: Partial<RepairResponse>): boolean {
     try {
@@ -906,6 +967,7 @@ export class StorageService {
             emailVerifiedAt: new Date().toISOString(),
             emailVerifiedBy: "user",
             createdAt: new Date().toISOString(),
+            coordinates: { lat: 45.764, lng: 4.8357 },
             professional: {
               companyName: "Répar'Tout",
               siret: "12345678901234",
@@ -914,6 +976,12 @@ export class StorageService {
               description: "Spécialiste en réparation électroménager depuis 10 ans",
               companyPhotos: [],
               socialMedia: {},
+              notificationPreferences: {
+                maxDistance: 25,
+                categories: ["électroménager", "électricité"],
+                enableNotifications: true,
+                urgencyLevels: ["urgent", "same-day", "this-week"],
+              },
             },
             // Période d'essai automatique de 15 jours
             subscription: {
@@ -935,6 +1003,7 @@ export class StorageService {
             phone: "0123456787",
             isEmailVerified: false, // Compte non vérifié pour tester la validation admin
             createdAt: new Date().toISOString(),
+            coordinates: { lat: 48.8566, lng: 2.3522 },
             professional: {
               companyName: "ElectroFix",
               siret: "98765432101234",
@@ -943,6 +1012,12 @@ export class StorageService {
               description: "Spécialiste en réparation d'appareils électroniques",
               companyPhotos: [],
               socialMedia: {},
+              notificationPreferences: {
+                maxDistance: 15,
+                categories: ["électroménager", "informatique"],
+                enableNotifications: true,
+                urgencyLevels: ["urgent", "same-day"],
+              },
             },
             subscription: {
               plan: "trial",
