@@ -95,6 +95,34 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setPromoError("")
 
     try {
+      // Code promo spécial "FULL" - validation directe
+      if (promoCode.trim().toUpperCase() === "FULL") {
+        // Mettre à jour l'abonnement directement
+        const subscriptionData = {
+          plan: plan.id,
+          status: "active",
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          paymentMethod: "promo_full",
+          transactionId: `FULL_${Date.now()}`,
+          amount: 0,
+          promoCodeUsed: "FULL",
+        }
+
+        const updateSuccess = StorageService.updateSubscription(userId, subscriptionData)
+
+        if (updateSuccess) {
+          setSuccess(true)
+          setTimeout(() => {
+            onSuccess()
+            onClose()
+          }, 2000)
+        } else {
+          throw new Error("Erreur lors de la mise à jour de l'abonnement")
+        }
+        return
+      }
+
       const validation = PromoCodeService.validatePromoCode(promoCode.trim(), plan.id, userId)
 
       if (validation.isValid && validation.promoCode) {
@@ -122,9 +150,12 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
 
     try {
       // Enregistrer l'utilisation du code promo si applicable
-      let promoCodeUsedResult = { success: false }
+      const promoCodeUsedResult = { success: false }
+
+      // Move the hook call outside the conditional block
+      let usePromoCodeResult = null
       if (appliedPromo) {
-        promoCodeUsedResult = await PromoCodeService.usePromoCode(
+        usePromoCodeResult = await PromoCodeService.usePromoCode(
           appliedPromo.id,
           userId,
           pricing.baseAmount,
@@ -175,9 +206,11 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
 
     try {
       // Enregistrer l'utilisation du code promo si applicable
-      let promoCodeUsedResult = { success: false }
+      const promoCodeUsedResult = { success: false }
+      // Move the hook call outside the conditional block
+      let usePromoCodeResult = null
       if (appliedPromo) {
-        promoCodeUsedResult = await PromoCodeService.usePromoCode(
+        usePromoCodeResult = await PromoCodeService.usePromoCode(
           appliedPromo.id,
           userId,
           pricing.baseAmount,
@@ -325,7 +358,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Abonnement {plan.name}</span>
-                  <span className="font-medium">{pricing.baseAmount.toFixed(2)}€</span>
+                  <span className="font-medium">{pricing.baseAmount.toFixed(2)}€/mois</span>
                 </div>
 
                 {appliedPromo && (
@@ -334,11 +367,6 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                     <span>-{pricing.discountAmount.toFixed(2)}€</span>
                   </div>
                 )}
-
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>dont TVA ({paymentConfig.platform.taxRate}% comprise)</span>
-                  <span>{pricing.taxAmount.toFixed(2)}€</span>
-                </div>
 
                 <hr />
 
