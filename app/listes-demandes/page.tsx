@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock, MessageSquare, Search, RefreshCw } from "lucide-react"
+import { MapPin, Euro, User, Filter, Lock, MessageSquare, Search, RefreshCw, ImageIcon } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { DepartmentService } from "@/lib/departments"
 import { DepartmentSelector } from "@/components/department-selector"
@@ -222,6 +222,28 @@ export default function ListesDemandesPage() {
     }
   }, {})
 
+  // Fonction pour obtenir l'image principale d'une demande
+  const getMainImage = (request) => {
+    if (request.photos && request.photos.length > 0 && request.photos[0]) {
+      return request.photos[0]
+    }
+    // Image par défaut selon la catégorie
+    const categoryMap = {
+      electromenager: "electromenager",
+      informatique: "informatique",
+      plomberie: "plomberie",
+      electricite: "electricite",
+      chauffage: "chauffage",
+      telephonie: "telephonie",
+      serrurerie: "serrurerie",
+      multimedia: "multimedia",
+      climatisation: "climatisation",
+    }
+
+    const category = categoryMap[request.category?.toLowerCase()] || "reparation"
+    return `/placeholder.svg?height=200&width=400&text=${category}`
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -396,110 +418,91 @@ export default function ListesDemandesPage() {
           </Card>
         )}
 
-        {/* Liste des demandes */}
-        <div className="space-y-6">
+        {/* Grille des demandes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRequests.map((request) => (
-            <Card key={request.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Badge variant="outline">{request.category || "Non défini"}</Badge>
-                      <Badge className={getUrgencyColor(request.urgency)}>{getUrgencyLabel(request.urgency)}</Badge>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        {getDepartmentName(request.postalCode, request.department)}
-                      </Badge>
-                      <span className="text-sm text-gray-500">{getTimeAgo(request.createdAt)}</span>
-                    </div>
-                    <CardTitle className="text-xl">{request.title || "Demande sans titre"}</CardTitle>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center text-sm text-gray-600 mb-1">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {request.city || "Ville non définie"} ({request.postalCode || "Code postal non défini"})
-                    </div>
-                    {request.budget && (
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Euro className="h-4 w-4 mr-1" />
-                        {String(request.budget)}
-                      </div>
-                    )}
-                  </div>
+            <Card key={request.id} className="hover:shadow-lg transition-shadow flex flex-col h-full">
+              {/* Image principale */}
+              <div className="relative w-full h-48 overflow-hidden">
+                <img
+                  src={getMainImage(request) || "/placeholder.svg"}
+                  alt={request.title || "Demande de dépannage"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.svg?height=200&width=400&text=Dépannage"
+                  }}
+                />
+                <div className="absolute top-0 left-0 w-full p-2 flex justify-between items-start">
+                  <Badge variant="outline" className="bg-white/80 backdrop-blur-sm">
+                    {request.category || "Non défini"}
+                  </Badge>
+                  <Badge className={`${getUrgencyColor(request.urgency)} ml-auto`}>
+                    {getUrgencyLabel(request.urgency)}
+                  </Badge>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 mb-4">{request.description || "Aucune description disponible"}</p>
-
-                {/* Affichage des photos si disponibles */}
-                {request.photos && request.photos.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Photos du problème :</p>
-                    <div className="flex space-x-2">
-                      {request.photos.slice(0, 3).map((photo, index) => (
-                        <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                          <img
-                            src={photo || "/placeholder.svg"}
-                            alt={`Photo ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder.svg?height=64&width=64&text=Photo"
-                            }}
-                          />
-                        </div>
-                      ))}
-                      {request.photos.length > 3 && (
-                        <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
-                          <span className="text-xs text-gray-600">+{request.photos.length - 3}</span>
-                        </div>
-                      )}
-                    </div>
+                {request.photos && request.photos.length > 1 && (
+                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center">
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    {request.photos.length}
                   </div>
                 )}
+              </div>
 
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <User className="h-4 w-4 mr-1" />
-                      {canViewClientDetails() ? (
-                        <span>
-                          {String(request.client?.firstName || "Prénom")} {String(request.client?.lastName || "Nom")}
-                        </span>
-                      ) : (
-                        <span className="flex items-center">
-                          <Lock className="h-3 w-3 mr-1" />
-                          {maskPersonalData("Jean Dupont")}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      {Number(request.responses || 0)} réponse{Number(request.responses || 0) > 1 ? "s" : ""}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {new Date(request.createdAt).toLocaleDateString("fr-FR")}
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    {canViewClientDetails() && (
-                      <>
-                        <Button variant="outline" size="sm">
-                          <Phone className="h-4 w-4 mr-1" />
-                          {String(request.client?.phone || "06 ** ** ** **")}
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Mail className="h-4 w-4 mr-1" />
-                          Contact
-                        </Button>
-                      </>
-                    )}
-                    <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      <Link href={`/demande/${request.id}`}>Voir les détails</Link>
-                    </Button>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center space-x-2 text-sm text-gray-600 mb-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{request.city || "Ville non définie"}</span>
+                    <span className="text-gray-400">•</span>
+                    <span>{getTimeAgo(request.createdAt)}</span>
                   </div>
                 </div>
+                <CardTitle className="text-lg line-clamp-2">{request.title || "Demande sans titre"}</CardTitle>
+              </CardHeader>
+
+              <CardContent className="pb-2 flex-grow">
+                <p className="text-gray-700 text-sm line-clamp-3 mb-2">
+                  {request.description || "Aucune description disponible"}
+                </p>
+
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    {getDepartmentName(request.postalCode, request.department)}
+                  </Badge>
+
+                  {request.budget && (
+                    <Badge variant="outline" className="flex items-center">
+                      <Euro className="h-3 w-3 mr-1" />
+                      {String(request.budget)}
+                    </Badge>
+                  )}
+
+                  <Badge variant="outline" className="flex items-center">
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    {Number(request.responses || 0)}
+                  </Badge>
+                </div>
               </CardContent>
+
+              <CardFooter className="pt-2 flex justify-between items-center border-t border-gray-100">
+                <div className="flex items-center text-sm text-gray-600">
+                  <User className="h-4 w-4 mr-1" />
+                  {canViewClientDetails() ? (
+                    <span>
+                      {String(request.client?.firstName || "Prénom")} {String(request.client?.lastName || "Nom")}
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <Lock className="h-3 w-3 mr-1" />
+                      {maskPersonalData("Jean Dupont")}
+                    </span>
+                  )}
+                </div>
+
+                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Link href={`/demande/${request.id}`}>Détails</Link>
+                </Button>
+              </CardFooter>
             </Card>
           ))}
         </div>
