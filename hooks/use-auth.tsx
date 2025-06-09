@@ -83,10 +83,49 @@ export function useSession() {
     setStatus("unauthenticated")
   }
 
+  // Fonction pour vérifier si l'utilisateur peut contacter (réparateur avec abonnement ou période d'essai)
+  const canContact = () => {
+    if (!session?.user) return false
+
+    const user = session.user
+    if (user.type !== "repairer") return false
+
+    // Vérifier la période d'essai de 15 jours
+    if (user.createdAt) {
+      const createdDate = new Date(user.createdAt)
+      const now = new Date()
+      const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+
+      if (daysDiff <= 15) return true // Période d'essai
+    }
+
+    // Vérifier l'abonnement actif
+    return user.subscription?.status === "active"
+  }
+
+  // Fonction pour obtenir les jours restants de la période d'essai
+  const getTrialDaysLeft = () => {
+    if (!session?.user?.createdAt) return 0
+
+    const createdDate = new Date(session.user.createdAt)
+    const now = new Date()
+    const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+
+    return Math.max(0, 15 - daysDiff)
+  }
+
   return {
     data: session,
     status,
     login,
     logout,
+    canContact,
+    getTrialDaysLeft,
   }
 }
+
+// Export useAuth comme alias de useSession pour la compatibilité
+export const useAuth = useSession
+
+// Export par défaut
+export default useSession
