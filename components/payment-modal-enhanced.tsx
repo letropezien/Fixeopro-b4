@@ -64,28 +64,18 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
 
   const baseAmount = Number.parseFloat(plan.price.replace("€", ""))
 
-  // Les prix sont déjà TTC, donc calculer la TVA comprise
-  const baseAmountHT = appliedPromo
-    ? baseAmount -
-      (appliedPromo.type === "percentage"
-        ? (baseAmount * appliedPromo.value) / 100
-        : Math.min(appliedPromo.value, baseAmount))
-    : baseAmount
-
-  const finalAmountHT = baseAmountHT / (1 + paymentConfig.platform.taxRate / 100)
-  const taxAmount = baseAmountHT - finalAmountHT
   const discountAmount = appliedPromo
     ? appliedPromo.type === "percentage"
       ? (baseAmount * appliedPromo.value) / 100
       : Math.min(appliedPromo.value, baseAmount)
     : 0
 
+  const finalAmount = baseAmount - discountAmount
+
   const pricing = {
     baseAmount,
     discountAmount,
-    finalAmountHT,
-    taxAmount,
-    finalAmount: baseAmountHT,
+    finalAmount,
   }
 
   const handleApplyPromoCode = async () => {
