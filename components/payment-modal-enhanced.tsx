@@ -26,6 +26,13 @@ interface PaymentModalFixedProps {
 }
 
 export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuccess }: PaymentModalFixedProps) {
+  // Vérifications de sécurité pour éviter les erreurs
+  const safePlan = {
+    id: plan?.id || "default",
+    name: plan?.name || "Plan",
+    price: plan?.price || "0€",
+    features: plan?.features || [],
+  }
   const [paymentMethod, setPaymentMethod] = useState("stripe")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -65,7 +72,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
   }, [])
 
   // Nettoyer le prix pour éviter les doublons
-  const cleanPrice = plan.price
+  const cleanPrice = (safePlan.price || "0€")
     .replace(/\/mois\/mois/g, "/mois")
     .replace(/€\/mois/g, "€")
     .replace(/€/g, "")
@@ -91,7 +98,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
     try {
       if (promoCode.trim().toUpperCase() === "FULL") {
         const subscriptionData = {
-          plan: plan.id,
+          plan: safePlan.id,
           status: "active",
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -115,7 +122,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
         return
       }
 
-      const validation = PromoCodeService.validatePromoCode(promoCode.trim(), plan.id, userId)
+      const validation = PromoCodeService.validatePromoCode(promoCode.trim(), safePlan.id, userId)
 
       if (validation.isValid && validation.promoCode) {
         setAppliedPromo(validation.promoCode)
@@ -140,9 +147,9 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
     setLoading(true)
     setError("")
 
-    try {
-      let promoCodeUsed = null
+    let promoCodeUsed = null
 
+    try {
       if (appliedPromo) {
         const promoResult = await PromoCodeService.usePromoCode(
           appliedPromo.id,
@@ -164,7 +171,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
 
       if (result.success) {
         const subscriptionData = {
-          plan: plan.id,
+          plan: safePlan.id,
           status: "active",
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -223,7 +230,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
 
       if (result.success) {
         const subscriptionData = {
-          plan: plan.id,
+          plan: safePlan.id,
           status: "active",
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -264,7 +271,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
               Paiement réussi !
             </DialogTitle>
             <DialogDescription>
-              Votre abonnement {plan.name} a été activé avec succès sur Fixeo.pro
+              Votre abonnement {safePlan.name} a été activé avec succès sur Fixeo.pro
               {appliedPromo && (
                 <div className="mt-2 text-green-600">Code promo "{appliedPromo.code}" appliqué avec succès !</div>
               )}
@@ -284,7 +291,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
         <DialogHeader>
           <DialogTitle>Finaliser votre abonnement - Fixeo.pro</DialogTitle>
           <DialogDescription>
-            Abonnement {plan.name} - {baseAmount}€/mois
+            Abonnement {safePlan.name} - {baseAmount > 0 ? `${baseAmount}€/mois` : "Prix à définir"}
           </DialogDescription>
         </DialogHeader>
 
@@ -354,7 +361,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
               {/* Détail des prix - SANS TVA */}
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span>Abonnement {plan.name}</span>
+                  <span>Abonnement {safePlan.name}</span>
                   <span className="font-medium">{baseAmount}€/mois</span>
                 </div>
 
@@ -383,7 +390,7 @@ export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuc
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <h4 className="font-medium mb-2 text-blue-900">✨ Inclus dans votre abonnement :</h4>
                 <ul className="text-sm space-y-1">
-                  {plan.features.slice(0, 4).map((feature, index) => (
+                  {safePlan.features.slice(0, 4).map((feature, index) => (
                     <li key={index} className="flex items-center text-blue-800">
                       <CheckCircle className="h-3 w-3 text-blue-600 mr-2" />
                       {feature}
