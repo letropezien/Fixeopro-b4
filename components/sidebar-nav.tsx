@@ -1,35 +1,35 @@
-"use client"
-
+import type React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
-interface SidebarNavProps {
+interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string
     title: string
+    icon?: React.ReactNode
   }[]
-  className?: string
+  currentPath?: string
 }
 
-export function SidebarNav({ items, className }: SidebarNavProps) {
-  const pathname = usePathname()
-
+export function SidebarNav({ className, items, currentPath, ...props }: SidebarNavProps) {
   return (
-    <nav className={cn("flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1", className)}>
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={cn(
-            "justify-start",
-            pathname === item.href ? "bg-muted hover:bg-muted" : "hover:bg-transparent hover:underline",
-            "px-3 py-2 text-sm font-medium",
-          )}
-        >
-          {item.title}
-        </Link>
-      ))}
+    <nav className={cn("flex flex-col space-y-1", className)} {...props}>
+      {items.map((item) => {
+        const isActive = currentPath === item.href
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center rounded-md px-3 py-2 text-sm font-medium",
+              isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {item.icon && <span className="mr-2">{item.icon}</span>}
+            {item.title}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

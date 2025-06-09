@@ -1,15 +1,10 @@
-"use client"
-
+import type React from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
-interface MainNavProps {
-  className?: string
-}
-
-export function MainNav({ className }: MainNavProps) {
+export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   return (
-    <nav className={cn("flex items-center space-x-4 lg:space-x-6", className)}>
+    <nav className={cn("flex items-center space-x-4 lg:space-x-6", className)} {...props}>
       <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
         Accueil
       </Link>
