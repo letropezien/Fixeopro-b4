@@ -25,7 +25,7 @@ interface Repairer {
 }
 
 interface OverviewProps {
-  stats: {
+  stats?: {
     totalUsers: number
     totalRepairers: number
     totalRequests: number
@@ -34,6 +34,16 @@ interface OverviewProps {
 }
 
 export function Overview({ stats }: OverviewProps) {
+  // Valeurs par défaut si stats n'est pas fourni
+  const defaultStats = {
+    totalUsers: 2847,
+    totalRepairers: 1234,
+    totalRequests: 856,
+    monthlyRevenue: 45230,
+  }
+
+  const currentStats = stats || defaultStats
+
   // Données simulées pour les demandes récentes
   const recentRequests: Request[] = [
     {
@@ -116,7 +126,7 @@ export function Overview({ stats }: OverviewProps) {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <div className="text-2xl font-bold">{currentStats.totalUsers.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+12% par rapport au mois dernier</p>
           </CardContent>
         </Card>
@@ -127,7 +137,7 @@ export function Overview({ stats }: OverviewProps) {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRepairers}</div>
+            <div className="text-2xl font-bold">{currentStats.totalRepairers.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+8% par rapport au mois dernier</p>
           </CardContent>
         </Card>
@@ -138,7 +148,7 @@ export function Overview({ stats }: OverviewProps) {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalRequests}</div>
+            <div className="text-2xl font-bold">{currentStats.totalRequests.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">+23% par rapport au mois dernier</p>
           </CardContent>
         </Card>
@@ -149,7 +159,7 @@ export function Overview({ stats }: OverviewProps) {
             <span className="text-lg">€</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.monthlyRevenue}€</div>
+            <div className="text-2xl font-bold">{currentStats.monthlyRevenue.toLocaleString()}€</div>
             <p className="text-xs text-muted-foreground">+15% par rapport au mois dernier</p>
           </CardContent>
         </Card>
