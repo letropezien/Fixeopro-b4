@@ -65,20 +65,24 @@ export default function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="hidden lg:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-2">
             {!isLoggedIn ? (
               <>
                 <Link href="/demande-reparation">
-                  <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                    Demander un dépannage
+                  <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                    <Wrench className="h-4 w-4 mr-1" />
+                    Dépannage
                   </Button>
                 </Link>
                 <Link href="/devenir-reparateur">
-                  <Button className="bg-green-600 hover:bg-green-700">Devenir réparateur</Button>
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                    <User className="h-4 w-4 mr-1" />
+                    Réparateur
+                  </Button>
                 </Link>
                 <Link href="/connexion">
-                  <Button variant="ghost" className="text-gray-700">
-                    Se connecter
+                  <Button variant="ghost" size="sm" className="text-gray-700">
+                    Connexion
                   </Button>
                 </Link>
               </>
@@ -88,6 +92,7 @@ export default function Header() {
                 {currentUser?.userType === "client" && (
                   <Link href="/demande-reparation">
                     <Button variant="outline" size="sm">
+                      <Wrench className="h-4 w-4 mr-1" />
                       Nouvelle demande
                     </Button>
                   </Link>
@@ -96,6 +101,7 @@ export default function Header() {
                 {currentUser?.userType === "reparateur" && (
                   <Link href="/mes-interventions">
                     <Button variant="outline" size="sm">
+                      <Wrench className="h-4 w-4 mr-1" />
                       Mes interventions
                     </Button>
                   </Link>
@@ -215,11 +221,15 @@ export default function Header() {
                     <>
                       <Link href="/demande-reparation">
                         <Button variant="outline" className="w-full border-blue-600 text-blue-600">
+                          <Wrench className="h-4 w-4 mr-2" />
                           Demander un dépannage
                         </Button>
                       </Link>
                       <Link href="/devenir-reparateur">
-                        <Button className="w-full bg-green-600 hover:bg-green-700">Devenir réparateur</Button>
+                        <Button className="w-full bg-green-600 hover:bg-green-700">
+                          <User className="h-4 w-4 mr-2" />
+                          Devenir réparateur
+                        </Button>
                       </Link>
                       <Link href="/connexion">
                         <Button variant="ghost" className="w-full">
@@ -239,10 +249,12 @@ export default function Header() {
                       </div>
                       <Link href={currentUser?.userType === "reparateur" ? "/profil-pro" : "/profil"}>
                         <Button variant="outline" className="w-full">
+                          <User className="h-4 w-4 mr-2" />
                           Mon profil
                         </Button>
                       </Link>
                       <Button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700">
+                        <LogOut className="h-4 w-4 mr-2" />
                         Déconnexion
                       </Button>
                     </>
