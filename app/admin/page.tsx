@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import CategoryImagesConfig from "@/components/category-images-config"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -198,10 +199,11 @@ export default function AdminPage() {
 
         {/* Onglets de gestion */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="repairers">Réparateurs</TabsTrigger>
+            <TabsTrigger value="categories">Catégories</TabsTrigger>
             <TabsTrigger value="analytics">Analyses</TabsTrigger>
             <TabsTrigger value="settings">Paramètres</TabsTrigger>
           </TabsList>
@@ -400,6 +402,10 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="categories">
+            <CategoryImagesConfig />
           </TabsContent>
 
           <TabsContent value="analytics">

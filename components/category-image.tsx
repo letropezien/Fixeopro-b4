@@ -27,8 +27,8 @@ export function CategoryImage({ category, alt, className, fill, width, height }:
       return customImage.imageUrl
     }
 
-    // Image par défaut basée sur le nom de la catégorie
-    return `/images/categories/${category.toLowerCase().replace(/é/g, "e").replace(/è/g, "e")}.png`
+    // Image par défaut avec query pour génération automatique
+    return `/placeholder.svg?height=${height || 200}&width=${width || 300}&query=réparation ${category} professionnel`
   }
 
   return (
