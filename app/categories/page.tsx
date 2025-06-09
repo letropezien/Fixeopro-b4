@@ -1,147 +1,143 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Star, MapPin, Clock, Shield, TrendingUp } from "lucide-react"
+import { CategoriesService, type Category } from "@/lib/categories-service"
 
-export default function CategoriesPage() {
-  const categories = [
-    {
-      name: "Électroménager",
-      slug: "electromenager",
-      icon: "🔌",
-      image: "/placeholder.svg?height=200&width=300&text=Électroménager",
-      description: "Réparation et dépannage de tous vos appareils électroménagers",
-      longDescription:
-        "Nos experts en électroménager interviennent rapidement pour réparer vos lave-linge, lave-vaisselle, réfrigérateurs, fours, micro-ondes et tous autres appareils. Service de qualité avec garantie sur les réparations.",
+// Données additionnelles pour l'affichage
+const getCategoryDisplayData = (categoryId: string) => {
+  const data = {
+    electromenager: {
       count: "150+ réparateurs",
       avgPrice: "À partir de 45€",
       avgTime: "2h",
       rating: 4.8,
-      services: ["Lave-linge", "Lave-vaisselle", "Réfrigérateur", "Four", "Micro-ondes", "Aspirateur"],
-      seoKeywords: "réparation électroménager, dépannage lave-linge, réparateur réfrigérateur",
     },
-    {
-      name: "Informatique",
-      slug: "informatique",
-      icon: "💻",
-      image: "/placeholder.svg?height=200&width=300&text=Informatique",
-      description: "Dépannage informatique, réparation PC et Mac, récupération de données",
-      longDescription:
-        "Problème informatique ? Nos techniciens certifiés interviennent pour le dépannage PC, Mac, installation de logiciels, récupération de données, nettoyage virus et optimisation de performances.",
+    informatique: {
       count: "200+ réparateurs",
       avgPrice: "À partir de 60€",
       avgTime: "1h30",
       rating: 4.9,
-      services: ["Dépannage PC", "Réparation Mac", "Récupération données", "Installation logiciels", "Nettoyage virus"],
-      seoKeywords: "dépannage informatique, réparation ordinateur, technicien PC",
     },
-    {
-      name: "Plomberie",
-      slug: "plomberie",
-      icon: "🔧",
-      image: "/placeholder.svg?height=200&width=300&text=Plomberie",
-      description: "Intervention rapide pour fuites, débouchages et installations sanitaires",
-      longDescription:
-        "Fuite d'eau, canalisation bouchée, installation sanitaire ? Nos plombiers qualifiés interviennent en urgence 24h/24 pour tous vos problèmes de plomberie avec matériel professionnel.",
-      count: "180+ réparateurs",
-      avgPrice: "À partir de 80€",
-      avgTime: "1h",
-      rating: 4.7,
-      services: ["Fuite d'eau", "Débouchage", "Installation sanitaire", "Chauffe-eau", "Robinetterie"],
-      seoKeywords: "plombier urgence, réparation fuite, débouchage canalisation",
-    },
-    {
-      name: "Électricité",
-      slug: "electricite",
-      icon: "⚡",
-      image: "/placeholder.svg?height=200&width=300&text=Électricité",
-      description: "Installation électrique, dépannage et mise aux normes par des pros",
-      longDescription:
-        "Panne électrique, installation défaillante, mise aux normes ? Nos électriciens certifiés interviennent pour tous travaux électriques en respectant les normes de sécurité.",
-      count: "120+ réparateurs",
-      avgPrice: "À partir de 70€",
-      avgTime: "2h",
-      rating: 4.8,
-      services: ["Panne électrique", "Installation", "Tableau électrique", "Éclairage", "Prise électrique"],
-      seoKeywords: "électricien urgence, dépannage électrique, installation électrique",
-    },
-    {
-      name: "Chauffage",
-      slug: "chauffage",
-      icon: "🔥",
-      image: "/placeholder.svg?height=200&width=300&text=Chauffage",
-      description: "Entretien et réparation de systèmes de chauffage et climatisation",
-      longDescription:
-        "Problème de chauffage ou climatisation ? Nos techniciens spécialisés interviennent sur chaudières, radiateurs, pompes à chaleur et systèmes de climatisation pour votre confort.",
-      count: "90+ réparateurs",
-      avgPrice: "À partir de 90€",
-      avgTime: "2h30",
-      rating: 4.6,
-      services: ["Chaudière", "Radiateur", "Pompe à chaleur", "Climatisation", "Entretien"],
-      seoKeywords: "réparation chauffage, dépannage chaudière, technicien climatisation",
-    },
-    {
-      name: "Serrurerie",
-      slug: "serrurerie",
-      icon: "🔐",
-      image: "/placeholder.svg?height=200&width=300&text=Serrurerie",
-      description: "Ouverture de porte, changement de serrure et sécurisation",
-      longDescription:
-        "Porte claquée, serrure cassée, besoin de sécuriser ? Nos serruriers interviennent rapidement pour ouverture de porte, changement de serrure et installation de systèmes de sécurité.",
-      count: "75+ réparateurs",
-      avgPrice: "À partir de 65€",
-      avgTime: "45min",
-      rating: 4.9,
-      services: ["Ouverture de porte", "Changement serrure", "Blindage", "Clés", "Sécurisation"],
-      seoKeywords: "serrurier urgence, ouverture porte, changement serrure",
-    },
-    {
-      name: "Multimédia",
-      slug: "multimedia",
-      icon: "📺",
-      image: "/placeholder.svg?height=200&width=300&text=Multimédia",
-      description: "Installation et réparation TV, home cinéma et équipements audio",
-      longDescription:
-        "Problème de TV, installation home cinéma, panne de console ? Nos techniciens multimédia interviennent pour l'installation et la réparation de tous vos équipements audiovisuels.",
-      count: "85+ réparateurs",
-      avgPrice: "À partir de 55€",
-      avgTime: "1h30",
-      rating: 4.7,
-      services: ["Réparation TV", "Home cinéma", "Console de jeux", "Installation antenne", "Audio"],
-      seoKeywords: "réparation TV, installation home cinéma, technicien audiovisuel",
-    },
-    {
-      name: "Téléphonie",
-      slug: "telephonie",
-      icon: "📱",
-      image: "/placeholder.svg?height=200&width=300&text=Téléphonie",
-      description: "Réparation smartphone, tablette et accessoires mobiles",
-      longDescription:
-        "Écran cassé, problème de batterie, panne logicielle ? Nos réparateurs mobiles interviennent rapidement pour la réparation de smartphones, tablettes et accessoires avec pièces d'origine.",
+    telephonie: {
       count: "110+ réparateurs",
       avgPrice: "À partir de 40€",
       avgTime: "1h",
       rating: 4.8,
-      services: ["Écran cassé", "Batterie", "Réparation logicielle", "Tablette", "Accessoires"],
-      seoKeywords: "réparation smartphone, écran cassé, réparateur mobile",
     },
-    {
-      name: "Climatisation",
-      slug: "climatisation",
-      icon: "❄️",
-      image: "/placeholder.svg?height=200&width=300&text=Climatisation",
-      description: "Installation, entretien et dépannage de systèmes de climatisation",
-      longDescription:
-        "Installation de climatisation, entretien ou dépannage ? Nos techniciens frigoristes certifiés interviennent pour tous types de systèmes de climatisation résidentiels et professionnels.",
+    electronique: {
+      count: "95+ réparateurs",
+      avgPrice: "À partir de 55€",
+      avgTime: "1h45",
+      rating: 4.7,
+    },
+    plomberie: {
+      count: "180+ réparateurs",
+      avgPrice: "À partir de 80€",
+      avgTime: "1h",
+      rating: 4.7,
+    },
+    electricite: {
+      count: "120+ réparateurs",
+      avgPrice: "À partir de 70€",
+      avgTime: "2h",
+      rating: 4.8,
+    },
+    chauffage: {
+      count: "90+ réparateurs",
+      avgPrice: "À partir de 90€",
+      avgTime: "2h30",
+      rating: 4.6,
+    },
+    climatisation: {
       count: "60+ réparateurs",
       avgPrice: "À partir de 85€",
       avgTime: "2h",
       rating: 4.6,
-      services: ["Installation", "Entretien", "Dépannage", "Nettoyage", "Maintenance"],
-      seoKeywords: "installation climatisation, entretien climatiseur, technicien frigoriste",
     },
-  ]
+    serrurerie: {
+      count: "75+ réparateurs",
+      avgPrice: "À partir de 65€",
+      avgTime: "45min",
+      rating: 4.9,
+    },
+    vitrerie: {
+      count: "65+ réparateurs",
+      avgPrice: "À partir de 75€",
+      avgTime: "1h15",
+      rating: 4.7,
+    },
+    menuiserie: {
+      count: "70+ réparateurs",
+      avgPrice: "À partir de 85€",
+      avgTime: "3h",
+      rating: 4.8,
+    },
+    jardinage: {
+      count: "55+ réparateurs",
+      avgPrice: "À partir de 50€",
+      avgTime: "1h30",
+      rating: 4.5,
+    },
+    automobile: {
+      count: "130+ réparateurs",
+      avgPrice: "À partir de 60€",
+      avgTime: "2h",
+      rating: 4.7,
+    },
+    nettoyage: {
+      count: "85+ réparateurs",
+      avgPrice: "À partir de 40€",
+      avgTime: "2h30",
+      rating: 4.6,
+    },
+    demenagement: {
+      count: "45+ réparateurs",
+      avgPrice: "À partir de 120€",
+      avgTime: "4h",
+      rating: 4.7,
+    },
+  }
+
+  // Valeurs par défaut si la catégorie n'est pas trouvée
+  return (
+    data[categoryId as keyof typeof data] || {
+      count: "50+ réparateurs",
+      avgPrice: "À partir de 50€",
+      avgTime: "2h",
+      rating: 4.5,
+    }
+  )
+}
+
+export default function CategoriesPage() {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Charger les catégories depuis le service
+    const loadCategories = () => {
+      try {
+        const enabledCategories = CategoriesService.getEnabledCategories()
+        setCategories(enabledCategories)
+      } catch (error) {
+        console.error("Erreur lors du chargement des catégories:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadCategories()
+  }, [])
+
+  // Fonction pour extraire les services à partir des sous-catégories
+  const getServicesFromSubcategories = (category: Category) => {
+    return category.subCategories.map((sub) => sub.name)
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -156,7 +152,7 @@ export default function CategoriesPage() {
               Trouvez le bon réparateur selon votre besoin. Nos experts qualifiés couvrent tous les domaines du
               dépannage et de la réparation avec intervention rapide et garantie.
             </p>
-            <div className="flex justify-center space-x-8 text-sm text-gray-500">
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-sm text-gray-500">
               <div className="flex items-center space-x-2">
                 <Shield className="h-5 w-5 text-green-600" />
                 <span>Réparateurs vérifiés</span>
@@ -201,81 +197,94 @@ export default function CategoriesPage() {
       {/* Grille des catégories */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {categories.map((category, index) => (
-              <Link key={index} href={`/categories/${category.slug}`}>
-                <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden">
-                  <div className="relative">
-                    <img
-                      src={category.image || "/placeholder.svg"}
-                      alt={`Réparation ${category.name}`}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <div className="text-4xl bg-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
-                        {category.icon}
-                      </div>
-                    </div>
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-white text-gray-900 shadow-lg">
-                        <Star className="h-3 w-3 mr-1 text-yellow-500" />
-                        {category.rating}
-                      </Badge>
-                    </div>
-                  </div>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                        {category.name}
-                      </h3>
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                    </div>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{category.description}</p>
-                    <p className="text-sm text-gray-500 mb-4">{category.longDescription}</p>
+          {isLoading ? (
+            // Skeleton loader pendant le chargement
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(9)].map((_, index) => (
+                <div key={index} className="h-96 bg-gray-100 animate-pulse rounded-lg"></div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {categories.map((category) => {
+                const displayData = getCategoryDisplayData(category.id)
+                const services = getServicesFromSubcategories(category)
 
-                    {/* Services inclus */}
-                    <div className="mb-4">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Services inclus :</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {category.services.slice(0, 3).map((service, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {service}
+                return (
+                  <Link key={category.id} href={`/categories/${category.id}`}>
+                    <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden">
+                      <div className="relative">
+                        <img
+                          src={category.image || `/placeholder.svg?height=200&width=300&text=${category.name}`}
+                          alt={`Réparation ${category.name}`}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-4 left-4">
+                          <div className="text-4xl bg-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
+                            {category.icon}
+                          </div>
+                        </div>
+                        <div className="absolute top-4 right-4">
+                          <Badge className="bg-white text-gray-900 shadow-lg">
+                            <Star className="h-3 w-3 mr-1 text-yellow-500" />
+                            {displayData.rating}
                           </Badge>
-                        ))}
-                        {category.services.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{category.services.length - 3}
-                          </Badge>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                      <CardContent className="p-6">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {category.name}
+                          </h3>
+                          <TrendingUp className="h-5 w-5 text-green-600" />
+                        </div>
+                        <p className="text-gray-600 mb-4 line-clamp-2">{category.description}</p>
 
-                    {/* Informations pratiques */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center text-gray-600">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {category.count}
-                        </span>
-                        <span className="font-semibold text-blue-600">{category.avgPrice}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center text-gray-600">
-                          <Clock className="h-4 w-4 mr-1" />
-                          Intervention en {category.avgTime}
-                        </span>
-                        <span className="text-green-600 font-medium">Disponible 7j/7</span>
-                      </div>
-                    </div>
+                        {/* Services inclus */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">Services inclus :</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {services.slice(0, 3).map((service, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {service}
+                              </Badge>
+                            ))}
+                            {services.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{services.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
 
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 group-hover:bg-green-600 transition-colors">
-                      Trouver un réparateur
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                        {/* Informations pratiques */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="flex items-center text-gray-600">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {displayData.count}
+                            </span>
+                            <span className="font-semibold text-blue-600">{displayData.avgPrice}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="flex items-center text-gray-600">
+                              <Clock className="h-4 w-4 mr-1" />
+                              Intervention en {displayData.avgTime}
+                            </span>
+                            <span className="text-green-600 font-medium">Disponible 7j/7</span>
+                          </div>
+                        </div>
+
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 group-hover:bg-green-600 transition-colors">
+                          Trouver un réparateur
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </div>
       </section>
 
