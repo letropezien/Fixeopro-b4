@@ -35,6 +35,8 @@ export interface User {
     companyPhotos?: string[] // Ajout des photos d'entreprise
   }
   avatar?: string
+  emailVerifiedAt?: string // Date de vérification de l'email
+  emailVerifiedBy?: "user" | "admin" // Qui a vérifié l'email
 }
 
 export interface RepairResponse {
@@ -86,6 +88,16 @@ export interface RepairRequest {
   completedAt?: string // Date de fin des travaux
   cancelledAt?: string // Date d'annulation
   cancelReason?: string // Raison d'annulation
+}
+
+// Interface pour les tokens de réinitialisation de mot de passe
+export interface PasswordResetToken {
+  token: string
+  userId: string
+  email: string
+  createdAt: string
+  expiresAt: string
+  used: boolean
 }
 
 // Mock DepartmentService
@@ -270,6 +282,136 @@ export class StorageService {
       localStorage.removeItem("fixeopro_current_user_id")
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error)
+    }
+  }
+
+  // Gestion de la vérification d'email
+  static verifyUserEmail(userId: string, verifiedBy: "user" | "admin" = "user"): boolean {
+    try {
+      const user = this.getUserById(userId)
+      if (!user) return false
+
+      user.isEmailVerified = true
+      user.emailVerifiedAt = new Date().toISOString()
+      user.emailVerifiedBy = verifiedBy
+
+      this.saveUser(user)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la vérification de l'email:", error)
+      return false
+    }
+  }
+
+  // Obtenir les utilisateurs non vérifiés
+  static getUnverifiedUsers(): User[] {
+    const users = this.getUsers()
+    return users.filter((user) => !user.isEmailVerified)
+  }
+
+  // Changement de mot de passe
+  static changePassword(userId: string, currentPassword: string, newPassword: string): boolean {
+    try {
+      const user = this.getUserById(userId)
+      if (!user) return false
+
+      // Vérifier le mot de passe actuel
+      if (user.password !== currentPassword) return false
+
+      // Mettre à jour le mot de passe
+      user.password = newPassword
+      this.saveUser(user)
+      return true
+    } catch (error) {
+      console.error("Erreur lors du changement de mot de passe:", error)
+      return false
+    }
+  }
+
+  // Gestion des tokens de réinitialisation de mot de passe
+  static createPasswordResetToken(email: string): string | null {
+    try {
+      const user = this.getUserByEmail(email)
+      if (!user) return null
+
+      const token = `reset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const resetToken: PasswordResetToken = {
+        token,
+        userId: user.id,
+        email: user.email,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 heures
+        used: false,
+      }
+
+      // Sauvegarder le token
+      const tokens = this.getPasswordResetTokens()
+      // Supprimer les anciens tokens pour cet utilisateur
+      const filteredTokens = tokens.filter((t) => t.userId !== user.id)
+      filteredTokens.push(resetToken)
+      localStorage.setItem("fixeopro_password_reset_tokens", JSON.stringify(filteredTokens))
+
+      return token
+    } catch (error) {
+      console.error("Erreur lors de la création du token:", error)
+      return null
+    }
+  }
+
+  static getPasswordResetTokens(): PasswordResetToken[] {
+    if (!isBrowser) return []
+    try {
+      const saved = localStorage.getItem("fixeopro_password_reset_tokens")
+      return saved ? JSON.parse(saved) : []
+    } catch (error) {
+      console.error("Erreur lors du chargement des tokens:", error)
+      return []
+    }
+  }
+
+  static validatePasswordResetToken(token: string): { valid: boolean; userId?: string; error?: string } {
+    try {
+      const tokens = this.getPasswordResetTokens()
+      const tokenData = tokens.find((t) => t.token === token && !t.used)
+
+      if (!tokenData) {
+        return { valid: false, error: "Token invalide ou déjà utilisé" }
+      }
+
+      if (new Date() > new Date(tokenData.expiresAt)) {
+        return { valid: false, error: "Token expiré" }
+      }
+
+      return { valid: true, userId: tokenData.userId }
+    } catch (error) {
+      return { valid: false, error: "Erreur lors de la validation" }
+    }
+  }
+
+  static resetPassword(token: string, newPassword: string): boolean {
+    try {
+      const validation = this.validatePasswordResetToken(token)
+      if (!validation.valid || !validation.userId) return false
+
+      const user = this.getUserById(validation.userId)
+      if (!user) return false
+
+      // Mettre à jour le mot de passe
+      user.password = newPassword
+      this.saveUser(user)
+
+      // Marquer le token comme utilisé
+      const tokens = this.getPasswordResetTokens()
+      const tokenData = tokens.find((t) => t.token === token)
+      if (tokenData) {
+        tokenData.used = true
+        localStorage.setItem("fixeopro_password_reset_tokens", JSON.stringify(tokens))
+      }
+
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la réinitialisation:", error)
+      return false
     }
   }
 
@@ -714,6 +856,8 @@ export class StorageService {
             postalCode: "75001",
             phone: "0123456789",
             isEmailVerified: true,
+            emailVerifiedAt: new Date().toISOString(),
+            emailVerifiedBy: "user",
             createdAt: new Date().toISOString(),
           },
           {
@@ -727,6 +871,8 @@ export class StorageService {
             postalCode: "69001",
             phone: "0123456788",
             isEmailVerified: true,
+            emailVerifiedAt: new Date().toISOString(),
+            emailVerifiedBy: "user",
             createdAt: new Date().toISOString(),
             professional: {
               companyName: "Répar'Tout",
@@ -754,7 +900,7 @@ export class StorageService {
             city: "Paris",
             postalCode: "75002",
             phone: "0123456787",
-            isEmailVerified: true,
+            isEmailVerified: false, // Compte non vérifié pour tester la validation admin
             createdAt: new Date().toISOString(),
             professional: {
               companyName: "ElectroFix",
@@ -770,6 +916,20 @@ export class StorageService {
               startDate: new Date().toISOString(),
               endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
             },
+          },
+          // Ajouter un compte client non vérifié
+          {
+            id: "demo_client_2",
+            email: "client2@demo.com",
+            password: "demo123",
+            firstName: "Sophie",
+            lastName: "Laurent",
+            userType: "client",
+            city: "Marseille",
+            postalCode: "13001",
+            phone: "0123456786",
+            isEmailVerified: false, // Compte non vérifié
+            createdAt: new Date().toISOString(),
           },
           // Plus de compte admin par défaut - doit être configuré via /admin/setup
         ]

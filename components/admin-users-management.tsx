@@ -14,7 +14,6 @@ import {
   Search,
   Filter,
   Download,
-  Mail,
   Phone,
   AlertTriangle,
   CheckCircle,
@@ -24,6 +23,8 @@ import {
   Eye,
   Edit,
   Trash2,
+  UserCheck,
+  Clock,
 } from "lucide-react"
 import { StorageService, type User } from "@/lib/storage"
 
@@ -31,7 +32,7 @@ export function AdminUsersManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "client" | "reparateur" | "admin">("all")
+  const [filterType, setFilterType] = useState<"all" | "client" | "reparateur" | "admin" | "unverified">("all")
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -56,7 +57,9 @@ export function AdminUsersManagement() {
     let filtered = users
 
     // Filtrer par type
-    if (filterType !== "all") {
+    if (filterType === "unverified") {
+      filtered = filtered.filter((user) => !user.isEmailVerified)
+    } else if (filterType !== "all") {
       filtered = filtered.filter((user) => user.userType === filterType)
     }
 
@@ -93,6 +96,16 @@ export function AdminUsersManagement() {
   const handleEditUserPhoto = (user: User) => {
     setSelectedUser(user)
     setIsPhotoModalOpen(true)
+  }
+
+  const handleVerifyEmail = (user: User) => {
+    const success = StorageService.verifyUserEmail(user.id, "admin")
+    if (success) {
+      loadUsers()
+      alert(`Email vérifié avec succès pour ${user.firstName} ${user.lastName}`)
+    } else {
+      alert("Erreur lors de la vérification de l'email")
+    }
   }
 
   const saveUser = () => {
@@ -152,9 +165,29 @@ export function AdminUsersManagement() {
     return <Badge variant="outline">{user.userType}</Badge>
   }
 
+  const getEmailVerificationBadge = (user: User) => {
+    if (user.isEmailVerified) {
+      return (
+        <div className="flex items-center space-x-1">
+          <CheckCircle className="h-4 w-4 text-green-500" />
+          <span className="text-sm text-green-600">Vérifié</span>
+          {user.emailVerifiedBy === "admin" && <span className="text-xs text-gray-500">(Admin)</span>}
+        </div>
+      )
+    }
+    return (
+      <div className="flex items-center space-x-1">
+        <Clock className="h-4 w-4 text-orange-500" />
+        <span className="text-sm text-orange-600">En attente</span>
+      </div>
+    )
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("fr-FR")
   }
+
+  const unverifiedCount = users.filter((u) => !u.isEmailVerified).length
 
   return (
     <div className="space-y-6">
@@ -163,6 +196,14 @@ export function AdminUsersManagement() {
         <div>
           <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
           <p className="text-gray-600">Gérez tous les comptes utilisateurs de la plateforme</p>
+          {unverifiedCount > 0 && (
+            <div className="flex items-center space-x-2 mt-2">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm text-orange-600">
+                {unverifiedCount} compte{unverifiedCount > 1 ? "s" : ""} en attente de vérification
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex space-x-2">
           <Button onClick={exportUsers} variant="outline">
@@ -217,7 +258,7 @@ export function AdminUsersManagement() {
       </div>
 
       {/* Statistiques rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -262,6 +303,19 @@ export function AdminUsersManagement() {
             </div>
           </CardContent>
         </Card>
+        <Card className={unverifiedCount > 0 ? "border-orange-200 bg-orange-50" : ""}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Non vérifiés</p>
+                <p className={`text-2xl font-bold ${unverifiedCount > 0 ? "text-orange-600" : ""}`}>
+                  {unverifiedCount}
+                </p>
+              </div>
+              <AlertTriangle className={`h-8 w-8 ${unverifiedCount > 0 ? "text-orange-500" : "text-gray-400"}`} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filtres et recherche */}
@@ -281,7 +335,7 @@ export function AdminUsersManagement() {
             </div>
             <div className="flex space-x-2">
               <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-48">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
@@ -290,6 +344,7 @@ export function AdminUsersManagement() {
                   <SelectItem value="client">Clients</SelectItem>
                   <SelectItem value="reparateur">Réparateurs</SelectItem>
                   <SelectItem value="admin">Administrateurs</SelectItem>
+                  <SelectItem value="unverified">Non vérifiés</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -309,6 +364,7 @@ export function AdminUsersManagement() {
                 <tr className="border-b">
                   <th className="text-left p-3">Utilisateur</th>
                   <th className="text-left p-3">Type</th>
+                  <th className="text-left p-3">Email</th>
                   <th className="text-left p-3">Contact</th>
                   <th className="text-left p-3">Localisation</th>
                   <th className="text-left p-3">Statut</th>
@@ -322,7 +378,7 @@ export function AdminUsersManagement() {
                     <td className="p-3">
                       <div className="flex items-center space-x-3">
                         <div
-                          className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative group"
+                          className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative group cursor-pointer"
                           onClick={() => handleEditUserPhoto(user)}
                         >
                           {user.avatar ? (
@@ -337,7 +393,7 @@ export function AdminUsersManagement() {
                               {user.lastName[0]}
                             </span>
                           )}
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Camera className="h-4 w-4 text-white" />
                           </div>
                         </div>
@@ -345,7 +401,6 @@ export function AdminUsersManagement() {
                           <p className="font-medium">
                             {user.firstName} {user.lastName}
                           </p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
                           {user.professional?.companyName && (
                             <p className="text-sm text-blue-600">{user.professional.companyName}</p>
                           )}
@@ -355,20 +410,18 @@ export function AdminUsersManagement() {
                     <td className="p-3">{getUserStatusBadge(user)}</td>
                     <td className="p-3">
                       <div className="space-y-1">
+                        <p className="text-sm">{user.email}</p>
+                        {getEmailVerificationBadge(user)}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="space-y-1">
                         {user.phone && (
                           <div className="flex items-center text-sm">
                             <Phone className="h-3 w-3 mr-1" />
                             {user.phone}
                           </div>
                         )}
-                        <div className="flex items-center text-sm">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {user.isEmailVerified ? (
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <AlertTriangle className="h-3 w-3 text-orange-500" />
-                          )}
-                        </div>
                       </div>
                     </td>
                     <td className="p-3">
@@ -405,6 +458,17 @@ export function AdminUsersManagement() {
                         <Button size="sm" variant="outline" onClick={() => handleEditUser(user)}>
                           <Edit className="h-3 w-3" />
                         </Button>
+                        {!user.isEmailVerified && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleVerifyEmail(user)}
+                            className="text-green-600 hover:text-green-700"
+                            title="Valider l'email"
+                          >
+                            <UserCheck className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => handleEditUserPhoto(user)}>
                           <Camera className="h-3 w-3" />
                         </Button>
@@ -454,6 +518,7 @@ export function AdminUsersManagement() {
                     {selectedUser.firstName} {selectedUser.lastName}
                   </h3>
                   <p className="text-gray-600">{selectedUser.email}</p>
+                  <div className="mt-1">{getEmailVerificationBadge(selectedUser)}</div>
                 </div>
               </div>
 
@@ -523,6 +588,24 @@ export function AdminUsersManagement() {
                     <div>
                       <Label>Date de fin</Label>
                       <p className="font-medium">{formatDate(selectedUser.subscription.endDate)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedUser.isEmailVerified && selectedUser.emailVerifiedAt && (
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Vérification email</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Vérifié le</Label>
+                      <p className="font-medium">{formatDate(selectedUser.emailVerifiedAt)}</p>
+                    </div>
+                    <div>
+                      <Label>Vérifié par</Label>
+                      <p className="font-medium">
+                        {selectedUser.emailVerifiedBy === "admin" ? "Administrateur" : "Utilisateur"}
+                      </p>
                     </div>
                   </div>
                 </div>
