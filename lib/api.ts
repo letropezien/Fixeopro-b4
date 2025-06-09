@@ -1,261 +1,139 @@
-// API utilities for FixeoPro platform
-import { storage } from "./storage"
+// Classe API pour gérer les requêtes vers le backend
+export class ApiService {
+  private baseUrl: string
+  private headers: HeadersInit
 
-interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
-interface RequestData {
-  id: string
-  title: string
-  description: string
-  category: string
-  location: string
-  clientName: string
-  clientEmail: string
-  clientPhone: string
-  status: "pending" | "accepted" | "in_progress" | "completed" | "cancelled"
-  createdAt: string
-  budget?: number
-  photos?: string[]
-  urgency: "low" | "medium" | "high"
-}
-
-interface UserData {
-  id: string
-  email: string
-  name: string
-  type: "client" | "repairer" | "admin"
-  subscription?: {
-    status: "active" | "trial" | "expired"
-    expiresAt: string
-    trialStarted?: string
-  }
-  profile?: {
-    phone?: string
-    address?: string
-    company?: string
-    specialties?: string[]
-  }
-}
-
-class ApiService {
-  // Requests API
-  async getRequests(): Promise<ApiResponse<RequestData[]>> {
-    try {
-      const requests = storage.getItem("requests") || []
-      return { success: true, data: requests }
-    } catch (error) {
-      return { success: false, error: "Failed to fetch requests" }
+  constructor(baseUrl = "/api") {
+    this.baseUrl = baseUrl
+    this.headers = {
+      "Content-Type": "application/json",
     }
   }
 
-  async getRequestById(id: string): Promise<ApiResponse<RequestData>> {
-    try {
-      const requests = storage.getItem("requests") || []
-      const request = requests.find((r: RequestData) => r.id === id)
-      if (!request) {
-        return { success: false, error: "Request not found" }
-      }
-      return { success: true, data: request }
-    } catch (error) {
-      return { success: false, error: "Failed to fetch request" }
+  // Méthode pour définir un token d'authentification
+  setAuthToken(token: string) {
+    this.headers = {
+      ...this.headers,
+      Authorization: `Bearer ${token}`,
     }
   }
 
-  async createRequest(requestData: Omit<RequestData, "id" | "createdAt">): Promise<ApiResponse<RequestData>> {
+  // Méthode générique pour les requêtes GET
+  async get<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
+    const url = new URL(`${this.baseUrl}${endpoint}`)
+
+    // Ajouter les paramètres à l'URL
+    Object.keys(params).forEach((key) => {
+      url.searchParams.append(key, params[key])
+    })
+
     try {
-      const requests = storage.getItem("requests") || []
-      const newRequest: RequestData = {
-        ...requestData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        status: "pending",
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: this.headers,
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
       }
-      requests.push(newRequest)
-      storage.setItem("requests", requests)
-      return { success: true, data: newRequest }
+
+      return (await response.json()) as T
     } catch (error) {
-      return { success: false, error: "Failed to create request" }
+      console.error("API GET request failed:", error)
+      throw error
     }
   }
 
-  async updateRequest(id: string, updates: Partial<RequestData>): Promise<ApiResponse<RequestData>> {
+  // Méthode générique pour les requêtes POST
+  async post<T>(endpoint: string, data: any): Promise<T> {
     try {
-      const requests = storage.getItem("requests") || []
-      const index = requests.findIndex((r: RequestData) => r.id === id)
-      if (index === -1) {
-        return { success: false, error: "Request not found" }
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
       }
-      requests[index] = { ...requests[index], ...updates }
-      storage.setItem("requests", requests)
-      return { success: true, data: requests[index] }
+
+      return (await response.json()) as T
     } catch (error) {
-      return { success: false, error: "Failed to update request" }
+      console.error("API POST request failed:", error)
+      throw error
     }
   }
 
-  async deleteRequest(id: string): Promise<ApiResponse> {
+  // Méthode générique pour les requêtes PUT
+  async put<T>(endpoint: string, data: any): Promise<T> {
     try {
-      const requests = storage.getItem("requests") || []
-      const filteredRequests = requests.filter((r: RequestData) => r.id !== id)
-      storage.setItem("requests", filteredRequests)
-      return { success: true }
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "PUT",
+        headers: this.headers,
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      return (await response.json()) as T
     } catch (error) {
-      return { success: false, error: "Failed to delete request" }
+      console.error("API PUT request failed:", error)
+      throw error
     }
   }
 
-  // Users API
-  async getUsers(): Promise<ApiResponse<UserData[]>> {
+  // Méthode générique pour les requêtes DELETE
+  async delete<T>(endpoint: string): Promise<T> {
     try {
-      const users = storage.getItem("users") || []
-      return { success: true, data: users }
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "DELETE",
+        headers: this.headers,
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      return (await response.json()) as T
     } catch (error) {
-      return { success: false, error: "Failed to fetch users" }
+      console.error("API DELETE request failed:", error)
+      throw error
     }
   }
 
-  async getUserById(id: string): Promise<ApiResponse<UserData>> {
+  // Méthode pour uploader des fichiers
+  async uploadFile(endpoint: string, file: File, additionalData: Record<string, any> = {}): Promise<any> {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    // Ajouter des données supplémentaires si nécessaire
+    Object.keys(additionalData).forEach((key) => {
+      formData.append(key, additionalData[key])
+    })
+
     try {
-      const users = storage.getItem("users") || []
-      const user = users.find((u: UserData) => u.id === id)
-      if (!user) {
-        return { success: false, error: "User not found" }
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "POST",
+        headers: {
+          // Ne pas inclure Content-Type ici, il sera automatiquement défini avec le boundary
+          Authorization: this.headers["Authorization"],
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
       }
-      return { success: true, data: user }
+
+      return await response.json()
     } catch (error) {
-      return { success: false, error: "Failed to fetch user" }
-    }
-  }
-
-  async createUser(userData: Omit<UserData, "id">): Promise<ApiResponse<UserData>> {
-    try {
-      const users = storage.getItem("users") || []
-      const newUser: UserData = {
-        ...userData,
-        id: Date.now().toString(),
-      }
-      users.push(newUser)
-      storage.setItem("users", users)
-      return { success: true, data: newUser }
-    } catch (error) {
-      return { success: false, error: "Failed to create user" }
-    }
-  }
-
-  async updateUser(id: string, updates: Partial<UserData>): Promise<ApiResponse<UserData>> {
-    try {
-      const users = storage.getItem("users") || []
-      const index = users.findIndex((u: UserData) => u.id === id)
-      if (index === -1) {
-        return { success: false, error: "User not found" }
-      }
-      users[index] = { ...users[index], ...updates }
-      storage.setItem("users", users)
-      return { success: true, data: users[index] }
-    } catch (error) {
-      return { success: false, error: "Failed to update user" }
-    }
-  }
-
-  // Categories API
-  async getCategories(): Promise<ApiResponse<string[]>> {
-    try {
-      const categories = storage.getItem("categories") || [
-        "Plomberie",
-        "Électricité",
-        "Chauffage",
-        "Climatisation",
-        "Serrurerie",
-        "Vitrerie",
-        "Menuiserie",
-        "Peinture",
-        "Carrelage",
-        "Jardinage",
-        "Informatique",
-        "Électroménager",
-      ]
-      return { success: true, data: categories }
-    } catch (error) {
-      return { success: false, error: "Failed to fetch categories" }
-    }
-  }
-
-  // Statistics API
-  async getStats(): Promise<ApiResponse<any>> {
-    try {
-      const requests = storage.getItem("requests") || []
-      const users = storage.getItem("users") || []
-
-      const stats = {
-        totalRequests: requests.length,
-        pendingRequests: requests.filter((r: RequestData) => r.status === "pending").length,
-        completedRequests: requests.filter((r: RequestData) => r.status === "completed").length,
-        totalUsers: users.length,
-        totalRepairers: users.filter((u: UserData) => u.type === "repairer").length,
-        totalClients: users.filter((u: UserData) => u.type === "client").length,
-      }
-
-      return { success: true, data: stats }
-    } catch (error) {
-      return { success: false, error: "Failed to fetch statistics" }
-    }
-  }
-
-  // Subscription API
-  async checkSubscription(userId: string): Promise<ApiResponse<{ canViewContacts: boolean; reason?: string }>> {
-    try {
-      const users = storage.getItem("users") || []
-      const user = users.find((u: UserData) => u.id === userId)
-
-      if (!user) {
-        return { success: false, error: "User not found" }
-      }
-
-      if (user.type === "admin") {
-        return { success: true, data: { canViewContacts: true } }
-      }
-
-      if (user.type !== "repairer") {
-        return {
-          success: true,
-          data: { canViewContacts: false, reason: "Only repairers can view contact information" },
-        }
-      }
-
-      const subscription = user.subscription
-      if (!subscription) {
-        return { success: true, data: { canViewContacts: false, reason: "No subscription found" } }
-      }
-
-      const now = new Date()
-      const expiresAt = new Date(subscription.expiresAt)
-
-      if (subscription.status === "active" && expiresAt > now) {
-        return { success: true, data: { canViewContacts: true } }
-      }
-
-      if (subscription.status === "trial" && subscription.trialStarted) {
-        const trialStart = new Date(subscription.trialStarted)
-        const trialEnd = new Date(trialStart.getTime() + 15 * 24 * 60 * 60 * 1000) // 15 days
-
-        if (now <= trialEnd) {
-          return { success: true, data: { canViewContacts: true } }
-        }
-      }
-
-      return { success: true, data: { canViewContacts: false, reason: "Subscription expired or trial period ended" } }
-    } catch (error) {
-      return { success: false, error: "Failed to check subscription" }
+      console.error("API file upload failed:", error)
+      throw error
     }
   }
 }
 
-// Export the API instance
+// Exporter une instance par défaut
 export const api = new ApiService()
-
-// Export types
-export type { ApiResponse, RequestData, UserData }

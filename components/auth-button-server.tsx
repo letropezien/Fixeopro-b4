@@ -1,9 +1,8 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/hooks/use-auth"
-import { LogIn, LogOut, User, Settings } from "lucide-react"
-import Link from "next/link"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,144 +10,96 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { User, LogOut, Settings, Shield } from "lucide-react"
+import Link from "next/link"
+import { StorageService } from "@/lib/storage"
 
-interface AuthButtonServerProps {
-  className?: string
-  variant?: "default" | "outline" | "ghost" | "link"
-  size?: "default" | "sm" | "lg"
-}
+export default function AuthButtonServer() {
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-export default function AuthButtonServer({
-  className = "",
-  variant = "default",
-  size = "default",
-}: AuthButtonServerProps) {
-  const { user, logout, isLoading } = useAuth()
+  useEffect(() => {
+    // Vérifier si nous sommes dans un environnement navigateur
+    if (typeof window !== "undefined") {
+      const user = StorageService.getCurrentUser()
+      setCurrentUser(user)
+      setIsLoading(false)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    StorageService.logout()
+    setCurrentUser(null)
+    window.location.href = "/"
+  }
 
   if (isLoading) {
     return (
-      <Button variant={variant} size={size} className={className} disabled>
-        Chargement...
+      <Button variant="ghost" size="sm" disabled>
+        <span className="animate-pulse">Chargement...</span>
       </Button>
     )
   }
 
-  if (!user) {
+  if (!currentUser) {
     return (
-      <Link href="/connexion">
-        <Button variant={variant} size={size} className={className}>
-          <LogIn className="h-4 w-4 mr-2" />
-          Se connecter
+      <div className="flex items-center gap-2">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/connexion">Se connecter</Link>
         </Button>
-      </Link>
+        <Button asChild size="sm">
+          <Link href="/inscription">S'inscrire</Link>
+        </Button>
+      </div>
     )
-  }
-
-  const getUserInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((word) => word.charAt(0))
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
-  const getUserTypeLabel = (type: string) => {
-    switch (type) {
-      case "admin":
-        return "Administrateur"
-      case "repairer":
-        return "Réparateur"
-      case "client":
-        return "Client"
-      default:
-        return "Utilisateur"
-    }
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className={`relative h-10 w-10 rounded-full ${className}`}>
-          <Avatar className="h-10 w-10">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getUserInitials(user.name || user.email)}
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={currentUser?.avatar || "/placeholder.svg"} alt="Profile" />
+            <AvatarFallback className="bg-blue-100 text-blue-600">
+              {currentUser?.firstName?.[0]}
+              {currentUser?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <div className="flex flex-col space-y-1 p-2">
-          <p className="text-sm font-medium leading-none">{user.name || "Utilisateur"}</p>
-          <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-          <p className="text-xs leading-none text-muted-foreground">{getUserTypeLabel(user.type)}</p>
+      <DropdownMenuContent className="w-56" align="end">
+        <div className="px-2 py-1.5 text-sm font-medium">
+          {currentUser?.firstName} {currentUser?.lastName}
+          <div className="text-xs text-gray-500 capitalize">
+            {currentUser?.userType === "reparateur" ? "Réparateur" : "Client"}
+          </div>
         </div>
-
-        <DropdownMenuSeparator />
-
         <DropdownMenuItem asChild>
-          <Link href="/profil" className="cursor-pointer">
+          <Link href={currentUser?.userType === "reparateur" ? "/profil-pro" : "/profil"} className="flex items-center">
             <User className="mr-2 h-4 w-4" />
-            <span>Mon profil</span>
+            Mon profil
           </Link>
         </DropdownMenuItem>
-
-        {user.type === "repairer" && (
+        <DropdownMenuItem asChild>
+          <Link href="/parametres" className="flex items-center">
+            <Settings className="mr-2 h-4 w-4" />
+            Paramètres
+          </Link>
+        </DropdownMenuItem>
+        {currentUser?.userType === "admin" && (
           <DropdownMenuItem asChild>
-            <Link href="/profil-pro" className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Profil professionnel</span>
+            <Link href="/admin" className="flex items-center text-red-600">
+              <Shield className="mr-2 h-4 w-4" />
+              Administration
             </Link>
           </DropdownMenuItem>
         )}
-
-        {user.type === "client" && (
-          <DropdownMenuItem asChild>
-            <Link href="/mes-demandes" className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Mes demandes</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
-
-        {user.type === "repairer" && (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href="/demandes-disponibles" className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Demandes disponibles</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/tarifs" className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Mon abonnement</span>
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
-
-        {user.type === "admin" && (
-          <DropdownMenuItem asChild>
-            <Link href="/admin" className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Administration</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
-
         <DropdownMenuSeparator />
-
-        <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600" onClick={() => logout()}>
+        <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Se déconnecter</span>
+          Déconnexion
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
-
-// Export as default
-export { AuthButtonServer }

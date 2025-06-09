@@ -321,6 +321,13 @@ export class CategoriesService {
 
   static getCategories(): Category[] {
     try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        console.log("Environnement serveur détecté, utilisation des catégories par défaut")
+        return this.getDefaultCategories()
+      }
+
       const storedCategories = localStorage.getItem(this.STORAGE_KEY)
       if (!storedCategories) {
         const defaultCategories = this.getDefaultCategories()
@@ -336,6 +343,12 @@ export class CategoriesService {
 
   static getSettings(): CategorySettings {
     try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return this.getDefaultSettings()
+      }
+
       const storedSettings = localStorage.getItem(this.SETTINGS_KEY)
       if (!storedSettings) {
         const defaultSettings = this.getDefaultSettings()
@@ -351,6 +364,12 @@ export class CategoriesService {
 
   static saveCategories(categories: Category[]): void {
     try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return
+      }
+
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(categories))
     } catch (error) {
       console.error("Error saving categories:", error)
@@ -359,6 +378,12 @@ export class CategoriesService {
 
   static saveSettings(settings: CategorySettings): void {
     try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return
+      }
+
       localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings))
     } catch (error) {
       console.error("Error saving category settings:", error)
@@ -371,20 +396,40 @@ export class CategoriesService {
   }
 
   static updateCategory(id: string, updates: Partial<Category>): void {
-    const categories = this.getCategories()
-    const index = categories.findIndex((cat) => cat.id === id)
-    if (index !== -1) {
-      categories[index] = { ...categories[index], ...updates }
-      this.saveCategories(categories)
+    try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return
+      }
+
+      const categories = this.getCategories()
+      const index = categories.findIndex((cat) => cat.id === id)
+      if (index !== -1) {
+        categories[index] = { ...categories[index], ...updates }
+        this.saveCategories(categories)
+      }
+    } catch (error) {
+      console.error("Error updating category:", error)
     }
   }
 
   static toggleCategoryStatus(id: string): void {
-    const categories = this.getCategories()
-    const index = categories.findIndex((cat) => cat.id === id)
-    if (index !== -1) {
-      categories[index].enabled = !categories[index].enabled
-      this.saveCategories(categories)
+    try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return
+      }
+
+      const categories = this.getCategories()
+      const index = categories.findIndex((cat) => cat.id === id)
+      if (index !== -1) {
+        categories[index].enabled = !categories[index].enabled
+        this.saveCategories(categories)
+      }
+    } catch (error) {
+      console.error("Error toggling category status:", error)
     }
   }
 
@@ -399,11 +444,24 @@ export class CategoriesService {
 
   // Nouvelle méthode pour mettre à jour l'image d'une catégorie
   static updateCategoryImage(id: string, imageUrl: string): void {
-    const categories = this.getCategories()
-    const index = categories.findIndex((cat) => cat.id === id)
-    if (index !== -1) {
-      categories[index].image = imageUrl
-      this.saveCategories(categories)
+    try {
+      // Vérifier si nous sommes dans un environnement navigateur
+      if (typeof window === "undefined" || typeof localStorage === "undefined") {
+        // Côté serveur ou pas de localStorage disponible
+        return
+      }
+
+      const categories = this.getCategories()
+      const index = categories.findIndex((cat) => cat.id === id)
+      if (index !== -1) {
+        categories[index].image = imageUrl
+        this.saveCategories(categories)
+      }
+    } catch (error) {
+      console.error("Error updating category image:", error)
     }
   }
 }
+
+// Export nommé pour la compatibilité avec les imports
+export const categories = CategoriesService
