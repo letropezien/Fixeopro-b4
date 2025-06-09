@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock, MessageSquare, Search, MapIcon } from "lucide-react"
+import { MapPin, Clock, Euro, User, Phone, Mail, Filter, Lock, MessageSquare, Search, RefreshCw } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import { DepartmentService } from "@/lib/departments"
 import { DepartmentSelector } from "@/components/department-selector"
 import Link from "next/link"
 
 export default function ListesDemandesPage() {
-  const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
-  const [requests, setRequests] = useState(StorageService.getRepairRequests())
-  const [filteredRequests, setFilteredRequests] = useState(requests)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [requests, setRequests] = useState([])
+  const [filteredRequests, setFilteredRequests] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const [filters, setFilters] = useState({
     category: "",
     urgency: "",
@@ -24,32 +25,84 @@ export default function ListesDemandesPage() {
     search: "",
   })
 
+  const loadData = () => {
+    setIsLoading(true)
+    try {
+      // Charger l'utilisateur actuel
+      const user = StorageService.getCurrentUser()
+      setCurrentUser(user)
+
+      // Charger les demandes de réparation
+      const loadedRequests = StorageService.getRepairRequests()
+      console.log("Demandes chargées:", loadedRequests)
+
+      // Nettoyer et valider les données
+      const cleanedRequests = loadedRequests.map((request) => ({
+        ...request,
+        // S'assurer que responses est un nombre
+        responses: Array.isArray(request.responses)
+          ? request.responses.length
+          : typeof request.responses === "number"
+            ? request.responses
+            : 0,
+        // S'assurer que les champs texte sont des chaînes
+        title: String(request.title || ""),
+        description: String(request.description || ""),
+        category: String(request.category || ""),
+        city: String(request.city || ""),
+        postalCode: String(request.postalCode || ""),
+        urgency: String(request.urgency || "flexible"),
+        // S'assurer que client est un objet valide
+        client: request.client || {},
+        // S'assurer que photos est un tableau
+        photos: Array.isArray(request.photos) ? request.photos : [],
+        // S'assurer que createdAt est une chaîne
+        createdAt: String(request.createdAt || new Date().toISOString()),
+      }))
+
+      // Trier par date (plus récentes en premier)
+      const sortedRequests = cleanedRequests.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+
+      setRequests(sortedRequests)
+      setFilteredRequests(sortedRequests)
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error)
+      setRequests([])
+      setFilteredRequests([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
-    // Recharger les demandes à chaque visite de la page
-    const loadedRequests = StorageService.getRepairRequests()
-    setRequests(loadedRequests)
-    setFilteredRequests(loadedRequests)
+    loadData()
   }, [])
 
   useEffect(() => {
     // Appliquer les filtres
-    let filtered = requests
+    let filtered = [...requests]
 
-    if (filters.category) {
-      filtered = filtered.filter((request) => request.category.toLowerCase().includes(filters.category.toLowerCase()))
+    if (filters.category && filters.category !== "all") {
+      filtered = filtered.filter(
+        (request) => request.category && request.category.toLowerCase().includes(filters.category.toLowerCase()),
+      )
     }
 
-    if (filters.urgency) {
+    if (filters.urgency && filters.urgency !== "all") {
       filtered = filtered.filter((request) => request.urgency === filters.urgency)
     }
 
     if (filters.city) {
-      filtered = filtered.filter((request) => request.city.toLowerCase().includes(filters.city.toLowerCase()))
+      filtered = filtered.filter(
+        (request) => request.city && request.city.toLowerCase().includes(filters.city.toLowerCase()),
+      )
     }
 
-    if (filters.department) {
+    if (filters.department && filters.department !== "all") {
       filtered = filtered.filter((request) => {
-        // Filtrer par département en utilisant le code postal ou le département stocké
+        // Filtrer par département
         if (request.department) {
           return request.department === filters.department
         }
@@ -62,15 +115,15 @@ export default function ListesDemandesPage() {
     if (filters.search) {
       filtered = filtered.filter(
         (request) =>
-          request.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-          request.description.toLowerCase().includes(filters.search.toLowerCase()),
+          (request.title && request.title.toLowerCase().includes(filters.search.toLowerCase())) ||
+          (request.description && request.description.toLowerCase().includes(filters.search.toLowerCase())),
       )
     }
 
     setFilteredRequests(filtered)
   }, [filters, requests])
 
-  const getUrgencyColor = (urgency: string) => {
+  const getUrgencyColor = (urgency) => {
     switch (urgency) {
       case "urgent":
         return "bg-red-100 text-red-800"
@@ -85,15 +138,34 @@ export default function ListesDemandesPage() {
     }
   }
 
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+  const getUrgencyLabel = (urgency) => {
+    switch (urgency) {
+      case "urgent":
+        return "Urgent"
+      case "same-day":
+        return "Aujourd'hui"
+      case "this-week":
+        return "Cette semaine"
+      case "flexible":
+        return "Flexible"
+      default:
+        return "Non défini"
+    }
+  }
 
-    if (diffInHours < 1) return "Il y a moins d'1h"
-    if (diffInHours < 24) return `Il y a ${diffInHours}h`
-    const diffInDays = Math.floor(diffInHours / 24)
-    return `Il y a ${diffInDays} jour${diffInDays > 1 ? "s" : ""}`
+  const getTimeAgo = (dateString) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+      if (diffInHours < 1) return "Il y a moins d'1h"
+      if (diffInHours < 24) return `Il y a ${diffInHours}h`
+      const diffInDays = Math.floor(diffInHours / 24)
+      return `Il y a ${diffInDays} jour${diffInDays > 1 ? "s" : ""}`
+    } catch (error) {
+      return "Date inconnue"
+    }
   }
 
   const canViewClientDetails = () => {
@@ -110,7 +182,7 @@ export default function ListesDemandesPage() {
     return false
   }
 
-  const maskPersonalData = (text: string) => {
+  const maskPersonalData = (text) => {
     if (canViewClientDetails()) return text
     return text.replace(/[a-zA-ZÀ-ÿ]/g, "*")
   }
@@ -125,32 +197,58 @@ export default function ListesDemandesPage() {
     })
   }
 
-  const getDepartmentName = (postalCode: string, departmentCode?: string) => {
-    if (departmentCode) {
-      const dept = DepartmentService.getDepartmentByCode(departmentCode)
-      return dept ? `${dept.code} - ${dept.name}` : departmentCode
+  const getDepartmentName = (postalCode, departmentCode) => {
+    try {
+      if (departmentCode) {
+        const dept = DepartmentService.getDepartmentByCode(departmentCode)
+        return dept ? `${dept.code} - ${dept.name}` : departmentCode
+      }
+      const dept = DepartmentService.getDepartmentFromPostalCode(postalCode)
+      return dept ? `${dept.code} - ${dept.name}` : "Non défini"
+    } catch (error) {
+      return "Non défini"
     }
-    const dept = DepartmentService.getDepartmentFromPostalCode(postalCode)
-    return dept ? `${dept.code} - ${dept.name}` : "Non défini"
   }
 
   // Statistiques par département
-  const departmentStats = filteredRequests.reduce(
-    (acc, request) => {
+  const departmentStats = filteredRequests.reduce((acc, request) => {
+    try {
       const deptCode =
         request.department || DepartmentService.getDepartmentFromPostalCode(request.postalCode)?.code || "unknown"
       acc[deptCode] = (acc[deptCode] || 0) + 1
       return acc
-    },
-    {} as Record<string, number>,
-  )
+    } catch (error) {
+      return acc
+    }
+  }, {})
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+            <span className="text-lg">Chargement des demandes...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Listes des Demandes de Dépannage</h1>
-          <p className="text-gray-600">Découvrez toutes les demandes de réparation disponibles sur la plateforme</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Listes des Demandes de Dépannage</h1>
+              <p className="text-gray-600">Découvrez toutes les demandes de réparation disponibles sur la plateforme</p>
+            </div>
+            <Button onClick={loadData} variant="outline" className="flex items-center">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
         </div>
 
         {/* Barre de recherche et filtres */}
@@ -193,6 +291,7 @@ export default function ListesDemandesPage() {
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Toutes les catégories</SelectItem>
                     <SelectItem value="electromenager">Électroménager</SelectItem>
                     <SelectItem value="informatique">Informatique</SelectItem>
                     <SelectItem value="plomberie">Plomberie</SelectItem>
@@ -213,6 +312,7 @@ export default function ListesDemandesPage() {
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">Toutes les urgences</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
                     <SelectItem value="same-day">Aujourd'hui</SelectItem>
                     <SelectItem value="this-week">Cette semaine</SelectItem>
@@ -249,7 +349,7 @@ export default function ListesDemandesPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-600">
-                {filteredRequests.filter((r) => r.responses === 0).length}
+                {filteredRequests.filter((r) => (r.responses || 0) === 0).length}
               </div>
               <p className="text-sm text-gray-600">Sans réponse</p>
             </CardContent>
@@ -263,37 +363,12 @@ export default function ListesDemandesPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {new Set(filteredRequests.map((r) => r.city)).size}
+                {new Set(filteredRequests.map((r) => r.city).filter(Boolean)).size}
               </div>
               <p className="text-sm text-gray-600">Villes couvertes</p>
             </CardContent>
           </Card>
         </div>
-
-        {/* Répartition par département (si filtre département actif) */}
-        {filters.department && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <MapIcon className="h-5 w-5 mr-2" />
-                Répartition dans le département {filters.department}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(departmentStats).map(([deptCode, count]) => {
-                  const dept = DepartmentService.getDepartmentByCode(deptCode)
-                  return (
-                    <div key={deptCode} className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-lg font-bold text-blue-600">{count}</div>
-                      <div className="text-xs text-gray-600">{dept ? `${dept.code} - ${dept.name}` : deptCode}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Message d'information pour les non-réparateurs */}
         {(!currentUser || currentUser.userType !== "reparateur") && (
@@ -329,31 +404,31 @@ export default function ListesDemandesPage() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
-                      <Badge variant="outline">{request.category}</Badge>
-                      <Badge className={getUrgencyColor(request.urgency)}>{request.urgencyLabel}</Badge>
+                      <Badge variant="outline">{request.category || "Non défini"}</Badge>
+                      <Badge className={getUrgencyColor(request.urgency)}>{getUrgencyLabel(request.urgency)}</Badge>
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                         {getDepartmentName(request.postalCode, request.department)}
                       </Badge>
                       <span className="text-sm text-gray-500">{getTimeAgo(request.createdAt)}</span>
                     </div>
-                    <CardTitle className="text-xl">{request.title}</CardTitle>
+                    <CardTitle className="text-xl">{request.title || "Demande sans titre"}</CardTitle>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center text-sm text-gray-600 mb-1">
                       <MapPin className="h-4 w-4 mr-1" />
-                      {request.city} ({request.postalCode})
+                      {request.city || "Ville non définie"} ({request.postalCode || "Code postal non défini"})
                     </div>
                     {request.budget && (
                       <div className="flex items-center text-sm text-gray-600">
                         <Euro className="h-4 w-4 mr-1" />
-                        {request.budget}
+                        {String(request.budget)}
                       </div>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 mb-4">{request.description}</p>
+                <p className="text-gray-700 mb-4">{request.description || "Aucune description disponible"}</p>
 
                 {/* Affichage des photos si disponibles */}
                 {request.photos && request.photos.length > 0 && (
@@ -386,9 +461,9 @@ export default function ListesDemandesPage() {
                     <div className="flex items-center text-sm text-gray-600">
                       <User className="h-4 w-4 mr-1" />
                       {canViewClientDetails() ? (
-                        <>
-                          {request.client.firstName} {request.client.lastName}
-                        </>
+                        <span>
+                          {String(request.client?.firstName || "Prénom")} {String(request.client?.lastName || "Nom")}
+                        </span>
                       ) : (
                         <span className="flex items-center">
                           <Lock className="h-3 w-3 mr-1" />
@@ -398,7 +473,7 @@ export default function ListesDemandesPage() {
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <MessageSquare className="h-4 w-4 mr-1" />
-                      {request.responses} réponse{request.responses > 1 ? "s" : ""}
+                      {Number(request.responses || 0)} réponse{Number(request.responses || 0) > 1 ? "s" : ""}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Clock className="h-4 w-4 mr-1" />
@@ -411,7 +486,7 @@ export default function ListesDemandesPage() {
                       <>
                         <Button variant="outline" size="sm">
                           <Phone className="h-4 w-4 mr-1" />
-                          {request.client.phone || "06 ** ** ** **"}
+                          {String(request.client?.phone || "06 ** ** ** **")}
                         </Button>
                         <Button variant="outline" size="sm">
                           <Mail className="h-4 w-4 mr-1" />
@@ -429,17 +504,25 @@ export default function ListesDemandesPage() {
           ))}
         </div>
 
-        {filteredRequests.length === 0 && (
+        {filteredRequests.length === 0 && !isLoading && (
           <Card className="text-center py-12">
             <CardContent>
               <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Aucune demande trouvée</h3>
               <p className="text-gray-600 mb-4">
-                {filters.department
-                  ? `Aucune demande trouvée dans le département ${filters.department}`
-                  : "Essayez de modifier vos critères de recherche ou vos filtres"}
+                {requests.length === 0
+                  ? "Aucune demande de dépannage n'a encore été créée sur la plateforme."
+                  : filters.department
+                    ? `Aucune demande trouvée dans le département ${filters.department}`
+                    : "Essayez de modifier vos critères de recherche ou vos filtres"}
               </p>
-              <Button onClick={resetFilters}>Réinitialiser les filtres</Button>
+              {requests.length === 0 ? (
+                <Button asChild>
+                  <Link href="/demande-reparation">Créer une demande</Link>
+                </Button>
+              ) : (
+                <Button onClick={resetFilters}>Réinitialiser les filtres</Button>
+              )}
             </CardContent>
           </Card>
         )}
