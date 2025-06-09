@@ -48,6 +48,11 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showReadNotifications, setShowReadNotifications] = useState(true)
 
+  const recalculateUnreadCount = () => {
+    const unread = notifications.filter((n) => !n.isRead).length
+    setUnreadCount(unread)
+  }
+
   useEffect(() => {
     // Vérifier l'état de connexion
     const userId = localStorage.getItem("fixeopro_current_user_id")
@@ -157,17 +162,23 @@ export default function Header() {
   }
 
   const markAsRead = (notificationId: string) => {
-    setNotifications((prev) =>
-      prev.map((notification) =>
+    setNotifications((prev) => {
+      const updated = prev.map((notification) =>
         notification.id === notificationId ? { ...notification, isRead: true } : notification,
-      ),
-    )
-    setUnreadCount((prev) => Math.max(0, prev - 1))
+      )
+      // Recalculer le compteur après la mise à jour
+      const unread = updated.filter((n) => !n.isRead).length
+      setUnreadCount(unread)
+      return updated
+    })
   }
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })))
-    setUnreadCount(0)
+    setNotifications((prev) => {
+      const updated = prev.map((notification) => ({ ...notification, isRead: true }))
+      setUnreadCount(0) // Directement à 0 car toutes sont lues
+      return updated
+    })
   }
 
   const getTimeAgo = (dateString: string) => {
@@ -210,6 +221,11 @@ export default function Header() {
     setCurrentUser(null)
     window.location.href = "/"
   }
+
+  useEffect(() => {
+    const unread = notifications.filter((n) => !n.isRead).length
+    setUnreadCount(unread)
+  }, [notifications])
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
