@@ -48,9 +48,27 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showReadNotifications, setShowReadNotifications] = useState(true)
 
-  const recalculateUnreadCount = () => {
-    const unread = notifications.filter((n) => !n.isRead).length
-    setUnreadCount(unread)
+  // Fonctions pour gérer la persistance des notifications lues
+  const getReadNotifications = (userId: string): string[] => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const saveReadNotification = (userId: string, notificationId: string) => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const readNotifications = getReadNotifications(userId)
+    if (!readNotifications.includes(notificationId)) {
+      readNotifications.push(notificationId)
+      localStorage.setItem(key, JSON.stringify(readNotifications))
+    }
+  }
+
+  const markAllNotificationsAsRead = (userId: string, notificationIds: string[]) => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const readNotifications = getReadNotifications(userId)
+    const allRead = [...new Set([...readNotifications, ...notificationIds])]
+    localStorage.setItem(key, JSON.stringify(allRead))
   }
 
   useEffect(() => {
@@ -71,6 +89,7 @@ export default function Header() {
     if (!user) return
 
     const allNotifications: Notification[] = []
+    const readNotificationIds = getReadNotifications(user.id)
 
     if (user.userType === "reparateur") {
       // Utiliser les préférences de notification pour filtrer les demandes
@@ -88,13 +107,16 @@ export default function Header() {
           )
         }
 
+        const notificationId = `filtered_request_${request.id}`
+        const isRead = readNotificationIds.includes(notificationId)
+
         allNotifications.push({
-          id: `filtered_request_${request.id}`,
+          id: notificationId,
           type: "new_request",
           title: "Nouvelle demande dans votre zone",
           message: `${request.title} - ${request.city}${distance ? ` (${distance.toFixed(1)}km)` : ""}`,
           requestId: request.id,
-          isRead: false,
+          isRead: isRead,
           createdAt: request.createdAt,
           distance: distance,
           data: request,
@@ -120,32 +142,38 @@ export default function Header() {
           )
         }
 
+        const notificationId = `other_request_${request.id}`
+        const isRead = readNotificationIds.includes(notificationId)
+
         allNotifications.push({
-          id: `other_request_${request.id}`,
+          id: notificationId,
           type: "request_update",
           title: "Autre demande disponible",
           message: `${request.title} - ${request.city}${distance ? ` (${distance.toFixed(1)}km)` : ""}`,
           requestId: request.id,
-          isRead: true, // Marquées comme lues par défaut car hors critères
+          isRead: isRead, // Utiliser l'état persisté au lieu de true par défaut
           createdAt: request.createdAt,
           distance: distance,
           data: request,
         })
       })
     } else {
-      // Notifications pour les clients (inchangé)
+      // Notifications pour les clients
       const clientRequests = StorageService.getRepairRequestsByClient(user.id)
 
       clientRequests.forEach((request) => {
         if (request.responses && request.responses.length > 0) {
           request.responses.slice(0, 3).forEach((response: any) => {
+            const notificationId = `response_${response.id}`
+            const isRead = readNotificationIds.includes(notificationId)
+
             allNotifications.push({
-              id: `response_${response.id}`,
+              id: notificationId,
               type: "new_response",
               title: "Nouvelle réponse à votre demande",
               message: `${response.reparateur?.companyName || response.reparateur?.firstName} a répondu à "${request.title}"`,
               requestId: request.id,
-              isRead: false,
+              isRead: isRead,
               createdAt: response.createdAt,
               data: { request, response },
             })
@@ -162,6 +190,12 @@ export default function Header() {
   }
 
   const markAsRead = (notificationId: string) => {
+    if (!currentUser) return
+
+    // Sauvegarder dans localStorage
+    saveReadNotification(currentUser.id, notificationId)
+
+    // Mettre à jour l'état local
     setNotifications((prev) => {
       const updated = prev.map((notification) =>
         notification.id === notificationId ? { ...notification, isRead: true } : notification,
@@ -174,6 +208,11 @@ export default function Header() {
   }
 
   const markAllAsRead = () => {
+    if (!currentUser) return
+
+    const allNotificationIds = notifications.map((n) => n.id)
+    markAllNotificationsAsRead(currentUser.id, allNotificationIds)
+
     setNotifications((prev) => {
       const updated = prev.map((notification) => ({ ...notification, isRead: true }))
       setUnreadCount(0) // Directement à 0 car toutes sont lues
@@ -221,11 +260,6 @@ export default function Header() {
     setCurrentUser(null)
     window.location.href = "/"
   }
-
-  useEffect(() => {
-    const unread = notifications.filter((n) => !n.isRead).length
-    setUnreadCount(unread)
-  }, [notifications])
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -316,7 +350,9 @@ export default function Header() {
                   <DropdownMenuContent className="w-96" align="end">
                     <div className="px-3 py-2 border-b">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">Notifications</h3>
+                        <h3 className="font-semibold">
+                          Notifications {unreadCount > 0 && `(${unreadCount} non lues)`}
+                        </h3>
                         <div className="flex items-center space-x-2">
                           {unreadCount > 0 && (
                             <Button variant="ghost" size="sm" onClick={markAllAsRead}>
@@ -361,7 +397,6 @@ export default function Header() {
                                 window.location.href = `/demande/${notification.requestId}`
                               }}
                             >
-                              {/* Contenu de la notification inchangé */}
                               <div className="flex items-start space-x-3 w-full">
                                 <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
                                 <div className="flex-1 min-w-0">
@@ -403,7 +438,6 @@ export default function Header() {
                             </DropdownMenuItem>
                           ))}
 
-                        {/* Afficher un message si toutes les notifications sont masquées */}
                         {!showReadNotifications && notifications.every((n) => n.isRead) && (
                           <div className="px-3 py-4 text-center text-gray-500">
                             <Eye className="h-6 w-6 mx-auto mb-2 text-gray-300" />
