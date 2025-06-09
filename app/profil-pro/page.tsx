@@ -14,6 +14,10 @@ import { Badge } from "@/components/ui/badge"
 import { StorageService } from "@/lib/storage"
 import { PhotoUpload } from "@/components/photo-upload"
 import { Facebook, Instagram, Linkedin } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Bell, MapPin, Clock, Filter } from "lucide-react"
 
 export default function ProfilProPage() {
   const router = useRouter()
@@ -46,6 +50,12 @@ export default function ProfilProPage() {
   const [newSpecialty, setNewSpecialty] = useState("")
   const [avatar, setAvatar] = useState("")
   const [message, setMessage] = useState({ type: "", text: "" })
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    enableNotifications: true,
+    maxDistance: 25,
+    categories: [] as string[],
+    urgencyLevels: ["urgent", "same-day", "this-week", "flexible"] as string[],
+  })
 
   useEffect(() => {
     const currentUser = StorageService.getCurrentUser()
@@ -84,6 +94,18 @@ export default function ProfilProPage() {
       },
     })
     setAvatar(currentUser.avatar || "")
+    setNotificationPreferences({
+      enableNotifications: currentUser.professional?.notificationPreferences?.enableNotifications ?? true,
+      maxDistance: currentUser.professional?.notificationPreferences?.maxDistance ?? 25,
+      categories:
+        currentUser.professional?.notificationPreferences?.categories ?? currentUser.professional?.specialties ?? [],
+      urgencyLevels: currentUser.professional?.notificationPreferences?.urgencyLevels ?? [
+        "urgent",
+        "same-day",
+        "this-week",
+        "flexible",
+      ],
+    })
     setLoading(false)
   }, [router])
 
@@ -166,6 +188,31 @@ export default function ProfilProPage() {
     })
   }
 
+  const handleNotificationPreferenceChange = (field: string, value: any) => {
+    setNotificationPreferences((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const toggleCategory = (category: string) => {
+    setNotificationPreferences((prev) => ({
+      ...prev,
+      categories: prev.categories.includes(category)
+        ? prev.categories.filter((c) => c !== category)
+        : [...prev.categories, category],
+    }))
+  }
+
+  const toggleUrgencyLevel = (level: string) => {
+    setNotificationPreferences((prev) => ({
+      ...prev,
+      urgencyLevels: prev.urgencyLevels.includes(level)
+        ? prev.urgencyLevels.filter((l) => l !== level)
+        : [...prev.urgencyLevels, level],
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -205,7 +252,11 @@ export default function ProfilProPage() {
         avatar: avatar,
         professional: {
           ...formData.professional,
+          notificationPreferences: notificationPreferences,
         },
+        // Mettre à jour les coordonnées si la ville a changé
+        coordinates:
+          formData.city !== user.city ? StorageService.generateCoordinatesForCity(formData.city) : user.coordinates,
       }
 
       StorageService.saveUser(updatedUser)
@@ -503,6 +554,156 @@ export default function ProfilProPage() {
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Préférences de notifications
+            </CardTitle>
+            <CardDescription>
+              Configurez vos préférences pour recevoir des notifications ciblées selon vos critères
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Activation des notifications */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Recevoir des notifications</Label>
+                <p className="text-sm text-gray-500">Activez pour recevoir des notifications de nouvelles demandes</p>
+              </div>
+              <Switch
+                checked={notificationPreferences.enableNotifications}
+                onCheckedChange={(checked) => handleNotificationPreferenceChange("enableNotifications", checked)}
+              />
+            </div>
+
+            {notificationPreferences.enableNotifications && (
+              <>
+                {/* Distance maximale */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Distance maximale
+                  </Label>
+                  <Select
+                    value={notificationPreferences.maxDistance.toString()}
+                    onValueChange={(value) => handleNotificationPreferenceChange("maxDistance", Number.parseInt(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez une distance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 km</SelectItem>
+                      <SelectItem value="10">10 km</SelectItem>
+                      <SelectItem value="15">15 km</SelectItem>
+                      <SelectItem value="25">25 km</SelectItem>
+                      <SelectItem value="50">50 km</SelectItem>
+                      <SelectItem value="100">100 km</SelectItem>
+                      <SelectItem value="200">200 km (toute la France)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-500">
+                    Vous recevrez des notifications pour les demandes dans un rayon de{" "}
+                    {notificationPreferences.maxDistance} km autour de votre localisation
+                  </p>
+                </div>
+
+                {/* Catégories */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Filter className="h-4 w-4" />
+                    Catégories d'intervention
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      "électroménager",
+                      "électricité",
+                      "plomberie",
+                      "chauffage",
+                      "climatisation",
+                      "informatique",
+                      "téléphonie",
+                      "électronique",
+                      "jardinage",
+                      "bricolage",
+                      "serrurerie",
+                      "autres",
+                    ].map((category) => (
+                      <div key={category} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category}`}
+                          checked={notificationPreferences.categories.includes(category)}
+                          onCheckedChange={() => toggleCategory(category)}
+                        />
+                        <Label
+                          htmlFor={`category-${category}`}
+                          className="text-sm font-normal capitalize cursor-pointer"
+                        >
+                          {category}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Sélectionnez les catégories pour lesquelles vous souhaitez recevoir des notifications
+                  </p>
+                </div>
+
+                {/* Niveaux d'urgence */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Niveaux d'urgence acceptés
+                  </Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: "urgent", label: "Urgent", color: "text-red-600" },
+                      { value: "same-day", label: "Aujourd'hui", color: "text-orange-600" },
+                      { value: "this-week", label: "Cette semaine", color: "text-yellow-600" },
+                      { value: "flexible", label: "Flexible", color: "text-green-600" },
+                    ].map((urgency) => (
+                      <div key={urgency.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`urgency-${urgency.value}`}
+                          checked={notificationPreferences.urgencyLevels.includes(urgency.value)}
+                          onCheckedChange={() => toggleUrgencyLevel(urgency.value)}
+                        />
+                        <Label
+                          htmlFor={`urgency-${urgency.value}`}
+                          className={`text-sm font-normal cursor-pointer ${urgency.color}`}
+                        >
+                          {urgency.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Choisissez les niveaux d'urgence pour lesquels vous souhaitez être notifié
+                  </p>
+                </div>
+
+                {/* Résumé des préférences */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Résumé de vos préférences</h4>
+                  <div className="text-sm text-blue-800 space-y-1">
+                    <p>
+                      • Distance : <span className="font-medium">{notificationPreferences.maxDistance} km</span>
+                    </p>
+                    <p>
+                      • Catégories :{" "}
+                      <span className="font-medium">{notificationPreferences.categories.length} sélectionnée(s)</span>
+                    </p>
+                    <p>
+                      • Urgences :{" "}
+                      <span className="font-medium">{notificationPreferences.urgencyLevels.length} niveau(x)</span>
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
