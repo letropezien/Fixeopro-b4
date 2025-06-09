@@ -34,6 +34,15 @@ export default function ContactPage() {
     setSiteSettings(SiteSettingsService.getSettings())
   }, [])
 
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setSiteSettings(SiteSettingsService.getSettings())
+    }
+
+    window.addEventListener("siteSettingsUpdated", handleSettingsUpdate)
+    return () => window.removeEventListener("siteSettingsUpdated", handleSettingsUpdate)
+  }, [])
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
