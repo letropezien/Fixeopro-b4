@@ -22,8 +22,14 @@ import {
   Settings,
   Award,
   Bell,
+  X,
 } from "lucide-react"
 import Link from "next/link"
+import { useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tag, Gift } from "lucide-react"
 
 export default function GuideReparateurPage() {
   const steps = [
@@ -130,49 +136,76 @@ export default function GuideReparateurPage() {
 
   const pricing = [
     {
-      name: "Essai gratuit",
-      price: "0€",
-      period: "15 jours",
-      features: [
-        "Accès à toutes les demandes",
-        "Contact illimité avec les clients",
-        "Profil professionnel complet",
-        "Support client standard",
-      ],
-      badge: "Découverte",
-      badgeColor: "bg-blue-500",
-    },
-    {
-      name: "Abonnement Pro",
+      name: "Essentiel",
       price: "29€",
       period: "par mois",
+      description: "Idéal pour les réparateurs indépendants qui débutent",
       features: [
-        "Tout de l'essai gratuit",
-        "Priorité dans les résultats de recherche",
-        "Statistiques détaillées",
-        "Support prioritaire",
-        "Badge professionnel vérifié",
-        "Outils de gestion avancés",
+        "Accès aux demandes clients",
+        "Profil professionnel",
+        "5 réponses par mois",
+        "Support par email",
+        "Visibilité standard",
       ],
-      badge: "Recommandé",
+      limitations: ["Pas de mise en avant", "Fonctionnalités limitées"],
+      badge: null,
+      badgeColor: "",
+    },
+    {
+      name: "Professionnel",
+      price: "59€",
+      period: "par mois",
+      description: "Notre formule la plus populaire pour développer votre activité",
+      features: [
+        "Accès illimité aux demandes",
+        "Profil premium avec photos",
+        "Réponses illimitées",
+        "Priorité dans les résultats",
+        "Support téléphonique",
+        "Statistiques détaillées",
+        "Badge Pro",
+      ],
+      limitations: [],
+      badge: "Populaire",
       badgeColor: "bg-green-500",
     },
     {
-      name: "Abonnement Premium",
-      price: "49€",
+      name: "Premium",
+      price: "99€",
       period: "par mois",
+      description: "Pour les professionnels qui veulent maximiser leur visibilité",
       features: [
-        "Tout de l'abonnement Pro",
-        "Mise en avant de votre profil",
-        "Notifications prioritaires",
-        "Accès anticipé aux demandes",
-        "Outils marketing avancés",
-        "Support dédié",
+        "Tous les avantages Pro",
+        "Badge 'Expert certifié'",
+        "Mise en avant géographique",
+        "Support prioritaire 24/7",
+        "Formation continue",
+        "API d'intégration",
+        "Publicité dans les newsletters",
       ],
-      badge: "Optimal",
-      badgeColor: "bg-purple-500",
+      limitations: [],
+      badge: null,
+      badgeColor: "",
     },
   ]
+
+  const [promoCode, setPromoCode] = useState("")
+  const [promoApplied, setPromoApplied] = useState(false)
+  const [promoDiscount, setPromoDiscount] = useState(0)
+
+  const handlePromoCode = () => {
+    // Simulation de validation de code promo
+    if (promoCode.toUpperCase() === "WELCOME10") {
+      setPromoApplied(true)
+      setPromoDiscount(10)
+    } else if (promoCode.toUpperCase() === "FIRST20") {
+      setPromoApplied(true)
+      setPromoDiscount(20)
+    } else {
+      setPromoApplied(false)
+      setPromoDiscount(0)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -242,47 +275,139 @@ export default function GuideReparateurPage() {
           ))}
         </div>
 
-        {/* Tarifs */}
+        {/* Code promo et Tarifs */}
         <Card className="mb-12">
           <CardHeader>
             <CardTitle className="text-2xl text-center">Nos formules d'abonnement</CardTitle>
             <p className="text-center text-gray-600">Choisissez la formule qui correspond à vos besoins</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {pricing.map((plan, index) => (
-                <div
-                  key={index}
-                  className={`relative border rounded-lg p-6 hover:shadow-lg transition-shadow ${
-                    index === 1 ? "border-green-500 shadow-md" : ""
-                  }`}
-                >
-                  {plan.badge && (
-                    <Badge className={`absolute -top-2 left-4 ${plan.badgeColor} text-white`}>{plan.badge}</Badge>
-                  )}
-                  <div className="text-center mb-6">
-                    <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-                    <div className="text-3xl font-bold text-green-600 mb-1">{plan.price}</div>
-                    <div className="text-gray-500">{plan.period}</div>
+            <Tabs defaultValue="promo" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="promo">Code promo</TabsTrigger>
+                <TabsTrigger value="pricing">Choisir un forfait</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="promo" className="space-y-4">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg">
+                  <div className="flex items-center justify-center mb-4">
+                    <Gift className="h-8 w-8 text-purple-600 mr-2" />
+                    <h3 className="text-xl font-semibold text-purple-900">Avez-vous un code promo ?</h3>
                   </div>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${
-                      index === 1 ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-900"
-                    }`}
-                  >
-                    Choisir cette formule
-                  </Button>
+                  <p className="text-center text-purple-700 mb-6">
+                    Entrez votre code promo pour bénéficier d'une réduction sur votre abonnement
+                  </p>
+
+                  <div className="max-w-md mx-auto space-y-4">
+                    <div>
+                      <Label htmlFor="promoCode">Code promo</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="promoCode"
+                          placeholder="Entrez votre code promo"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          className="flex-1"
+                        />
+                        <Button onClick={handlePromoCode} className="bg-purple-600 hover:bg-purple-700">
+                          <Tag className="h-4 w-4 mr-2" />
+                          Valider
+                        </Button>
+                      </div>
+                    </div>
+
+                    {promoApplied && (
+                      <div className="bg-green-100 border border-green-300 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                          <span className="text-green-800 font-medium">
+                            Code promo appliqué ! Réduction de {promoDiscount}% sur votre premier mois
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {promoCode && !promoApplied && promoCode.length > 0 && (
+                      <div className="bg-red-100 border border-red-300 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <X className="h-5 w-5 text-red-600 mr-2" />
+                          <span className="text-red-800">Code promo invalide</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-sm text-purple-600">
+                      💡 Codes promo disponibles : <strong>WELCOME10</strong> (10% de réduction) ou{" "}
+                      <strong>FIRST20</strong> (20% de réduction)
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </TabsContent>
+
+              <TabsContent value="pricing" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {pricing.map((plan, index) => (
+                    <div
+                      key={index}
+                      className={`relative border rounded-lg p-6 hover:shadow-lg transition-shadow ${
+                        index === 1 ? "border-green-500 shadow-md" : ""
+                      }`}
+                    >
+                      {plan.badge && (
+                        <Badge
+                          className={`absolute -top-2 left-1/2 transform -translate-x-1/2 ${plan.badgeColor} text-white`}
+                        >
+                          {plan.badge}
+                        </Badge>
+                      )}
+                      <div className="text-center mb-6">
+                        <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+                        <p className="text-sm text-gray-600 mb-4">{plan.description}</p>
+                        <div className="space-y-1">
+                          {promoApplied && <div className="text-lg text-gray-400 line-through">{plan.price}</div>}
+                          <div className="text-3xl font-bold text-green-600">
+                            {promoApplied
+                              ? `${Math.round(Number.parseInt(plan.price) * (1 - promoDiscount / 100))}€`
+                              : plan.price}
+                          </div>
+                          <div className="text-gray-500">{plan.period}</div>
+                          {promoApplied && (
+                            <div className="text-sm text-green-600 font-medium">
+                              Économisez {promoDiscount}% le premier mois !
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <ul className="space-y-3 mb-6">
+                        {plan.features.map((feature, featureIndex) => (
+                          <li key={featureIndex} className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <span className="text-gray-700">{feature}</span>
+                          </li>
+                        ))}
+                        {plan.limitations.map((limitation, limitationIndex) => (
+                          <li key={limitationIndex} className="flex items-center space-x-2 text-gray-500">
+                            <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span>{limitation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Link href={`/devenir-reparateur?plan=${plan.name.toLowerCase()}`}>
+                        <Button
+                          className={`w-full ${
+                            index === 1 ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-900"
+                          }`}
+                        >
+                          Choisir {plan.name}
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
