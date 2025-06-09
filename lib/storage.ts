@@ -1,6 +1,9 @@
 // Vérifier si nous sommes dans un environnement navigateur
 const isBrowser = typeof window !== "undefined"
 
+// Ajouter l'import du service d'emails automatiques en haut du fichier
+import { emailAutomationService } from "./email-automation"
+
 export interface User {
   id: string
   email: string
@@ -174,6 +177,44 @@ export class StorageService {
       }
 
       localStorage.setItem("fixeopro_users", JSON.stringify(users))
+
+      // Dans la méthode saveUser, après la sauvegarde, ajouter :
+      // Déclencher l'email automatique d'inscription
+      if (!user.createdAt || user.createdAt === new Date().toISOString()) {
+        // Nouvel utilisateur
+        const eventId = user.userType === "client" ? "user_registration_client" : "user_registration_repairer"
+
+        setTimeout(async () => {
+          try {
+            await emailAutomationService.triggerEvent(eventId, {
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              phone: user.phone,
+              city: user.city,
+              registrationDate: new Date(user.createdAt).toLocaleString("fr-FR"),
+              companyName: user.professional?.companyName,
+              specialties: user.professional?.specialties?.join(", "),
+              trialEndDate: user.subscription?.endDate
+                ? new Date(user.subscription.endDate).toLocaleDateString("fr-FR")
+                : "",
+            })
+
+            // Email admin pour nouvelle inscription
+            await emailAutomationService.triggerEvent("admin_new_user", {
+              userType: user.userType === "client" ? "Client" : "Réparateur",
+              userName: `${user.firstName} ${user.lastName}`,
+              userEmail: user.email,
+              userPhone: user.phone,
+              userCity: user.city,
+              registrationDate: new Date(user.createdAt).toLocaleString("fr-FR"),
+            })
+          } catch (error) {
+            console.error("Erreur lors de l'envoi des emails automatiques:", error)
+          }
+        }, 1000)
+      }
+
       return user
     } catch (error) {
       console.error("Erreur lors de la sauvegarde de l'utilisateur:", error)
@@ -293,6 +334,41 @@ export class StorageService {
       }
 
       localStorage.setItem("fixeopro_repair_requests", JSON.stringify(requests))
+
+      // Dans la méthode saveRepairRequest, après la sauvegarde d'une nouvelle demande, ajouter :
+      // Déclencher l'email automatique pour nouvelle demande
+      if (!request.createdAt || request.createdAt === new Date().toISOString()) {
+        // Nouvelle demande
+        setTimeout(async () => {
+          try {
+            await emailAutomationService.triggerEvent("request_created", {
+              email: request.client.email,
+              clientName: `${request.client.firstName} ${request.client.lastName}`,
+              requestTitle: request.title,
+              requestCategory: request.category,
+              requestUrgency: request.urgencyLabel,
+              requestBudget: request.budget,
+              requestLocation: `${request.city} (${request.postalCode})`,
+              requestDate: new Date(request.createdAt).toLocaleString("fr-FR"),
+              requestId: request.id,
+            })
+
+            // Email admin pour nouvelle demande
+            await emailAutomationService.triggerEvent("admin_new_request", {
+              requestTitle: request.title,
+              requestCategory: request.category,
+              clientName: `${request.client.firstName} ${request.client.lastName}`,
+              requestUrgency: request.urgencyLabel,
+              requestBudget: request.budget,
+              requestLocation: `${request.city} (${request.postalCode})`,
+              requestDate: new Date(request.createdAt).toLocaleString("fr-FR"),
+            })
+          } catch (error) {
+            console.error("Erreur lors de l'envoi des emails automatiques:", error)
+          }
+        }, 1000)
+      }
+
       return request
     } catch (error) {
       console.error("Erreur lors de la sauvegarde de la demande:", error)
