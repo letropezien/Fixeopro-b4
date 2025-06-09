@@ -20,6 +20,9 @@ import {
   CheckCircle,
   ArrowLeft,
   MessageSquare,
+  Facebook,
+  Instagram,
+  Linkedin,
 } from "lucide-react"
 import { StorageService, type User } from "@/lib/storage"
 
@@ -236,6 +239,55 @@ export default function RepairerProfilePage() {
                   <span>
                     {repairer.address}, {repairer.postalCode} {repairer.city}
                   </span>
+                </div>
+              )}
+
+              {repairer.professional?.socialMedia && (
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2">Réseaux sociaux</h4>
+                  <div className="space-y-2">
+                    {repairer.professional.socialMedia.facebook && (
+                      <div className="flex items-center">
+                        <Facebook className="h-4 w-4 mr-2 text-blue-600" />
+                        <a
+                          href={repairer.professional.socialMedia.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          Facebook
+                        </a>
+                      </div>
+                    )}
+
+                    {repairer.professional.socialMedia.instagram && (
+                      <div className="flex items-center">
+                        <Instagram className="h-4 w-4 mr-2 text-pink-600" />
+                        <a
+                          href={repairer.professional.socialMedia.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-pink-600 hover:underline text-sm"
+                        >
+                          Instagram
+                        </a>
+                      </div>
+                    )}
+
+                    {repairer.professional.socialMedia.linkedin && (
+                      <div className="flex items-center">
+                        <Linkedin className="h-4 w-4 mr-2 text-blue-700" />
+                        <a
+                          href={repairer.professional.socialMedia.linkedin}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-700 hover:underline text-sm"
+                        >
+                          LinkedIn
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>

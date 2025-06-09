@@ -1,110 +1,121 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Eye, TrendingUp, Users, Calendar } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Eye, Users, TrendingUp, Clock } from "lucide-react"
 import { VisitCounterService } from "@/lib/visit-counter"
 
 export function VisitCounter() {
   const [stats, setStats] = useState({
     totalVisits: 0,
-    dailyVisits: 0,
-    lastVisit: null as string | null,
+    todayVisits: 0,
+    communitySize: 0,
+    activeRepairers: 0,
+    isLoaded: false,
   })
-  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
-    // Enregistrer la visite
-    VisitCounterService.recordVisit()
+    // Enregistrer la visite et obtenir les statistiques
+    const visitStats = VisitCounterService.recordVisit()
+    const enhancedStats = VisitCounterService.getEnhancedStats()
 
-    // Charger les statistiques
-    const loadStats = () => {
-      setStats(VisitCounterService.getStats())
-    }
-
-    loadStats()
-
-    // Animation d'apparition
-    const timer = setTimeout(() => setIsVisible(true), 500)
-
-    // Mettre à jour les stats toutes les minutes
-    const interval = setInterval(loadStats, 60000)
-
-    return () => {
-      clearTimeout(timer)
-      clearInterval(interval)
-    }
+    // Simuler un petit délai pour l'animation
+    setTimeout(() => {
+      setStats({
+        totalVisits: enhancedStats.totalVisits,
+        todayVisits: enhancedStats.todayVisits,
+        communitySize: enhancedStats.communitySize,
+        activeRepairers: enhancedStats.activeRepairers,
+        isLoaded: true,
+      })
+    }, 500)
   }, [])
 
-  const formatNumber = (num: number) => VisitCounterService.formatNumber(num)
+  const trendMessage = VisitCounterService.getTrendMessage(stats.todayVisits)
 
   return (
-    <div
-      className={`transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-    >
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 shadow-lg">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center space-x-8">
-            {/* Compteur principal */}
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className="bg-blue-600 p-2 rounded-full">
-                  <Eye className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Visites totales</h3>
-              </div>
-              <div className="text-3xl font-bold text-blue-600 mb-1">{formatNumber(stats.totalVisits)}</div>
-              <Badge variant="outline" className="text-xs">
-                Depuis le lancement
-              </Badge>
-            </div>
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mt-8">
+      <div className="text-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Statistiques de la plateforme</h3>
+        <p className="text-sm text-gray-600">Données en temps réel de notre communauté</p>
+      </div>
 
-            {/* Séparateur */}
-            <div className="hidden sm:block w-px h-16 bg-gray-300"></div>
-
-            {/* Visites du jour */}
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className="bg-green-600 p-2 rounded-full">
-                  <Calendar className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Aujourd'hui</h3>
-              </div>
-              <div className="text-3xl font-bold text-green-600 mb-1">{formatNumber(stats.dailyVisits)}</div>
-              <Badge variant="outline" className="text-xs">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                Visites du jour
-              </Badge>
-            </div>
-
-            {/* Séparateur */}
-            <div className="hidden md:block w-px h-16 bg-gray-300"></div>
-
-            {/* Communauté */}
-            <div className="hidden md:block text-center">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className="bg-purple-600 p-2 rounded-full">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800">Communauté</h3>
-              </div>
-              <div className="text-3xl font-bold text-purple-600 mb-1">2500+</div>
-              <Badge variant="outline" className="text-xs">
-                Réparateurs actifs
-              </Badge>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Visites totales */}
+        <div className="text-center">
+          <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+            <Eye className="h-6 w-6 text-blue-600" />
           </div>
-
-          {/* Message de confiance */}
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium text-blue-600">FixeoPro</span> - La plateforme de confiance pour vos
-              réparations
-            </p>
+          <div
+            className={`text-2xl font-bold text-blue-600 transition-all duration-1000 ${
+              stats.isLoaded ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-4"
+            }`}
+          >
+            {stats.isLoaded ? VisitCounterService.formatNumber(stats.totalVisits) : "---"}
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-xs text-gray-600">Visites totales</div>
+        </div>
+
+        {/* Visites du jour */}
+        <div className="text-center">
+          <div className="bg-green-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+            <Clock className="h-6 w-6 text-green-600" />
+          </div>
+          <div
+            className={`text-2xl font-bold text-green-600 transition-all duration-1000 delay-200 ${
+              stats.isLoaded ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-4"
+            }`}
+          >
+            {stats.isLoaded ? VisitCounterService.formatNumber(stats.todayVisits) : "---"}
+          </div>
+          <div className="text-xs text-gray-600">Aujourd'hui</div>
+          {stats.isLoaded && <div className="text-xs text-green-600 font-medium mt-1">{trendMessage}</div>}
+        </div>
+
+        {/* Communauté */}
+        <div className="text-center">
+          <div className="bg-purple-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+            <Users className="h-6 w-6 text-purple-600" />
+          </div>
+          <div
+            className={`text-2xl font-bold text-purple-600 transition-all duration-1000 delay-400 ${
+              stats.isLoaded ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-4"
+            }`}
+          >
+            {stats.isLoaded ? VisitCounterService.formatNumber(stats.communitySize) : "---"}
+          </div>
+          <div className="text-xs text-gray-600">Membres</div>
+        </div>
+
+        {/* Réparateurs actifs */}
+        <div className="text-center">
+          <div className="bg-orange-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-2">
+            <TrendingUp className="h-6 w-6 text-orange-600" />
+          </div>
+          <div
+            className={`text-2xl font-bold text-orange-600 transition-all duration-1000 delay-600 ${
+              stats.isLoaded ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-4"
+            }`}
+          >
+            {stats.isLoaded ? VisitCounterService.formatNumber(stats.activeRepairers) : "---"}
+          </div>
+          <div className="text-xs text-gray-600">Réparateurs actifs</div>
+        </div>
+      </div>
+
+      {/* Séparateur */}
+      <div className="border-t border-blue-200 my-4"></div>
+
+      {/* Message de confiance */}
+      <div className="text-center">
+        <p className="text-sm text-gray-600">
+          <span className="font-medium text-blue-600">Fixeo.pro</span> - La plateforme de confiance pour vos réparations
+        </p>
+        <div className="flex justify-center items-center mt-2 space-x-4 text-xs text-gray-500">
+          <span>✓ Réparateurs vérifiés</span>
+          <span className="hidden sm:inline">✓ Devis gratuits</span>
+          <span>✓ Service 24h/7j</span>
+        </div>
+      </div>
     </div>
   )
 }

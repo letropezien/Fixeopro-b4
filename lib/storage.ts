@@ -32,7 +32,12 @@ export interface User {
     specialties: string[]
     description: string
     website?: string
-    companyPhotos?: string[] // Ajout des photos d'entreprise
+    companyPhotos?: string[]
+    socialMedia?: {
+      facebook?: string
+      instagram?: string
+      linkedin?: string
+    }
   }
   avatar?: string
   emailVerifiedAt?: string // Date de vérification de l'email
@@ -908,6 +913,7 @@ export class StorageService {
               specialties: ["électroménager", "électricité"],
               description: "Spécialiste en réparation électroménager depuis 10 ans",
               companyPhotos: [],
+              socialMedia: {},
             },
             // Période d'essai automatique de 15 jours
             subscription: {
@@ -936,6 +942,7 @@ export class StorageService {
               specialties: ["électroménager", "informatique"],
               description: "Spécialiste en réparation d'appareils électroniques",
               companyPhotos: [],
+              socialMedia: {},
             },
             subscription: {
               plan: "trial",
