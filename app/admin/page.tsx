@@ -18,12 +18,12 @@ import {
   AlertTriangle,
   CheckCircle,
   Euro,
-  Eye,
-  Edit,
-  Trash2,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import CategoryImagesConfig from "@/components/category-images-config"
+import AdminUsersManagement from "@/components/admin-users-management"
+import AdminRequestsManagement from "@/components/admin-requests-management"
+import PaymentGatewayConfig from "@/components/payment-gateway-config"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -202,7 +202,7 @@ export default function AdminPage() {
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
-            <TabsTrigger value="repairers">Réparateurs</TabsTrigger>
+            <TabsTrigger value="repairers">Utilisateurs</TabsTrigger>
             <TabsTrigger value="categories">Catégories</TabsTrigger>
             <TabsTrigger value="analytics">Analyses</TabsTrigger>
             <TabsTrigger value="settings">Paramètres</TabsTrigger>
@@ -279,129 +279,11 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="requests">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestion des demandes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <Input placeholder="Rechercher une demande..." className="max-w-sm" />
-                    <Button>Nouvelle demande</Button>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left">ID</th>
-                          <th className="px-4 py-3 text-left">Client</th>
-                          <th className="px-4 py-3 text-left">Catégorie</th>
-                          <th className="px-4 py-3 text-left">Statut</th>
-                          <th className="px-4 py-3 text-left">Montant</th>
-                          <th className="px-4 py-3 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentRequests.map((request) => (
-                          <tr key={request.id} className="border-t">
-                            <td className="px-4 py-3">{request.id}</td>
-                            <td className="px-4 py-3">{request.client}</td>
-                            <td className="px-4 py-3">{request.category}</td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                variant={
-                                  request.status === "Terminé"
-                                    ? "default"
-                                    : request.status === "En cours"
-                                      ? "secondary"
-                                      : "outline"
-                                }
-                              >
-                                {request.status}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3">{request.amount}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminRequestsManagement />
           </TabsContent>
 
           <TabsContent value="repairers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gestion des réparateurs</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <Input placeholder="Rechercher un réparateur..." className="max-w-sm" />
-                    <Button>Ajouter réparateur</Button>
-                  </div>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left">ID</th>
-                          <th className="px-4 py-3 text-left">Nom</th>
-                          <th className="px-4 py-3 text-left">Spécialité</th>
-                          <th className="px-4 py-3 text-left">Note</th>
-                          <th className="px-4 py-3 text-left">Interventions</th>
-                          <th className="px-4 py-3 text-left">Statut</th>
-                          <th className="px-4 py-3 text-left">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentRepairers.map((repairer) => (
-                          <tr key={repairer.id} className="border-t">
-                            <td className="px-4 py-3">{repairer.id}</td>
-                            <td className="px-4 py-3">{repairer.name}</td>
-                            <td className="px-4 py-3">{repairer.specialty}</td>
-                            <td className="px-4 py-3">⭐ {repairer.rating}</td>
-                            <td className="px-4 py-3">{repairer.completedJobs}</td>
-                            <td className="px-4 py-3">
-                              <Badge variant={repairer.status === "Actif" ? "default" : "secondary"}>
-                                {repairer.status}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminUsersManagement />
           </TabsContent>
 
           <TabsContent value="categories">
@@ -456,175 +338,181 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Changement de mot de passe admin */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Shield className="h-5 w-5" />
-                    <span>Sécurité Administrateur</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      const formData = new FormData(e.target as HTMLFormElement)
-                      const currentPassword = formData.get("currentPassword") as string
-                      const newPassword = formData.get("newPassword") as string
-                      const confirmPassword = formData.get("confirmPassword") as string
+            <div className="space-y-6">
+              {/* Configuration des paiements */}
+              <PaymentGatewayConfig />
 
-                      // Vérifier le mot de passe actuel
-                      const storedPassword = localStorage.getItem("admin_password") || "FixeoAdmin2024!"
-                      if (currentPassword !== storedPassword) {
-                        alert("Mot de passe actuel incorrect")
-                        return
-                      }
+              {/* Autres paramètres existants */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Changement de mot de passe admin - garder le code existant */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Shield className="h-5 w-5" />
+                      <span>Sécurité Administrateur</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        const formData = new FormData(e.target as HTMLFormElement)
+                        const currentPassword = formData.get("currentPassword") as string
+                        const newPassword = formData.get("newPassword") as string
+                        const confirmPassword = formData.get("confirmPassword") as string
 
-                      if (newPassword !== confirmPassword) {
-                        alert("Les nouveaux mots de passe ne correspondent pas")
-                        return
-                      }
+                        // Vérifier le mot de passe actuel
+                        const storedPassword = localStorage.getItem("admin_password") || "FixeoAdmin2024!"
+                        if (currentPassword !== storedPassword) {
+                          alert("Mot de passe actuel incorrect")
+                          return
+                        }
 
-                      if (newPassword.length < 8) {
-                        alert("Le nouveau mot de passe doit contenir au moins 8 caractères")
-                        return
-                      }
+                        if (newPassword !== confirmPassword) {
+                          alert("Les nouveaux mots de passe ne correspondent pas")
+                          return
+                        }
 
-                      // Sauvegarder le nouveau mot de passe
-                      localStorage.setItem("admin_password", newPassword)
-                      alert("Mot de passe modifié avec succès !")
+                        if (newPassword.length < 8) {
+                          alert("Le nouveau mot de passe doit contenir au moins 8 caractères")
+                          return
+                        }
 
-                      // Réinitialiser le formulaire
-                      ;(e.target as HTMLFormElement).reset()
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
-                      <Input
-                        type="password"
-                        name="currentPassword"
-                        required
-                        placeholder="Entrez votre mot de passe actuel"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
-                      <Input
-                        type="password"
-                        name="newPassword"
-                        required
-                        placeholder="Entrez le nouveau mot de passe"
-                        minLength={8}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirmer le nouveau mot de passe
-                      </label>
-                      <Input
-                        type="password"
-                        name="confirmPassword"
-                        required
-                        placeholder="Confirmez le nouveau mot de passe"
-                        minLength={8}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-                      Changer le mot de passe
-                    </Button>
-                  </form>
+                        // Sauvegarder le nouveau mot de passe
+                        localStorage.setItem("admin_password", newPassword)
+                        alert("Mot de passe modifié avec succès !")
 
-                  <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
-                    <div className="flex items-start space-x-3">
-                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        // Réinitialiser le formulaire
+                        ;(e.target as HTMLFormElement).reset()
+                      }}
+                      className="space-y-4"
+                    >
                       <div>
-                        <h4 className="text-sm font-medium text-yellow-800">Conseils de sécurité</h4>
-                        <ul className="text-sm text-yellow-700 mt-1 space-y-1">
-                          <li>• Utilisez au moins 8 caractères</li>
-                          <li>• Mélangez majuscules, minuscules et chiffres</li>
-                          <li>• Ajoutez des caractères spéciaux (!@#$%)</li>
-                          <li>• Ne partagez jamais votre mot de passe</li>
-                        </ul>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+                        <Input
+                          type="password"
+                          name="currentPassword"
+                          required
+                          placeholder="Entrez votre mot de passe actuel"
+                        />
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+                        <Input
+                          type="password"
+                          name="newPassword"
+                          required
+                          placeholder="Entrez le nouveau mot de passe"
+                          minLength={8}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Confirmer le nouveau mot de passe
+                        </label>
+                        <Input
+                          type="password"
+                          name="confirmPassword"
+                          required
+                          placeholder="Confirmez le nouveau mot de passe"
+                          minLength={8}
+                        />
+                      </div>
+                      <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
+                        Changer le mot de passe
+                      </Button>
+                    </form>
 
-              {/* Configuration générale */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Settings className="h-5 w-5" />
-                    <span>Configuration Système</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-medium mb-4">Paramètres généraux</h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="font-medium">Maintenance programmée</span>
-                            <p className="text-sm text-gray-600">Planifier les maintenances système</p>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Configurer
-                          </Button>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="font-medium">Notifications email</span>
-                            <p className="text-sm text-gray-600">Gérer les alertes automatiques</p>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Gérer
-                          </Button>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="font-medium">Sauvegarde automatique</span>
-                            <p className="text-sm text-gray-600">Planifier les sauvegardes</p>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Planifier
-                          </Button>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="font-medium">Logs système</span>
-                            <p className="text-sm text-gray-600">Consulter l'historique des actions</p>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Voir les logs
-                          </Button>
+                    <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div>
+                          <h4 className="text-sm font-medium text-yellow-800">Conseils de sécurité</h4>
+                          <ul className="text-sm text-yellow-700 mt-1 space-y-1">
+                            <li>• Utilisez au moins 8 caractères</li>
+                            <li>• Mélangez majuscules, minuscules et chiffres</li>
+                            <li>• Ajoutez des caractères spéciaux (!@#$%)</li>
+                            <li>• Ne partagez jamais votre mot de passe</li>
+                          </ul>
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-medium mb-4">Informations système</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Version :</span>
-                          <span className="font-medium">Fixeo.pro v2.1.0</span>
+                {/* Configuration générale - garder le code existant */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Settings className="h-5 w-5" />
+                      <span>Configuration Système</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Paramètres généraux</h3>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">Maintenance programmée</span>
+                              <p className="text-sm text-gray-600">Planifier les maintenances système</p>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              Configurer
+                            </Button>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">Notifications email</span>
+                              <p className="text-sm text-gray-600">Gérer les alertes automatiques</p>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              Gérer
+                            </Button>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">Sauvegarde automatique</span>
+                              <p className="text-sm text-gray-600">Planifier les sauvegardes</p>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              Planifier
+                            </Button>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">Logs système</span>
+                              <p className="text-sm text-gray-600">Consulter l'historique des actions</p>
+                            </div>
+                            <Button variant="outline" size="sm">
+                              Voir les logs
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Dernière mise à jour :</span>
-                          <span className="font-medium">15 janvier 2024</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Statut :</span>
-                          <Badge className="bg-green-100 text-green-800">Opérationnel</Badge>
+                      </div>
+
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-medium mb-4">Informations système</h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Version :</span>
+                            <span className="font-medium">Fixeo.pro v2.1.0</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Dernière mise à jour :</span>
+                            <span className="font-medium">15 janvier 2024</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Statut :</span>
+                            <Badge className="bg-green-100 text-green-800">Opérationnel</Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
