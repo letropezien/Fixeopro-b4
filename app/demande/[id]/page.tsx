@@ -22,6 +22,7 @@ import {
   CheckCircle,
   XCircle,
   Euro,
+  Lock,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -241,7 +242,19 @@ export default function DemandeDetailsPage() {
 
   const canViewContactInfo = () => {
     try {
-      if (!currentUser || currentUser.userType !== "reparateur") return false
+      if (!currentUser) return false
+
+      // Les admins peuvent toujours voir
+      if (currentUser.userType === "admin") return true
+
+      // Le client propriétaire peut voir ses propres infos
+      if (currentUser.userType === "client" && currentUser.id === request?.clientId) return true
+
+      // Les autres clients ne peuvent pas voir
+      if (currentUser.userType === "client") return false
+
+      // Pour les réparateurs, vérifier l'abonnement ou la période d'essai
+      if (currentUser.userType !== "reparateur") return false
 
       if (currentUser.subscription?.status === "active") return true
       if (currentUser.subscription?.status === "trial") {
@@ -449,12 +462,21 @@ export default function DemandeDetailsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-start">
-                    <User className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
+                  <div className="flex items-center">
+                    <User className="h-4 w-4 mr-2 text-gray-400" />
                     <div>
-                      <p className="text-sm text-gray-500">Client</p>
-                      <p>
-                        {request.client?.firstName || "Client"} {request.client?.lastName || ""}
+                      <span className="font-medium">Client:</span>
+                      <p className="text-gray-600">
+                        {canViewContactInfo() ? (
+                          <>
+                            {request.client?.firstName || "Client"} {request.client?.lastName || ""}
+                          </>
+                        ) : (
+                          <span className="flex items-center">
+                            <Lock className="h-3 w-3 mr-1" />
+                            <span className="text-gray-400">Informations masquées</span>
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -510,22 +532,23 @@ export default function DemandeDetailsPage() {
                       <div className="space-y-3">
                         <div className="flex items-center">
                           <Phone className="h-5 w-5 text-gray-500 mr-2" />
-                          <span>{request.client?.phone || "06 12 34 56 78"}</span>
+                          <span>{request.client?.phone || "Non renseigné"}</span>
                         </div>
                         <div className="flex items-center">
                           <Mail className="h-5 w-5 text-gray-500 mr-2" />
-                          <span>{request.client?.email || "client@example.com"}</span>
+                          <span>{request.client?.email || "Non renseigné"}</span>
                         </div>
                       </div>
                     ) : (
                       <div className="bg-yellow-50 p-3 rounded-md flex items-start">
-                        <AlertCircle className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+                        <Lock className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm text-yellow-800">
-                            Les coordonnées du client sont visibles uniquement avec un abonnement actif ou pendant la
-                            période d'essai.
+                          <p className="text-sm text-yellow-800 font-medium">Informations de contact masquées</p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Souscrivez à un abonnement ou profitez de votre période d'essai de 15 jours pour accéder aux
+                            coordonnées complètes des clients.
                           </p>
-                          <Button asChild variant="link" className="p-0 h-auto text-yellow-800 underline">
+                          <Button asChild size="sm" className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white">
                             <Link href="/tarifs">Voir les abonnements</Link>
                           </Button>
                         </div>

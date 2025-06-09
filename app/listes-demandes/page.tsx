@@ -170,10 +170,20 @@ export default function ListesDemandesPage() {
 
   const canViewClientDetails = () => {
     if (!currentUser) return false
+
+    // Les admins peuvent toujours voir
+    if (currentUser.userType === "admin") return true
+
+    // Les clients ne peuvent pas voir les infos des autres clients
+    if (currentUser.userType === "client") return false
+
+    // Pour les réparateurs, vérifier l'abonnement ou la période d'essai
     if (currentUser.userType !== "reparateur") return false
 
-    // Vérifier si le réparateur a un abonnement actif ou est en période d'essai
+    // Vérifier si le réparateur a un abonnement actif
     if (currentUser.subscription?.status === "active") return true
+
+    // Vérifier si le réparateur est en période d'essai de 15 jours
     if (currentUser.subscription?.status === "trial") {
       const expiresAt = new Date(currentUser.subscription.endDate)
       return expiresAt > new Date()
@@ -494,7 +504,7 @@ export default function ListesDemandesPage() {
                   ) : (
                     <span className="flex items-center">
                       <Lock className="h-3 w-3 mr-1" />
-                      {maskPersonalData("Jean Dupont")}
+                      <span className="text-gray-400">Informations masquées</span>
                     </span>
                   )}
                 </div>

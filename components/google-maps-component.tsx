@@ -48,6 +48,7 @@ export default function GoogleMapsComponent({
   const [error, setError] = useState<string | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const infoWindowRef = useRef<any>(null)
+  const [showPersonalData, setShowPersonalData] = useState(false)
 
   // Charger Google Maps API
   useEffect(() => {
@@ -210,7 +211,13 @@ export default function GoogleMapsComponent({
   }
 
   const canViewPersonalData = () => {
+    if (showPersonalData) return true
     if (!currentUser) return false
+
+    // Les admins peuvent toujours voir
+    if (currentUser.userType === "admin") return true
+
+    // Seuls les réparateurs peuvent voir les données personnelles
     if (currentUser.userType !== "reparateur") return false
 
     // Vérifier si le réparateur a un abonnement actif ou est en période d'essai
@@ -404,7 +411,7 @@ export default function GoogleMapsComponent({
                         ) : (
                           <span className="flex items-center">
                             <Lock className="h-3 w-3 mr-1" />
-                            {maskPersonalData("Jean Dupont")}
+                            <span className="text-gray-400">Informations masquées</span>
                           </span>
                         )}
                       </p>
@@ -443,7 +450,8 @@ export default function GoogleMapsComponent({
                       <div>
                         <p className="text-sm text-yellow-800 font-medium">Informations de contact masquées</p>
                         <p className="text-sm text-yellow-700 mt-1">
-                          Devenez réparateur avec un abonnement pour accéder aux coordonnées complètes des clients.
+                          Devenez réparateur avec un abonnement ou profitez de la période d'essai de 15 jours pour
+                          accéder aux coordonnées complètes des clients.
                         </p>
                         <Button size="sm" className="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white">
                           <Link href="/devenir-reparateur">Devenir réparateur</Link>

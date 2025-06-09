@@ -86,7 +86,13 @@ export default function VirtualMap({ markers, onMarkerClick, showPersonalData = 
   }
 
   const canViewPersonalData = () => {
+    if (showPersonalData) return true
     if (!currentUser) return false
+
+    // Les admins peuvent toujours voir
+    if (currentUser.userType === "admin") return true
+
+    // Seuls les réparateurs peuvent voir les données personnelles
     if (currentUser.userType !== "reparateur") return false
 
     // Vérifier si le réparateur a un abonnement actif ou est en période d'essai

@@ -1065,3 +1065,6 @@ export class StorageService {
 if (isBrowser) {
   StorageService.initDemoData()
 }
+
+// Export nommé pour la compatibilité avec les imports
+export const storage = StorageService

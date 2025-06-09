@@ -144,7 +144,15 @@ export default function CartePage() {
 
   const canViewPersonalData = () => {
     try {
-      if (!currentUser || currentUser.userType !== "reparateur") return false
+      if (!currentUser) return false
+
+      // Les admins peuvent toujours voir
+      if (currentUser.userType === "admin") return true
+
+      // Seuls les réparateurs peuvent voir les données personnelles
+      if (currentUser.userType !== "reparateur") return false
+
+      // Vérifier si le réparateur a un abonnement actif ou est en période d'essai
       if (currentUser.subscription?.status === "active") return true
       if (currentUser.subscription?.status === "trial") {
         const expiresAt = new Date(currentUser.subscription.endDate)
@@ -435,7 +443,9 @@ export default function CartePage() {
                               ) : (
                                 <span className="flex items-center">
                                   <Lock className="h-3 w-3 mr-1" />
-                                  {maskPersonalData("Jean Dupont")}
+                                  {maskPersonalData(
+                                    selectedItem.data.client?.firstName + " " + selectedItem.data.client?.lastName,
+                                  )}
                                 </span>
                               )}
                             </p>
