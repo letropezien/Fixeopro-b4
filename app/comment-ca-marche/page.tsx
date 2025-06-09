@@ -1,182 +1,98 @@
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
+import { Search, MessageSquare, Wrench, Star } from "lucide-react"
+
 export default function CommentCaMarchePage() {
+  const steps = [
+    {
+      number: "1",
+      icon: Search,
+      title: "Décrivez votre problème",
+      description: "Expliquez en quelques mots ce qui ne fonctionne pas et où vous vous trouvez.",
+    },
+    {
+      number: "2",
+      icon: MessageSquare,
+      title: "Recevez des devis",
+      description: "Les réparateurs de votre région vous contactent avec leurs propositions.",
+    },
+    {
+      number: "3",
+      icon: Wrench,
+      title: "Choisissez votre réparateur",
+      description: "Comparez les profils, tarifs et disponibilités pour faire votre choix.",
+    },
+    {
+      number: "4",
+      icon: Star,
+      title: "Problème résolu !",
+      description: "Le réparateur intervient et vous pouvez noter la prestation.",
+    },
+  ]
+
   return (
-    <div className="container mx-auto py-12 px-4">
-      <h1 className="text-4xl font-bold text-center mb-12">Comment ça marche ?</h1>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Comment ça marche ?</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Trouvez et contactez un réparateur en 4 étapes simples
+          </p>
+        </div>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Section pour les clients */}
-        <div className="mb-16">
-          <h2 className="text-2xl font-bold mb-6 text-green-600">Pour les clients</h2>
+        {/* Steps */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+          {steps.map((step, index) => (
+            <Card key={index} className="text-center">
+              <CardContent className="p-6">
+                <div className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                  {step.number}
+                </div>
+                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <step.icon className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600">{step.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-green-600">1</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Décrivez votre besoin</h3>
+        {/* Benefits */}
+        <div className="bg-white rounded-lg p-8 shadow-sm mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 text-center mb-8">Pourquoi utiliser FixeoPro ?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="text-4xl mb-4">⚡</div>
+              <h3 className="text-xl font-semibold mb-2">Rapide</h3>
               <p className="text-gray-600">
-                Remplissez notre formulaire simple en décrivant votre problème et en ajoutant des photos si nécessaire.
+                Trouvez un réparateur en quelques minutes, intervention possible le jour même
               </p>
             </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-green-600">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Recevez des propositions</h3>
-              <p className="text-gray-600">
-                Des réparateurs qualifiés dans votre région vous contactent avec leurs devis et disponibilités.
-              </p>
+            <div className="text-center">
+              <div className="text-4xl mb-4">🛡️</div>
+              <h3 className="text-xl font-semibold mb-2">Sécurisé</h3>
+              <p className="text-gray-600">Tous nos réparateurs sont vérifiés et les paiements sont sécurisés</p>
             </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-green-600">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Choisissez votre réparateur</h3>
-              <p className="text-gray-600">
-                Comparez les offres, consultez les avis et choisissez le professionnel qui vous convient le mieux.
-              </p>
+            <div className="text-center">
+              <div className="text-4xl mb-4">💰</div>
+              <h3 className="text-xl font-semibold mb-2">Économique</h3>
+              <p className="text-gray-600">Comparez les devis et choisissez le meilleur rapport qualité-prix</p>
             </div>
-          </div>
-
-          <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Avantages pour les clients</h3>
-            <ul className="space-y-2">
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Service 100% gratuit pour les particuliers</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Réparateurs vérifiés et qualifiés</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Économisez du temps et de l'argent en comparant les offres</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Suivi de votre demande en temps réel</span>
-              </li>
-            </ul>
           </div>
         </div>
 
-        {/* Section pour les réparateurs */}
-        <div>
-          <h2 className="text-2xl font-bold mb-6 text-blue-600">Pour les réparateurs</h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">1</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Inscrivez-vous</h3>
-              <p className="text-gray-600">
-                Créez votre profil professionnel en précisant vos spécialités et votre zone d'intervention.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Accédez aux demandes</h3>
-              <p className="text-gray-600">
-                Consultez les demandes de réparation dans votre zone et correspondant à vos compétences.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Développez votre activité</h3>
-              <p className="text-gray-600">
-                Répondez aux demandes, obtenez de nouveaux clients et développez votre réputation.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Avantages pour les réparateurs</h3>
-            <ul className="space-y-2">
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>15 jours d'essai gratuit pour tous les nouveaux inscrits</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Accès à des clients qualifiés et des demandes vérifiées</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Gestion simplifiée de vos interventions et de votre planning</span>
-              </li>
-              <li className="flex items-start">
-                <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Visibilité accrue et développement de votre clientèle</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* FAQ */}
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold mb-6">Questions fréquentes</h2>
-
-          <div className="space-y-4">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold mb-2">Combien coûte le service pour les clients ?</h3>
-              <p className="text-gray-600">
-                Le service est entièrement gratuit pour les clients. Vous ne payez que le prix convenu avec le
-                réparateur que vous choisissez.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold mb-2">Comment sont sélectionnés les réparateurs ?</h3>
-              <p className="text-gray-600">
-                Tous les réparateurs sont vérifiés avant de pouvoir proposer leurs services. Nous contrôlons leurs
-                qualifications, leur expérience et leurs avis clients.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold mb-2">Quels types de réparations sont couverts ?</h3>
-              <p className="text-gray-600">
-                Notre plateforme couvre un large éventail de domaines : électroménager, informatique, plomberie,
-                électricité, chauffage, serrurerie, multimédia, téléphonie et climatisation.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold mb-2">
-                Comment fonctionne la période d'essai pour les réparateurs ?
-              </h3>
-              <p className="text-gray-600">
-                Tous les nouveaux réparateurs bénéficient de 15 jours d'essai gratuit avec accès à toutes les
-                fonctionnalités de la formule choisie. Aucun prélèvement n'est effectué pendant cette période.
-              </p>
-            </div>
-          </div>
+        {/* CTA */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Prêt à commencer ?</h2>
+          <p className="text-gray-600 mb-6">Décrivez votre problème et trouvez le bon réparateur dès maintenant</p>
+          <Link href="/demande-reparation">
+            <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+              Faire ma demande
+            </Button>
+          </Link>
         </div>
       </div>
     </div>
