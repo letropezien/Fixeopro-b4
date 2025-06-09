@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Bell, Shield, Calendar } from "lucide-react"
+import { User, Bell, Shield, Calendar, Mail, Loader2 } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import PhotoUpload from "@/components/photo-upload"
+import { emailService } from "@/lib/email-service"
 
 export default function ProfilPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
@@ -35,6 +36,9 @@ export default function ProfilPage() {
   const [userRequests, setUserRequests] = useState(
     currentUser ? StorageService.getRepairRequestsByClient(currentUser.id) : [],
   )
+
+  const [isResendingEmail, setIsResendingEmail] = useState(false)
+  const [lastEmailSent, setLastEmailSent] = useState<Date | null>(null)
 
   useEffect(() => {
     if (currentUser) {
@@ -66,6 +70,53 @@ export default function ProfilPage() {
 
   const handlePhotoChange = (photoUrl: string) => {
     setUserProfile({ ...userProfile, avatar: photoUrl })
+  }
+
+  const handleResendVerificationEmail = async () => {
+    if (!currentUser || isResendingEmail) return
+
+    // Vérifier si un email a été envoyé récemment (moins de 2 minutes)
+    if (lastEmailSent && Date.now() - lastEmailSent.getTime() < 2 * 60 * 1000) {
+      alert("Veuillez attendre 2 minutes avant de renvoyer un email de vérification.")
+      return
+    }
+
+    setIsResendingEmail(true)
+
+    try {
+      const result = await emailService.sendVerificationEmail({
+        email: currentUser.email,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        userId: currentUser.id,
+      })
+
+      if (result.success) {
+        setLastEmailSent(new Date())
+        alert("Email de vérification envoyé avec succès ! Vérifiez votre boîte de réception.")
+      } else {
+        alert(`Erreur lors de l'envoi : ${result.error}`)
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de l'email:", error)
+      alert("Une erreur est survenue lors de l'envoi de l'email.")
+    } finally {
+      setIsResendingEmail(false)
+    }
+  }
+
+  const canResendEmail = () => {
+    if (!lastEmailSent) return true
+    return Date.now() - lastEmailSent.getTime() >= 2 * 60 * 1000
+  }
+
+  const getResendButtonText = () => {
+    if (isResendingEmail) return "Envoi en cours..."
+    if (!canResendEmail()) {
+      const remainingTime = Math.ceil((2 * 60 * 1000 - (Date.now() - lastEmailSent!.getTime())) / 1000)
+      return `Attendre ${remainingTime}s`
+    }
+    return "Renvoyer l'email"
   }
 
   if (!currentUser) {
@@ -335,14 +386,35 @@ export default function ProfilPage() {
                     </div>
                     <Button variant="outline">Modifier</Button>
                   </div>
+
                   <div className="flex justify-between items-center p-4 border rounded-lg">
                     <div>
-                      <h4 className="font-medium">Email de vérification</h4>
+                      <h4 className="font-medium flex items-center">
+                        <Mail className="h-4 w-4 mr-2" />
+                        Vérification d'email
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        {currentUser.isEmailVerified ? "Email vérifié ✓" : "Email non vérifié"}
+                        {currentUser.isEmailVerified ? (
+                          <span className="text-green-600 font-medium">✓ Email vérifié</span>
+                        ) : (
+                          <span className="text-orange-600 font-medium">⚠ Email non vérifié</span>
+                        )}
                       </p>
+                      {!currentUser.isEmailVerified && (
+                        <p className="text-xs text-gray-500 mt-1">Vérifiez votre email pour sécuriser votre compte</p>
+                      )}
                     </div>
-                    {!currentUser.isEmailVerified && <Button variant="outline">Renvoyer l'email</Button>}
+                    {!currentUser.isEmailVerified && (
+                      <Button
+                        variant="outline"
+                        onClick={handleResendVerificationEmail}
+                        disabled={isResendingEmail || !canResendEmail()}
+                        className="min-w-[140px]"
+                      >
+                        {isResendingEmail && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        {getResendButtonText()}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

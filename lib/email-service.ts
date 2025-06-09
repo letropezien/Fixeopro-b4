@@ -212,6 +212,61 @@ Email de test envoyé depuis l'interface d'administration FixeoPro
         `,
         variables: ["testTime", "provider", "server"],
       },
+      {
+        id: "email_verification",
+        name: "Vérification d'email",
+        subject: "Vérifiez votre adresse email - FixeoPro",
+        htmlContent: `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: #2563eb; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+        <h2 style="margin: 0;">📧 Vérifiez votre adresse email</h2>
+      </div>
+      
+      <div style="padding: 20px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 20px;">
+        <p>Bonjour {{userName}},</p>
+        <p>Merci de vous être inscrit sur FixeoPro ! Pour finaliser votre inscription et sécuriser votre compte, veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="{{verificationUrl}}" 
+             style="background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            Vérifier mon email
+          </a>
+        </div>
+        
+        <p>Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :</p>
+        <p style="background: #f3f4f6; padding: 10px; border-radius: 4px; word-break: break-all; font-family: monospace; font-size: 14px;">
+          {{verificationUrl}}
+        </p>
+        
+        <p><strong>Important :</strong> Ce lien expire dans 24 heures pour des raisons de sécurité.</p>
+      </div>
+
+      <div style="background: #f9fafb; padding: 15px; border-radius: 6px; text-align: center; margin-top: 20px;">
+        <p style="margin: 0; color: #6b7280; font-size: 14px;">
+          Si vous n'avez pas créé de compte sur FixeoPro, vous pouvez ignorer cet email.<br>
+          Cet email a été envoyé automatiquement, merci de ne pas y répondre.
+        </p>
+      </div>
+    </div>
+  `,
+        textContent: `
+Vérifiez votre adresse email - FixeoPro
+
+Bonjour {{userName}},
+
+Merci de vous être inscrit sur FixeoPro ! Pour finaliser votre inscription et sécuriser votre compte, veuillez vérifier votre adresse email en cliquant sur ce lien :
+
+{{verificationUrl}}
+
+Important : Ce lien expire dans 24 heures pour des raisons de sécurité.
+
+Si vous n'avez pas créé de compte sur FixeoPro, vous pouvez ignorer cet email.
+
+---
+FixeoPro - Plateforme de mise en relation pour réparations
+  `,
+        variables: ["userName", "verificationUrl", "userEmail"],
+      },
     ]
   }
 
@@ -369,6 +424,122 @@ Email de test envoyé depuis l'interface d'administration FixeoPro
       }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue" }
+    }
+  }
+
+  // Envoyer un email de vérification
+  async sendVerificationEmail(userData: {
+    email: string
+    firstName: string
+    lastName: string
+    userId: string
+  }): Promise<{ success: boolean; error?: string; token?: string }> {
+    const config = this.loadConfig()
+
+    if (!config.isEnabled) {
+      return { success: false, error: "Service d'email désactivé" }
+    }
+
+    const template = this.getTemplates().find((t) => t.id === "email_verification")
+    if (!template) {
+      return { success: false, error: "Template de vérification introuvable" }
+    }
+
+    // Générer un token de vérification
+    const token = `verify_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const verificationUrl = `${typeof window !== "undefined" ? window.location.origin : "https://fixeopro.com"}/verify-email?token=${token}&email=${encodeURIComponent(userData.email)}`
+
+    const variables = {
+      userName: `${userData.firstName} ${userData.lastName}`,
+      userEmail: userData.email,
+      verificationUrl: verificationUrl,
+    }
+
+    const emailData = {
+      to: userData.email,
+      from: `${config.fromName} <${config.fromEmail}>`,
+      subject: this.replaceVariables(template.subject, variables),
+      html: this.replaceVariables(template.htmlContent, variables),
+      text: this.replaceVariables(template.textContent, variables),
+    }
+
+    try {
+      // Sauvegarder le token de vérification
+      this.saveVerificationToken(token, userData.userId, userData.email)
+
+      if (config.testMode) {
+        console.log("📧 EMAIL DE VÉRIFICATION SIMULÉ:", emailData)
+        console.log("🔗 LIEN DE VÉRIFICATION:", verificationUrl)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        return { success: true, token }
+      } else {
+        const result = await this.sendRealEmail(emailData, config)
+        return { success: result.success, error: result.error, token: result.success ? token : undefined }
+      }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue" }
+    }
+  }
+
+  // Sauvegarder un token de vérification
+  private saveVerificationToken(token: string, userId: string, email: string): void {
+    if (typeof window === "undefined") return
+
+    try {
+      const tokens = this.getVerificationTokens()
+      const newToken = {
+        token,
+        userId,
+        email,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 heures
+        used: false,
+      }
+
+      // Supprimer les anciens tokens pour cet utilisateur
+      const filteredTokens = tokens.filter((t) => t.userId !== userId)
+      filteredTokens.push(newToken)
+
+      localStorage.setItem("fixeopro_verification_tokens", JSON.stringify(filteredTokens))
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde du token:", error)
+    }
+  }
+
+  // Obtenir les tokens de vérification
+  getVerificationTokens(): any[] {
+    if (typeof window === "undefined") return []
+
+    try {
+      const saved = localStorage.getItem("fixeopro_verification_tokens")
+      return saved ? JSON.parse(saved) : []
+    } catch (error) {
+      console.error("Erreur lors du chargement des tokens:", error)
+      return []
+    }
+  }
+
+  // Vérifier un token
+  verifyEmailToken(token: string, email: string): { success: boolean; error?: string; userId?: string } {
+    try {
+      const tokens = this.getVerificationTokens()
+      const tokenData = tokens.find((t) => t.token === token && t.email === email && !t.used)
+
+      if (!tokenData) {
+        return { success: false, error: "Token invalide ou déjà utilisé" }
+      }
+
+      if (new Date() > new Date(tokenData.expiresAt)) {
+        return { success: false, error: "Token expiré" }
+      }
+
+      // Marquer le token comme utilisé
+      tokenData.used = true
+      localStorage.setItem("fixeopro_verification_tokens", JSON.stringify(tokens))
+
+      return { success: true, userId: tokenData.userId }
+    } catch (error) {
+      return { success: false, error: "Erreur lors de la vérification" }
     }
   }
 
