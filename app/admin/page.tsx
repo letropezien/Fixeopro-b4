@@ -25,6 +25,8 @@ import AdminUsersManagement from "@/components/admin-users-management"
 import AdminRequestsManagement from "@/components/admin-requests-management"
 import AdminCategoriesManagement from "@/components/admin-categories-management"
 import PaymentGatewayConfig from "@/components/payment-gateway-config"
+import AdminPromoCodes from "@/components/admin-promo-codes"
+import AdminEmailConfig from "@/components/admin-email-config"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -200,13 +202,14 @@ export default function AdminPage() {
 
         {/* Onglets de gestion */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="categories">Catégories</TabsTrigger>
             <TabsTrigger value="category-images">Images</TabsTrigger>
-            <TabsTrigger value="analytics">Analyses</TabsTrigger>
+            <TabsTrigger value="promo-codes">Codes Promo</TabsTrigger>
+            <TabsTrigger value="email-config">Configuration Email</TabsTrigger>
             <TabsTrigger value="settings">Paramètres</TabsTrigger>
           </TabsList>
 
@@ -520,6 +523,14 @@ export default function AdminPage() {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="promo-codes">
+            <AdminPromoCodes />
+          </TabsContent>
+
+          <TabsContent value="email-config">
+            <AdminEmailConfig />
           </TabsContent>
         </Tabs>
       </div>

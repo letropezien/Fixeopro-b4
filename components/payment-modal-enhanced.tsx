@@ -63,7 +63,30 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
   }, [])
 
   const baseAmount = Number.parseFloat(plan.price.replace("€", ""))
-  const pricing = PaymentService.calculateTotal(baseAmount, appliedPromo)
+
+  // Les prix sont déjà TTC, donc calculer la TVA comprise
+  const baseAmountHT = appliedPromo
+    ? baseAmount -
+      (appliedPromo.type === "percentage"
+        ? (baseAmount * appliedPromo.value) / 100
+        : Math.min(appliedPromo.value, baseAmount))
+    : baseAmount
+
+  const finalAmountHT = baseAmountHT / (1 + paymentConfig.platform.taxRate / 100)
+  const taxAmount = baseAmountHT - finalAmountHT
+  const discountAmount = appliedPromo
+    ? appliedPromo.type === "percentage"
+      ? (baseAmount * appliedPromo.value) / 100
+      : Math.min(appliedPromo.value, baseAmount)
+    : 0
+
+  const pricing = {
+    baseAmount,
+    discountAmount,
+    finalAmountHT,
+    taxAmount,
+    finalAmount: baseAmountHT,
+  }
 
   const handleApplyPromoCode = async () => {
     if (!promoCode.trim()) return
@@ -98,22 +121,21 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
+      // Enregistrer l'utilisation du code promo si applicable
+      let promoCodeUsedResult = { success: false }
+      if (appliedPromo) {
+        promoCodeUsedResult = await PromoCodeService.usePromoCode(
+          appliedPromo.id,
+          userId,
+          pricing.baseAmount,
+          pricing.discountAmount,
+          pricing.finalAmount,
+        )
+      }
+
       const result = await PaymentService.processStripePayment(pricing.finalAmount, cardData)
 
       if (result.success) {
-        // Enregistrer l'utilisation du code promo si applicable
-        let promoCodeUsed = false
-        if (appliedPromo) {
-          const usePromoResult = await PromoCodeService.usePromoCode(
-            appliedPromo.id,
-            userId,
-            pricing.baseAmount,
-            pricing.discountAmount,
-            pricing.finalAmount,
-          )
-          promoCodeUsed = usePromoResult.success
-        }
-
         // Mettre à jour l'abonnement
         const subscriptionData = {
           plan: plan.id,
@@ -152,22 +174,21 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
+      // Enregistrer l'utilisation du code promo si applicable
+      let promoCodeUsedResult = { success: false }
+      if (appliedPromo) {
+        promoCodeUsedResult = await PromoCodeService.usePromoCode(
+          appliedPromo.id,
+          userId,
+          pricing.baseAmount,
+          pricing.discountAmount,
+          pricing.finalAmount,
+        )
+      }
+
       const result = await PaymentService.processPayPalPayment(pricing.finalAmount)
 
       if (result.success) {
-        // Enregistrer l'utilisation du code promo si applicable
-        let promoCodeUsed = false
-        if (appliedPromo) {
-          const usePromoResult = await PromoCodeService.usePromoCode(
-            appliedPromo.id,
-            userId,
-            pricing.baseAmount,
-            pricing.discountAmount,
-            pricing.finalAmount,
-          )
-          promoCodeUsed = usePromoResult.success
-        }
-
         // Mettre à jour l'abonnement
         const subscriptionData = {
           plan: plan.id,
@@ -315,14 +336,14 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                 )}
 
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>TVA ({paymentConfig.platform.taxRate}%)</span>
+                  <span>dont TVA ({paymentConfig.platform.taxRate}% comprise)</span>
                   <span>{pricing.taxAmount.toFixed(2)}€</span>
                 </div>
 
                 <hr />
 
                 <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
+                  <span>Total TTC</span>
                   <span>{pricing.finalAmount.toFixed(2)}€</span>
                 </div>
 
