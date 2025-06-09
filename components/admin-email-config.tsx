@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Loader2,
   Zap,
+  Bug,
 } from "lucide-react"
 import { emailService, type EmailConfig, type ContactEmail } from "@/lib/email-service"
 import { useToast } from "@/hooks/use-toast"
@@ -75,7 +76,8 @@ export default function AdminEmailConfig() {
   const [emailHistory, setEmailHistory] = useState<ContactEmail[]>([])
   const [selectedEmail, setSelectedEmail] = useState<ContactEmail | null>(null)
   const [showEmailDialog, setShowEmailDialog] = useState(false)
-  const [selectedPreset, setSelectedPreset] = useState("custom")
+  const [selectedPreset, setSelectedPreset] = useState("ovh_zimbra")
+  const [showDebugInfo, setShowDebugInfo] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -120,30 +122,18 @@ export default function AdminEmailConfig() {
   const handleTestConnection = async () => {
     setConnectionTestLoading(true)
     try {
-      // Simuler un test de connexion SMTP
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // En mode test, toujours réussir
-      if (config.testMode) {
+      const result = await emailService.testConfiguration()
+      if (result.success) {
         toast({
           title: "Test de connexion réussi",
-          description: `Connexion établie avec ${config.smtpHost}:${config.smtpPort} (Mode test)`,
+          description: `Connexion établie avec ${config.smtpHost}:${config.smtpPort}`,
         })
       } else {
-        // En production, tester la vraie connexion
-        const result = await emailService.testConfiguration()
-        if (result.success) {
-          toast({
-            title: "Test de connexion réussi",
-            description: `Connexion établie avec ${config.smtpHost}:${config.smtpPort}`,
-          })
-        } else {
-          toast({
-            title: "Test de connexion échoué",
-            description: result.error || "Impossible de se connecter au serveur SMTP.",
-            variant: "destructive",
-          })
-        }
+        toast({
+          title: "Test de connexion échoué",
+          description: result.error || "Impossible de se connecter au serveur SMTP.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       toast({
@@ -172,11 +162,13 @@ export default function AdminEmailConfig() {
       if (result.success) {
         toast({
           title: "Email de test envoyé",
-          description: `Un email de test a été envoyé à ${testEmail}.`,
+          description: `Un email de test a été envoyé à ${testEmail}. Vérifiez votre boîte de réception (et les spams).`,
         })
         setTestEmail("")
         // Actualiser l'historique
-        setEmailHistory(emailService.getEmailHistory())
+        setTimeout(() => {
+          setEmailHistory(emailService.getEmailHistory())
+        }, 1000)
       } else {
         toast({
           title: "Échec de l'envoi",
@@ -205,12 +197,12 @@ export default function AdminEmailConfig() {
       fromEmail: "contact@fixeo.pro",
       fromName: "FixeoPro",
       isEnabled: true,
-      testMode: false,
+      testMode: false, // Mode production pour envoyer vraiment
     }))
     setSelectedPreset("ovh_zimbra")
     toast({
       title: "Configuration OVH chargée",
-      description: "Les paramètres OVH Zimbra ont été appliqués.",
+      description: "Les paramètres OVH Zimbra ont été appliqués en mode PRODUCTION.",
     })
   }
 
@@ -254,6 +246,7 @@ export default function AdminEmailConfig() {
             {config.isEnabled ? "Activé" : "Désactivé"}
           </Badge>
           {config.testMode && <Badge variant="outline">Mode Test</Badge>}
+          {!config.testMode && config.isEnabled && <Badge className="bg-green-100 text-green-800">Production</Badge>}
         </div>
       </div>
 
@@ -271,6 +264,10 @@ export default function AdminEmailConfig() {
             <Mail className="h-4 w-4 mr-2" />
             Historique ({emailHistory.length})
           </TabsTrigger>
+          <TabsTrigger value="debug">
+            <Bug className="h-4 w-4 mr-2" />
+            Debug
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="config" className="space-y-4">
@@ -279,14 +276,15 @@ export default function AdminEmailConfig() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-700">
                 <Zap className="h-5 w-5" />
-                Configuration rapide OVH
+                Configuration rapide OVH (Mode Production)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-700 font-medium">contact@fixeo.pro</p>
-                  <p className="text-blue-600 text-sm">Serveur: ssl0.ovh.net:587</p>
+                  <p className="text-blue-600 text-sm">Serveur: ssl0.ovh.net:587 (STARTTLS)</p>
+                  <p className="text-blue-600 text-sm">⚠️ Mode production - Les emails seront vraiment envoyés</p>
                 </div>
                 <Button onClick={loadOVHPreset} className="bg-blue-600 hover:bg-blue-700">
                   <Zap className="h-4 w-4 mr-2" />
@@ -316,7 +314,11 @@ export default function AdminEmailConfig() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="testMode">Mode test</Label>
-                  <p className="text-sm text-gray-500">Les emails ne sont pas réellement envoyés</p>
+                  <p className="text-sm text-gray-500">
+                    {config.testMode
+                      ? "Les emails sont simulés (pas d'envoi réel)"
+                      : "Les emails sont vraiment envoyés"}
+                  </p>
                 </div>
                 <Switch
                   id="testMode"
@@ -428,6 +430,7 @@ export default function AdminEmailConfig() {
                     <li>• Port : 587 (STARTTLS)</li>
                     <li>• Authentification : Obligatoire</li>
                     <li>• Sécurité : STARTTLS</li>
+                    <li>• Utilisateur : Adresse email complète</li>
                   </ul>
                 </div>
               )}
@@ -463,7 +466,7 @@ export default function AdminEmailConfig() {
                   type="email"
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="test@example.com"
+                  placeholder="votre-email@example.com"
                 />
               </div>
 
@@ -471,6 +474,20 @@ export default function AdminEmailConfig() {
                 {testLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                 Envoyer l'email de test
               </Button>
+
+              {!config.testMode && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-orange-700">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="font-medium">Mode production activé</span>
+                  </div>
+                  <p className="text-orange-600 text-sm mt-1">
+                    L'email sera réellement envoyé via {config.smtpHost}:{config.smtpPort}
+                    <br />
+                    Vérifiez votre boîte de réception ET le dossier spam/courrier indésirable.
+                  </p>
+                </div>
+              )}
 
               {config.testMode && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -480,18 +497,6 @@ export default function AdminEmailConfig() {
                   </div>
                   <p className="text-blue-600 text-sm mt-1">
                     L'email ne sera pas réellement envoyé, mais apparaîtra dans l'historique et la console.
-                  </p>
-                </div>
-              )}
-
-              {!config.testMode && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="font-medium">Mode production activé</span>
-                  </div>
-                  <p className="text-green-600 text-sm mt-1">
-                    L'email sera réellement envoyé via {config.smtpHost}:{config.smtpPort}
                   </p>
                 </div>
               )}
@@ -540,8 +545,62 @@ export default function AdminEmailConfig() {
                 <div className="text-center py-8">
                   <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">Aucun email envoyé pour le moment</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Utilisez l'onglet "Tests" pour envoyer votre premier email
+                  </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="debug" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations de débogage</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Configuration actuelle :</h4>
+                <pre className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {JSON.stringify(
+                    {
+                      ...config,
+                      smtpPassword: config.smtpPassword ? "***" : "Non configuré",
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-yellow-700 mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="font-medium">Problèmes possibles si vous ne recevez pas d'emails :</span>
+                </div>
+                <ul className="text-yellow-600 text-sm space-y-1">
+                  <li>• Vérifiez le dossier spam/courrier indésirable</li>
+                  <li>• Assurez-vous que le mode test est désactivé</li>
+                  <li>• Vérifiez que tous les paramètres SMTP sont corrects</li>
+                  <li>• Testez avec une autre adresse email</li>
+                  <li>• Vérifiez les logs de la console (F12)</li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={() => {
+                  console.log("📧 Configuration email complète:", config)
+                  console.log("📧 Historique des emails:", emailHistory)
+                  toast({
+                    title: "Logs affichés",
+                    description: "Vérifiez la console (F12) pour voir les détails.",
+                  })
+                }}
+              >
+                <Bug className="h-4 w-4 mr-2" />
+                Afficher les logs dans la console
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

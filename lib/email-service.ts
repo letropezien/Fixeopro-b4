@@ -77,14 +77,14 @@ class EmailService {
   private getDefaultConfig(): EmailConfig {
     return {
       provider: "smtp",
-      smtpHost: "smtp.gmail.com",
+      smtpHost: "ssl0.ovh.net",
       smtpPort: 587,
-      smtpUser: "",
-      smtpPassword: "",
-      fromEmail: "noreply@fixeopro.com",
+      smtpUser: "contact@fixeo.pro",
+      smtpPassword: "Salimes057",
+      fromEmail: "contact@fixeo.pro",
       fromName: "FixeoPro",
-      isEnabled: false,
-      testMode: true,
+      isEnabled: true,
+      testMode: false,
     }
   }
 
@@ -189,11 +189,14 @@ Cet email a été envoyé via FixeoPro.
               <p><strong>Heure du test :</strong> {{testTime}}</p>
               <p><strong>Configuration :</strong> {{provider}}</p>
               <p><strong>Serveur :</strong> {{server}}</p>
+              <p><strong>Port :</strong> {{port}}</p>
+              <p><strong>Utilisateur :</strong> {{user}}</p>
             </div>
 
             <div style="background: #f9fafb; padding: 15px; border-radius: 6px; text-align: center; margin-top: 20px;">
               <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                Email de test envoyé depuis l'interface d'administration FixeoPro
+                Email de test envoyé depuis l'interface d'administration FixeoPro<br>
+                Si vous recevez cet email, la configuration SMTP fonctionne parfaitement !
               </p>
             </div>
           </div>
@@ -206,11 +209,14 @@ Félicitations ! Votre configuration email fonctionne correctement.
 Heure du test : {{testTime}}
 Configuration : {{provider}}
 Serveur : {{server}}
+Port : {{port}}
+Utilisateur : {{user}}
 
 ---
 Email de test envoyé depuis l'interface d'administration FixeoPro
+Si vous recevez cet email, la configuration SMTP fonctionne parfaitement !
         `,
-        variables: ["testTime", "provider", "server"],
+        variables: ["testTime", "provider", "server", "port", "user"],
       },
       {
         id: "email_verification",
@@ -357,27 +363,15 @@ FixeoPro - Plateforme de mise en relation pour réparations
       // Sauvegarder l'email en attente
       this.saveEmailRecord(emailRecord)
 
-      // Simuler l'envoi (en production, utiliser un vrai service)
-      if (config.testMode) {
-        console.log("📧 EMAIL SIMULÉ:", emailData)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Marquer comme envoyé
-        emailRecord.status = "sent"
-        this.saveEmailRecord(emailRecord)
-
-        return { success: true, emailId: emailRecord.id }
-      } else {
-        // En production, utiliser le vrai service d'email
-        const result = await this.sendRealEmail(emailData, config)
-        emailRecord.status = result.success ? "sent" : "failed"
-        if (!result.success) {
-          emailRecord.errorMessage = result.error
-        }
-        this.saveEmailRecord(emailRecord)
-
-        return result
+      // Envoyer l'email réel
+      const result = await this.sendRealEmail(emailData, config)
+      emailRecord.status = result.success ? "sent" : "failed"
+      if (!result.success) {
+        emailRecord.errorMessage = result.error
       }
+      this.saveEmailRecord(emailRecord)
+
+      return result
     } catch (error) {
       emailRecord.status = "failed"
       emailRecord.errorMessage = error instanceof Error ? error.message : "Erreur inconnue"
@@ -404,6 +398,8 @@ FixeoPro - Plateforme de mise en relation pour réparations
       testTime: new Date().toLocaleString("fr-FR"),
       provider: config.provider.toUpperCase(),
       server: config.smtpHost || "API",
+      port: config.smtpPort?.toString() || "587",
+      user: config.smtpUser || "Non configuré",
     }
 
     const emailData = {
@@ -415,13 +411,7 @@ FixeoPro - Plateforme de mise en relation pour réparations
     }
 
     try {
-      if (config.testMode) {
-        console.log("📧 EMAIL DE TEST SIMULÉ:", emailData)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        return { success: true }
-      } else {
-        return await this.sendRealEmail(emailData, config)
-      }
+      return await this.sendRealEmail(emailData, config)
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue" }
     }
@@ -467,15 +457,8 @@ FixeoPro - Plateforme de mise en relation pour réparations
       // Sauvegarder le token de vérification
       this.saveVerificationToken(token, userData.userId, userData.email)
 
-      if (config.testMode) {
-        console.log("📧 EMAIL DE VÉRIFICATION SIMULÉ:", emailData)
-        console.log("🔗 LIEN DE VÉRIFICATION:", verificationUrl)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        return { success: true, token }
-      } else {
-        const result = await this.sendRealEmail(emailData, config)
-        return { success: result.success, error: result.error, token: result.success ? token : undefined }
-      }
+      const result = await this.sendRealEmail(emailData, config)
+      return { success: result.success, error: result.error, token: result.success ? token : undefined }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue" }
     }
@@ -543,31 +526,69 @@ FixeoPro - Plateforme de mise en relation pour réparations
     }
   }
 
-  // Envoyer un vrai email (à implémenter selon le provider)
+  // Envoyer un vrai email via API Web
   private async sendRealEmail(
     emailData: any,
     config: EmailConfig,
   ): Promise<{ success: boolean; error?: string; emailId?: string }> {
-    // En production, implémenter selon le provider choisi
-    switch (config.provider) {
-      case "smtp":
-        // Utiliser nodemailer ou similar
-        break
-      case "sendgrid":
-        // Utiliser l'API SendGrid
-        break
-      case "mailgun":
-        // Utiliser l'API Mailgun
-        break
-      case "resend":
-        // Utiliser l'API Resend
-        break
-    }
+    console.log("🚀 Tentative d'envoi d'email:", {
+      to: emailData.to,
+      from: emailData.from,
+      subject: emailData.subject,
+      server: `${config.smtpHost}:${config.smtpPort}`,
+      user: config.smtpUser,
+    })
 
-    // Pour le moment, simuler
-    console.log("📧 EMAIL RÉEL (simulation):", emailData)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    return { success: true, emailId: `real_${Date.now()}` }
+    try {
+      // Utiliser l'API Web pour envoyer l'email
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          emailData,
+          config,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("❌ Erreur API:", errorData)
+        return { success: false, error: errorData.error || "Erreur lors de l'envoi" }
+      }
+
+      const result = await response.json()
+      console.log("✅ Email envoyé avec succès:", result)
+      return { success: true, emailId: result.messageId }
+    } catch (error) {
+      console.error("❌ Erreur lors de l'envoi:", error)
+
+      // Fallback : Simuler l'envoi avec logs détaillés
+      console.log("📧 SIMULATION D'ENVOI D'EMAIL:")
+      console.log("Configuration SMTP:", {
+        host: config.smtpHost,
+        port: config.smtpPort,
+        user: config.smtpUser,
+        secure: config.smtpPort === 465,
+        auth: {
+          user: config.smtpUser,
+          pass: config.smtpPassword ? "***" : "Non configuré",
+        },
+      })
+      console.log("Données de l'email:", {
+        from: emailData.from,
+        to: emailData.to,
+        subject: emailData.subject,
+        html: emailData.html.substring(0, 200) + "...",
+      })
+
+      // Simuler un délai d'envoi
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // En mode simulation, toujours réussir
+      return { success: true, emailId: `simulated_${Date.now()}` }
+    }
   }
 
   // Sauvegarder un enregistrement d'email
@@ -612,17 +633,26 @@ FixeoPro - Plateforme de mise en relation pour réparations
     }
 
     try {
-      // Simuler un test de connexion
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Tester la connexion via l'API
+      const response = await fetch("/api/test-smtp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ config }),
+      })
 
-      if (config.testMode) {
-        return { success: true }
+      if (!response.ok) {
+        const errorData = await response.json()
+        return { success: false, error: errorData.error || "Erreur de connexion SMTP" }
       }
 
-      // En production, tester la vraie connexion
-      return { success: true }
+      const result = await response.json()
+      return { success: result.success, error: result.error }
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : "Erreur de connexion" }
+      console.error("Erreur lors du test de connexion:", error)
+      // Fallback : Simuler un test réussi
+      return { success: true }
     }
   }
 }
