@@ -12,7 +12,7 @@ import { StorageService } from "@/lib/storage"
 import { PaymentService } from "@/lib/payment-service"
 import { PromoCodeService } from "@/lib/promo-codes"
 
-interface PaymentModalEnhancedProps {
+interface PaymentModalFixedProps {
   isOpen: boolean
   onClose: () => void
   plan: {
@@ -25,7 +25,7 @@ interface PaymentModalEnhancedProps {
   onSuccess: () => void
 }
 
-export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, onSuccess }: PaymentModalEnhancedProps) {
+export default function PaymentModalFixed({ isOpen, onClose, plan, userId, onSuccess }: PaymentModalFixedProps) {
   const [paymentMethod, setPaymentMethod] = useState("stripe")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -36,7 +36,8 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
   const [appliedPromo, setAppliedPromo] = useState<any>(null)
   const [promoError, setPromoError] = useState("")
   const [promoLoading, setPromoLoading] = useState(false)
-  const [usePromoCodeResult, setUsePromoCodeResult] = useState<any>(null)
+  const [stripePromise, setStripePromise] = useState<any>(null)
+  const [paypalPromise, setPaypalPromise] = useState<any>(null)
 
   // Configuration de paiement
   const [paymentConfig, setPaymentConfig] = useState(PaymentService.getConfig())
@@ -49,23 +50,29 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     name: "",
   })
 
-  // Formater le prix pour éviter le problème /mois/mois
-  const formattedPrice = plan.price.replace("/mois/mois", "/mois").replace("€/mois", "€")
-
   useEffect(() => {
     const config = PaymentService.getConfig()
     setPaymentConfig(config)
 
-    // Charger les SDKs de paiement
     if (config.paypal.enabled && config.paypal.clientId) {
-      PaymentService.loadPayPalSDK(config.paypal.clientId, config.paypal.environment)
+      const paypal = PaymentService.loadPayPalSDK(config.paypal.clientId, config.paypal.environment)
+      setPaypalPromise(paypal)
     }
     if (config.stripe.enabled && config.stripe.publishableKey) {
-      PaymentService.loadStripeSDK()
+      const stripe = PaymentService.loadStripeSDK()
+      setStripePromise(stripe)
     }
   }, [])
 
-  const baseAmount = Number.parseFloat(plan.price.replace("€", "").replace("/mois", ""))
+  // Nettoyer le prix pour éviter les doublons
+  const cleanPrice = plan.price
+    .replace(/\/mois\/mois/g, "/mois")
+    .replace(/€\/mois/g, "€")
+    .replace(/€/g, "")
+    .replace(/\/mois/g, "")
+    .trim()
+
+  const baseAmount = Number.parseFloat(cleanPrice) || 0
 
   const discountAmount = appliedPromo
     ? appliedPromo.type === "percentage"
@@ -73,13 +80,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
       : Math.min(appliedPromo.value, baseAmount)
     : 0
 
-  const finalAmount = baseAmount - discountAmount
-
-  const pricing = {
-    baseAmount,
-    discountAmount,
-    finalAmount,
-  }
+  const finalAmount = Math.max(0, baseAmount - discountAmount)
 
   const handleApplyPromoCode = async () => {
     if (!promoCode.trim()) return
@@ -88,9 +89,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setPromoError("")
 
     try {
-      // Code promo spécial "FULL" - validation directe
       if (promoCode.trim().toUpperCase() === "FULL") {
-        // Mettre à jour l'abonnement directement
         const subscriptionData = {
           plan: plan.id,
           status: "active",
@@ -142,22 +141,28 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
+      let promoCodeUsed = null
+
       if (appliedPromo) {
-        setUsePromoCodeResult(
-          await PromoCodeService.usePromoCode(
-            appliedPromo.id,
-            userId,
-            pricing.baseAmount,
-            pricing.discountAmount,
-            pricing.finalAmount,
-          ),
+        const promoResult = await PromoCodeService.usePromoCode(
+          appliedPromo.id,
+          userId,
+          baseAmount,
+          discountAmount,
+          finalAmount,
         )
+        if (promoResult?.success) {
+          promoCodeUsed = appliedPromo.code
+        } else {
+          console.error("Erreur lors de l'utilisation du code promo:", promoResult?.error)
+          setError("Erreur lors de l'application du code promo.")
+          return
+        }
       }
 
-      const result = await PaymentService.processStripePayment(pricing.finalAmount, cardData)
+      const result = await PaymentService.processStripePayment(finalAmount, cardData)
 
       if (result.success) {
-        // Mettre à jour l'abonnement
         const subscriptionData = {
           plan: plan.id,
           status: "active",
@@ -165,8 +170,8 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           paymentMethod: "stripe",
           transactionId: result.transactionId,
-          amount: pricing.finalAmount,
-          promoCodeUsed: appliedPromo?.code,
+          amount: finalAmount,
+          promoCodeUsed: promoCodeUsed,
         }
 
         const updateSuccess = StorageService.updateSubscription(userId, subscriptionData)
@@ -195,22 +200,28 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
     setError("")
 
     try {
+      let promoCodeUsed = null
+
       if (appliedPromo) {
-        setUsePromoCodeResult(
-          await PromoCodeService.usePromoCode(
-            appliedPromo.id,
-            userId,
-            pricing.baseAmount,
-            pricing.discountAmount,
-            pricing.finalAmount,
-          ),
+        const promoResult = await PromoCodeService.usePromoCode(
+          appliedPromo.id,
+          userId,
+          baseAmount,
+          discountAmount,
+          finalAmount,
         )
+        if (promoResult?.success) {
+          promoCodeUsed = appliedPromo.code
+        } else {
+          console.error("Erreur lors de l'utilisation du code promo:", promoResult?.error)
+          setError("Erreur lors de l'application du code promo.")
+          return
+        }
       }
 
-      const result = await PaymentService.processPayPalPayment(pricing.finalAmount)
+      const result = await PaymentService.processPayPalPayment(finalAmount)
 
       if (result.success) {
-        // Mettre à jour l'abonnement
         const subscriptionData = {
           plan: plan.id,
           status: "active",
@@ -218,8 +229,8 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           paymentMethod: "paypal",
           transactionId: result.transactionId,
-          amount: pricing.finalAmount,
-          promoCodeUsed: appliedPromo?.code,
+          amount: finalAmount,
+          promoCodeUsed: promoCodeUsed,
         }
 
         const updateSuccess = StorageService.updateSubscription(userId, subscriptionData)
@@ -273,7 +284,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
         <DialogHeader>
           <DialogTitle>Finaliser votre abonnement - Fixeo.pro</DialogTitle>
           <DialogDescription>
-            Abonnement {plan.name} - {formattedPrice}/mois
+            Abonnement {plan.name} - {baseAmount}€/mois
           </DialogDescription>
         </DialogHeader>
 
@@ -291,8 +302,8 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
               <CardTitle className="text-lg">Récapitulatif de commande</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Code promo - BIEN VISIBLE */}
-              <div className="border rounded-lg p-4 bg-gray-50 mb-4">
+              {/* Section code promo */}
+              <div className="border rounded-lg p-4 bg-gray-50">
                 <div className="flex items-center mb-3">
                   <Gift className="h-4 w-4 text-purple-600 mr-2" />
                   <span className="font-medium text-sm">Code promo</span>
@@ -344,13 +355,13 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span>Abonnement {plan.name}</span>
-                  <span className="font-medium">{pricing.baseAmount.toFixed(2)}€/mois</span>
+                  <span className="font-medium">{baseAmount}€/mois</span>
                 </div>
 
                 {appliedPromo && (
                   <div className="flex justify-between text-green-600">
                     <span>Réduction ({appliedPromo.code})</span>
-                    <span>-{pricing.discountAmount.toFixed(2)}€</span>
+                    <span>-{discountAmount.toFixed(2)}€</span>
                   </div>
                 )}
 
@@ -358,12 +369,12 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>{pricing.finalAmount.toFixed(2)}€</span>
+                  <span>{finalAmount.toFixed(2)}€</span>
                 </div>
 
                 {appliedPromo && (
                   <div className="text-center text-sm text-green-600 font-medium">
-                    Vous économisez {pricing.discountAmount.toFixed(2)}€ !
+                    Vous économisez {discountAmount.toFixed(2)}€ !
                   </div>
                 )}
               </div>
@@ -465,7 +476,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                               Traitement...
                             </>
                           ) : (
-                            `Payer ${pricing.finalAmount.toFixed(2)}€`
+                            `Payer ${finalAmount.toFixed(2)}€`
                           )}
                         </Button>
                       </div>
@@ -484,7 +495,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                       <div>
                         <div className="text-center mb-4">
                           <p className="text-sm text-gray-600">
-                            Montant à payer : <strong>{pricing.finalAmount.toFixed(2)}€</strong>
+                            Montant à payer : <strong>{finalAmount.toFixed(2)}€</strong>
                           </p>
                         </div>
                         <Button
@@ -498,7 +509,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                               Traitement...
                             </>
                           ) : (
-                            `Payer avec PayPal - ${pricing.finalAmount.toFixed(2)}€`
+                            `Payer avec PayPal - ${finalAmount.toFixed(2)}€`
                           )}
                         </Button>
                         <div id="paypal-button-container" className="mt-4"></div>
