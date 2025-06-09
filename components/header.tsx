@@ -326,7 +326,11 @@ export default function Header() {
                           <DropdownMenuItem
                             key={notification.id}
                             className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)}`}
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={() => {
+                              markAsRead(notification.id)
+                              // Redirection vers la page de détail de la demande
+                              window.location.href = `/demande/${notification.requestId}`
+                            }}
                           >
                             <div className="flex items-start space-x-3 w-full">
                               <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
@@ -356,6 +360,9 @@ export default function Header() {
                                   {notification.message}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">{getTimeAgo(notification.createdAt)}</p>
+                                <p className="text-xs text-blue-600 mt-1 font-medium">
+                                  Cliquer pour voir les détails →
+                                </p>
                               </div>
                             </div>
                           </DropdownMenuItem>
