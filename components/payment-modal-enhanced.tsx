@@ -275,7 +275,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
         <DialogHeader>
           <DialogTitle>Finaliser votre abonnement - Fixeo.pro</DialogTitle>
           <DialogDescription>
-            Abonnement {plan.name} - {plan.price}/mois
+            Abonnement {plan.name} - {plan.price.replace("/mois", "")}/mois
           </DialogDescription>
         </DialogHeader>
 
@@ -361,7 +361,7 @@ export default function PaymentModalEnhanced({ isOpen, onClose, plan, userId, on
                 <hr />
 
                 <div className="flex justify-between font-bold text-lg">
-                  <span>Total TTC</span>
+                  <span>Total</span>
                   <span>{pricing.finalAmount.toFixed(2)}€</span>
                 </div>
 
