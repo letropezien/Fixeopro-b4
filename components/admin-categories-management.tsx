@@ -9,8 +9,22 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Settings, Edit, Eye, EyeOff, Save, RefreshCw, Plus, Trash2, Search, Filter, BarChart3 } from "lucide-react"
+import {
+  Settings,
+  Edit,
+  Eye,
+  EyeOff,
+  Save,
+  RefreshCw,
+  Plus,
+  Trash2,
+  Search,
+  Filter,
+  BarChart3,
+  ImageIcon,
+} from "lucide-react"
 import { CategoriesService, type Category, type SubCategory } from "@/lib/categories-service"
+import { PhotoUpload } from "@/components/photo-upload"
 
 export function AdminCategoriesManagement() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -19,6 +33,7 @@ export function AdminCategoriesManagement() {
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [settings, setSettings] = useState({ tvaEnabled: true, tvaRate: 20 })
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
 
@@ -66,11 +81,25 @@ export function AdminCategoriesManagement() {
     setIsEditModalOpen(true)
   }
 
+  const handleEditCategoryImage = (category: Category) => {
+    setSelectedCategory({ ...category })
+    setIsImageModalOpen(true)
+  }
+
   const handleSaveCategory = () => {
     if (selectedCategory) {
       CategoriesService.updateCategory(selectedCategory.id, selectedCategory)
       loadData()
       setIsEditModalOpen(false)
+      setSelectedCategory(null)
+    }
+  }
+
+  const handleSaveCategoryImage = (imageUrl: string) => {
+    if (selectedCategory) {
+      CategoriesService.updateCategoryImage(selectedCategory.id, imageUrl)
+      loadData()
+      setIsImageModalOpen(false)
       setSelectedCategory(null)
     }
   }
@@ -307,22 +336,41 @@ export function AdminCategoriesManagement() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Sous-catégories :</span>
-                  <Badge variant="outline">{category.subCategories.length}</Badge>
+              <div className="space-y-4">
+                {/* Image de la catégorie */}
+                <div className="relative">
+                  <img
+                    src={category.image || "/placeholder.svg?height=200&width=300&query=catégorie"}
+                    alt={category.name}
+                    className="w-full h-40 object-cover rounded-md"
+                  />
+                  <Button
+                    size="sm"
+                    className="absolute bottom-2 right-2 bg-white/80 hover:bg-white text-black"
+                    onClick={() => handleEditCategoryImage(category)}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-1" />
+                    Modifier l'image
+                  </Button>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {category.subCategories.slice(0, 6).map((sub) => (
-                    <Badge key={sub.id} variant="secondary" className="text-xs">
-                      {sub.name}
-                    </Badge>
-                  ))}
-                  {category.subCategories.length > 6 && (
-                    <Badge variant="secondary" className="text-xs">
-                      +{category.subCategories.length - 6}
-                    </Badge>
-                  )}
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Sous-catégories :</span>
+                    <Badge variant="outline">{category.subCategories.length}</Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {category.subCategories.slice(0, 6).map((sub) => (
+                      <Badge key={sub.id} variant="secondary" className="text-xs">
+                        {sub.name}
+                      </Badge>
+                    ))}
+                    {category.subCategories.length > 6 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{category.subCategories.length - 6}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -410,6 +458,49 @@ export function AdminCategoriesManagement() {
                   Annuler
                 </Button>
                 <Button onClick={handleSaveCategory}>Sauvegarder</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'édition d'image */}
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier l'image de la catégorie</DialogTitle>
+          </DialogHeader>
+          {selectedCategory && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-2">{selectedCategory.name}</h3>
+                <div className="mb-4">
+                  <img
+                    src={selectedCategory.image || "/placeholder.svg?height=200&width=300&query=catégorie"}
+                    alt={selectedCategory.name}
+                    className="w-full h-48 object-cover rounded-md mx-auto"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label>Télécharger une nouvelle image</Label>
+                <PhotoUpload
+                  onPhotoUploaded={(url) => handleSaveCategoryImage(url)}
+                  buttonText="Sélectionner une image"
+                  maxFiles={1}
+                  acceptedFileTypes="image/*"
+                />
+
+                <p className="text-sm text-gray-500">
+                  Format recommandé : 600x400px, JPG ou PNG. Taille maximale : 2 Mo.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsImageModalOpen(false)}>
+                  Annuler
+                </Button>
               </div>
             </div>
           )}

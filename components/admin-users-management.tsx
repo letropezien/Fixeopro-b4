@@ -10,19 +10,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Users,
-  Edit,
-  Trash2,
-  Eye,
   Plus,
   Search,
   Filter,
   Download,
   Mail,
   Phone,
-  MapPin,
-  Calendar,
   AlertTriangle,
   CheckCircle,
+  Camera,
+  MapPin,
+  Calendar,
+  Eye,
+  Edit,
+  Trash2,
 } from "lucide-react"
 import { StorageService, type User } from "@/lib/storage"
 
@@ -35,6 +36,7 @@ export function AdminUsersManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false)
   const [editForm, setEditForm] = useState<Partial<User>>({})
 
   useEffect(() => {
@@ -88,6 +90,11 @@ export function AdminUsersManagement() {
     setIsDeleteModalOpen(true)
   }
 
+  const handleEditUserPhoto = (user: User) => {
+    setSelectedUser(user)
+    setIsPhotoModalOpen(true)
+  }
+
   const saveUser = () => {
     if (selectedUser && editForm) {
       const updatedUser = { ...selectedUser, ...editForm }
@@ -96,6 +103,16 @@ export function AdminUsersManagement() {
       setIsEditModalOpen(false)
       setSelectedUser(null)
       setEditForm({})
+    }
+  }
+
+  const saveUserPhoto = (photoUrl: string) => {
+    if (selectedUser) {
+      const updatedUser = { ...selectedUser, avatar: photoUrl }
+      StorageService.saveUser(updatedUser)
+      loadUsers()
+      setIsPhotoModalOpen(false)
+      setSelectedUser(null)
     }
   }
 
@@ -304,11 +321,25 @@ export function AdminUsersManagement() {
                   <tr key={user.id} className="border-b hover:bg-gray-50">
                     <td className="p-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium">
-                            {user.firstName[0]}
-                            {user.lastName[0]}
-                          </span>
+                        <div
+                          className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden relative group"
+                          onClick={() => handleEditUserPhoto(user)}
+                        >
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar || "/placeholder.svg"}
+                              alt={`${user.firstName} ${user.lastName}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium">
+                              {user.firstName[0]}
+                              {user.lastName[0]}
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            <Camera className="h-4 w-4 text-white" />
+                          </div>
                         </div>
                         <div>
                           <p className="font-medium">
@@ -374,6 +405,9 @@ export function AdminUsersManagement() {
                         <Button size="sm" variant="outline" onClick={() => handleEditUser(user)}>
                           <Edit className="h-3 w-3" />
                         </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEditUserPhoto(user)}>
+                          <Camera className="h-3 w-3" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -400,17 +434,30 @@ export function AdminUsersManagement() {
           </DialogHeader>
           {selectedUser && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                  {selectedUser.avatar ? (
+                    <img
+                      src={selectedUser.avatar || "/placeholder.svg"}
+                      alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-medium">
+                      {selectedUser.firstName[0]}
+                      {selectedUser.lastName[0]}
+                    </span>
+                  )}
+                </div>
                 <div>
-                  <Label>Nom complet</Label>
-                  <p className="font-medium">
+                  <h3 className="text-lg font-medium">
                     {selectedUser.firstName} {selectedUser.lastName}
-                  </p>
+                  </h3>
+                  <p className="text-gray-600">{selectedUser.email}</p>
                 </div>
-                <div>
-                  <Label>Email</Label>
-                  <p className="font-medium">{selectedUser.email}</p>
-                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Type d'utilisateur</Label>
                   <p className="font-medium">{selectedUser.userType}</p>
@@ -418,6 +465,14 @@ export function AdminUsersManagement() {
                 <div>
                   <Label>Téléphone</Label>
                   <p className="font-medium">{selectedUser.phone || "Non renseigné"}</p>
+                </div>
+                <div>
+                  <Label>Ville</Label>
+                  <p className="font-medium">{selectedUser.city || "Non renseigné"}</p>
+                </div>
+                <div>
+                  <Label>Code postal</Label>
+                  <p className="font-medium">{selectedUser.postalCode || "Non renseigné"}</p>
                 </div>
               </div>
 
@@ -548,6 +603,61 @@ export function AdminUsersManagement() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de modification de photo */}
+      <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier la photo de profil</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                  {selectedUser.avatar ? (
+                    <img
+                      src={selectedUser.avatar || "/placeholder.svg"}
+                      alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl font-medium">
+                      {selectedUser.firstName[0]}
+                      {selectedUser.lastName[0]}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Nouvelle photo de profil</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = (e) => {
+                        const result = e.target?.result as string
+                        saveUserPhoto(result)
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsPhotoModalOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={() => saveUserPhoto("")}>Supprimer la photo</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de suppression */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
         <DialogContent>
@@ -580,4 +690,5 @@ export function AdminUsersManagement() {
   )
 }
 
+// Export par défaut
 export default AdminUsersManagement

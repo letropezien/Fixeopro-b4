@@ -2,6 +2,7 @@ export interface SubCategory {
   id: string
   name: string
   description?: string
+  keywords?: string[]
 }
 
 export interface Category {
@@ -9,8 +10,9 @@ export interface Category {
   name: string
   icon: string
   description: string
-  enabled: boolean
   subCategories: SubCategory[]
+  enabled: boolean
+  image?: string // Ajout du champ pour l'image d'illustration
 }
 
 export interface CategorySettings {
@@ -30,6 +32,7 @@ export class CategoriesService {
         icon: "🧰",
         description: "Réparation d'appareils électroménagers",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "lave-linge", name: "Lave-linge", description: "Réparation de machines à laver" },
           { id: "lave-vaisselle", name: "Lave-vaisselle", description: "Réparation de lave-vaisselles" },
@@ -49,6 +52,7 @@ export class CategoriesService {
         icon: "💻",
         description: "Réparation d'ordinateurs et matériel informatique",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "pc-portable", name: "PC Portable", description: "Réparation d'ordinateurs portables" },
           { id: "pc-fixe", name: "PC Fixe", description: "Réparation d'ordinateurs de bureau" },
@@ -68,6 +72,7 @@ export class CategoriesService {
         icon: "📱",
         description: "Réparation de smartphones et téléphones",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "iphone", name: "iPhone", description: "Réparation d'iPhone" },
           { id: "samsung", name: "Samsung", description: "Réparation de téléphones Samsung" },
@@ -87,6 +92,7 @@ export class CategoriesService {
         icon: "📺",
         description: "Réparation d'appareils électroniques",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "tv", name: "TV", description: "Réparation de téléviseurs" },
           { id: "console", name: "Console de jeux", description: "Réparation de consoles de jeux" },
@@ -105,6 +111,7 @@ export class CategoriesService {
         icon: "🚿",
         description: "Réparation et installation de plomberie",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "fuite", name: "Fuite d'eau", description: "Réparation de fuites d'eau" },
           { id: "debouchage", name: "Débouchage", description: "Débouchage de canalisations" },
@@ -124,6 +131,7 @@ export class CategoriesService {
         icon: "⚡",
         description: "Réparation et installation électrique",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "panne", name: "Panne électrique", description: "Réparation de pannes électriques" },
           { id: "tableau", name: "Tableau électrique", description: "Installation et mise aux normes de tableaux" },
@@ -143,6 +151,7 @@ export class CategoriesService {
         icon: "🔥",
         description: "Réparation et installation de chauffage",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "chaudiere", name: "Chaudière", description: "Réparation et entretien de chaudières" },
           { id: "radiateur", name: "Radiateur", description: "Installation et réparation de radiateurs" },
@@ -161,6 +170,7 @@ export class CategoriesService {
         icon: "❄️",
         description: "Réparation et installation de climatisation",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "clim-split", name: "Climatiseur split", description: "Installation et réparation de splits" },
           { id: "clim-mobile", name: "Climatiseur mobile", description: "Réparation de climatiseurs mobiles" },
@@ -177,6 +187,7 @@ export class CategoriesService {
         icon: "🔒",
         description: "Réparation et installation de serrures",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "ouverture-porte", name: "Ouverture de porte", description: "Ouverture de portes claquées" },
           { id: "changement-serrure", name: "Changement de serrure", description: "Remplacement de serrures" },
@@ -195,6 +206,7 @@ export class CategoriesService {
         icon: "🪟",
         description: "Réparation et installation de vitres",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "vitre-cassee", name: "Vitre cassée", description: "Remplacement de vitres cassées" },
           { id: "double-vitrage", name: "Double vitrage", description: "Installation de double vitrage" },
@@ -212,6 +224,7 @@ export class CategoriesService {
         icon: "🪚",
         description: "Réparation et installation de menuiserie",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "porte", name: "Porte", description: "Installation et réparation de portes" },
           { id: "fenetre-bois", name: "Fenêtre bois", description: "Installation et réparation de fenêtres en bois" },
@@ -230,6 +243,7 @@ export class CategoriesService {
         icon: "🌱",
         description: "Réparation d'outils de jardinage",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "tondeuse", name: "Tondeuse", description: "Réparation de tondeuses" },
           { id: "taille-haie", name: "Taille-haie", description: "Réparation de taille-haies" },
@@ -248,6 +262,7 @@ export class CategoriesService {
         icon: "🚗",
         description: "Réparation automobile",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "diagnostic", name: "Diagnostic", description: "Diagnostic automobile" },
           { id: "batterie-auto", name: "Batterie", description: "Remplacement de batteries" },
@@ -267,6 +282,7 @@ export class CategoriesService {
         icon: "🧹",
         description: "Services de nettoyage",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "nettoyage-maison", name: "Maison", description: "Nettoyage de maisons" },
           { id: "nettoyage-bureau", name: "Bureau", description: "Nettoyage de bureaux" },
@@ -283,6 +299,7 @@ export class CategoriesService {
         icon: "📦",
         description: "Services de déménagement",
         enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
         subCategories: [
           { id: "demenagement-complet", name: "Déménagement complet", description: "Service complet de déménagement" },
           { id: "transport-meuble", name: "Transport de meubles", description: "Transport de meubles spécifiques" },
@@ -378,5 +395,15 @@ export class CategoriesService {
   static getSubCategoryById(categoryId: string, subCategoryId: string): SubCategory | undefined {
     const category = this.getCategoryById(categoryId)
     return category?.subCategories.find((sub) => sub.id === subCategoryId)
+  }
+
+  // Nouvelle méthode pour mettre à jour l'image d'une catégorie
+  static updateCategoryImage(id: string, imageUrl: string): void {
+    const categories = this.getCategories()
+    const index = categories.findIndex((cat) => cat.id === id)
+    if (index !== -1) {
+      categories[index].image = imageUrl
+      this.saveCategories(categories)
+    }
   }
 }

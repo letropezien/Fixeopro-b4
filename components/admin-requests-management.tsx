@@ -4,50 +4,76 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  Wrench,
+  Search,
+  Filter,
+  Download,
+  Eye,
   Edit,
   Trash2,
-  Eye,
-  Search,
-  Download,
-  MapPin,
   Calendar,
-  Euro,
-  MessageSquare,
+  MapPin,
+  User,
+  Phone,
+  Mail,
   Clock,
+  AlertCircle,
   CheckCircle,
   XCircle,
-  AlertTriangle,
+  Wrench,
 } from "lucide-react"
-import { StorageService, type RepairRequest } from "@/lib/storage"
+import { RequestStatusBadge } from "@/components/request-status-badge"
+
+interface RepairRequest {
+  id: string
+  title: string
+  description: string
+  category: string
+  subcategory: string
+  urgency: "low" | "medium" | "high"
+  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
+  photos: string[]
+  location: {
+    address: string
+    city: string
+    postalCode: string
+    coordinates?: { lat: number; lng: number }
+  }
+  client: {
+    id: string
+    name: string
+    email: string
+    phone: string
+  }
+  assignedRepairer?: {
+    id: string
+    name: string
+    email: string
+    phone: string
+  }
+  budget?: {
+    min: number
+    max: number
+  }
+  createdAt: string
+  updatedAt: string
+  scheduledDate?: string
+  completedAt?: string
+}
 
 export function AdminRequestsManagement() {
   const [requests, setRequests] = useState<RepairRequest[]>([])
   const [filteredRequests, setFilteredRequests] = useState<RepairRequest[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "open" | "in_progress" | "completed" | "cancelled">("all")
-  const [filterCategory, setFilterCategory] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [urgencyFilter, setUrgencyFilter] = useState<string>("all")
   const [selectedRequest, setSelectedRequest] = useState<RepairRequest | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-
-  const categories = [
-    "électroménager",
-    "plomberie",
-    "électricité",
-    "informatique",
-    "téléphonie",
-    "chauffage",
-    "climatisation",
-    "électronique",
-    "autres",
-  ]
 
   useEffect(() => {
     loadRequests()
@@ -55,24 +81,93 @@ export function AdminRequestsManagement() {
 
   useEffect(() => {
     filterRequests()
-  }, [requests, searchTerm, filterStatus, filterCategory])
+  }, [requests, searchTerm, statusFilter, urgencyFilter])
 
   const loadRequests = () => {
-    const allRequests = StorageService.getRepairRequests()
-    setRequests(allRequests)
+    // Charger les demandes depuis le localStorage
+    const savedRequests = localStorage.getItem("fixeopro_requests")
+    if (savedRequests) {
+      const parsedRequests = JSON.parse(savedRequests)
+      // Trier par date de création (plus récente en premier)
+      const sortedRequests = parsedRequests.sort(
+        (a: RepairRequest, b: RepairRequest) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      setRequests(sortedRequests)
+    } else {
+      // Créer des données d'exemple si aucune demande n'existe
+      const exampleRequests: RepairRequest[] = [
+        {
+          id: "req-001",
+          title: "Réparation lave-linge",
+          description:
+            "Mon lave-linge ne démarre plus, il fait un bruit étrange quand j'appuie sur le bouton de démarrage.",
+          category: "Électroménager",
+          subcategory: "Lave-linge",
+          urgency: "high",
+          status: "pending",
+          photos: ["/placeholder.svg?height=200&width=300"],
+          location: {
+            address: "123 Rue de la République",
+            city: "Paris",
+            postalCode: "75001",
+          },
+          client: {
+            id: "client-001",
+            name: "Marie Dupont",
+            email: "marie.dupont@email.com",
+            phone: "06 12 34 56 78",
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          budget: { min: 50, max: 150 },
+        },
+        {
+          id: "req-002",
+          title: "Fuite robinet cuisine",
+          description: "Le robinet de ma cuisine fuit constamment, même quand il est fermé.",
+          category: "Plomberie",
+          subcategory: "Robinetterie",
+          urgency: "medium",
+          status: "assigned",
+          photos: ["/placeholder.svg?height=200&width=300"],
+          location: {
+            address: "45 Avenue des Champs",
+            city: "Lyon",
+            postalCode: "69001",
+          },
+          client: {
+            id: "client-002",
+            name: "Pierre Martin",
+            email: "pierre.martin@email.com",
+            phone: "06 98 76 54 32",
+          },
+          assignedRepairer: {
+            id: "repairer-001",
+            name: "Jean Plombier",
+            email: "jean.plombier@email.com",
+            phone: "06 11 22 33 44",
+          },
+          createdAt: new Date(Date.now() - 86400000).toISOString(), // Hier
+          updatedAt: new Date().toISOString(),
+          budget: { min: 80, max: 200 },
+        },
+      ]
+      localStorage.setItem("fixeopro_requests", JSON.stringify(exampleRequests))
+      setRequests(exampleRequests)
+    }
   }
 
   const filterRequests = () => {
     let filtered = requests
 
     // Filtrer par statut
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((request) => request.status === filterStatus)
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((request) => request.status === statusFilter)
     }
 
-    // Filtrer par catégorie
-    if (filterCategory !== "all") {
-      filtered = filtered.filter((request) => request.category === filterCategory)
+    // Filtrer par urgence
+    if (urgencyFilter !== "all") {
+      filtered = filtered.filter((request) => request.urgency === urgencyFilter)
     }
 
     // Filtrer par recherche
@@ -81,9 +176,9 @@ export function AdminRequestsManagement() {
         (request) =>
           request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.client.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.client.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          request.city.toLowerCase().includes(searchTerm.toLowerCase()),
+          request.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.location.city.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
@@ -105,28 +200,21 @@ export function AdminRequestsManagement() {
     setIsDeleteModalOpen(true)
   }
 
-  const deleteRequest = () => {
-    if (selectedRequest) {
-      const allRequests = StorageService.getRepairRequests()
-      const updatedRequests = allRequests.filter((r) => r.id !== selectedRequest.id)
-      localStorage.setItem("fixeopro_repair_requests", JSON.stringify(updatedRequests))
-      loadRequests()
-      setIsDeleteModalOpen(false)
-      setSelectedRequest(null)
-    }
+  const updateRequestStatus = (requestId: string, newStatus: RepairRequest["status"]) => {
+    const updatedRequests = requests.map((request) =>
+      request.id === requestId ? { ...request, status: newStatus, updatedAt: new Date().toISOString() } : request,
+    )
+    setRequests(updatedRequests)
+    localStorage.setItem("fixeopro_requests", JSON.stringify(updatedRequests))
   }
 
-  const updateRequestStatus = (requestId: string, newStatus: RepairRequest["status"]) => {
-    const request = StorageService.getRepairRequestById(requestId)
-    if (request) {
-      request.status = newStatus
-      if (newStatus === "completed") {
-        request.completedAt = new Date().toISOString()
-      } else if (newStatus === "cancelled") {
-        request.cancelledAt = new Date().toISOString()
-      }
-      StorageService.saveRepairRequest(request)
-      loadRequests()
+  const deleteRequest = () => {
+    if (selectedRequest) {
+      const updatedRequests = requests.filter((r) => r.id !== selectedRequest.id)
+      setRequests(updatedRequests)
+      localStorage.setItem("fixeopro_requests", JSON.stringify(updatedRequests))
+      setIsDeleteModalOpen(false)
+      setSelectedRequest(null)
     }
   }
 
@@ -141,31 +229,17 @@ export function AdminRequestsManagement() {
     linkElement.click()
   }
 
-  const getStatusBadge = (status: RepairRequest["status"]) => {
-    const statusConfig = {
-      open: { label: "Ouverte", className: "bg-blue-500" },
-      in_progress: { label: "En cours", className: "bg-orange-500" },
-      completed: { label: "Terminée", className: "bg-green-500" },
-      cancelled: { label: "Annulée", className: "bg-red-500" },
-    }
-
-    const config = statusConfig[status]
-    return <Badge className={config.className}>{config.label}</Badge>
-  }
-
   const getUrgencyBadge = (urgency: string) => {
-    const urgencyConfig = {
-      "same-day": { label: "Aujourd'hui", className: "bg-red-500" },
-      urgent: { label: "Urgent", className: "bg-orange-500" },
-      "this-week": { label: "Cette semaine", className: "bg-yellow-500" },
-      flexible: { label: "Flexible", className: "bg-gray-500" },
+    switch (urgency) {
+      case "high":
+        return <Badge className="bg-red-500">Urgent</Badge>
+      case "medium":
+        return <Badge className="bg-orange-500">Moyen</Badge>
+      case "low":
+        return <Badge className="bg-green-500">Faible</Badge>
+      default:
+        return <Badge variant="outline">{urgency}</Badge>
     }
-
-    const config = urgencyConfig[urgency as keyof typeof urgencyConfig] || {
-      label: urgency,
-      className: "bg-gray-500",
-    }
-    return <Badge className={config.className}>{config.label}</Badge>
   }
 
   const formatDate = (dateString: string) => {
@@ -181,10 +255,11 @@ export function AdminRequestsManagement() {
   const getRequestStats = () => {
     return {
       total: requests.length,
-      open: requests.filter((r) => r.status === "open").length,
+      pending: requests.filter((r) => r.status === "pending").length,
+      assigned: requests.filter((r) => r.status === "assigned").length,
       inProgress: requests.filter((r) => r.status === "in_progress").length,
       completed: requests.filter((r) => r.status === "completed").length,
-      cancelled: requests.filter((r) => r.status === "cancelled").length,
+      urgent: requests.filter((r) => r.urgency === "high").length,
     }
   }
 
@@ -192,20 +267,22 @@ export function AdminRequestsManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header avec actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Gestion des demandes</h2>
-          <p className="text-gray-600">Gérez toutes les demandes de dépannage</p>
+          <p className="text-gray-600">Gérez toutes les demandes de réparation de la plateforme</p>
         </div>
-        <Button onClick={exportRequests} variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Exporter
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={exportRequests} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
+        </div>
       </div>
 
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -221,19 +298,8 @@ export function AdminRequestsManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Ouvertes</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.open}</p>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">En cours</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.inProgress}</p>
+                <p className="text-sm text-gray-600">En attente</p>
+                <p className="text-2xl font-bold">{stats.pending}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-500" />
             </div>
@@ -243,8 +309,30 @@ export function AdminRequestsManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm text-gray-600">Assignées</p>
+                <p className="text-2xl font-bold">{stats.assigned}</p>
+              </div>
+              <User className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">En cours</p>
+                <p className="text-2xl font-bold">{stats.inProgress}</p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm text-gray-600">Terminées</p>
-                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+                <p className="text-2xl font-bold">{stats.completed}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
@@ -254,8 +342,8 @@ export function AdminRequestsManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Annulées</p>
-                <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+                <p className="text-sm text-gray-600">Urgentes</p>
+                <p className="text-2xl font-bold">{stats.urgent}</p>
               </div>
               <XCircle className="h-8 w-8 text-red-500" />
             </div>
@@ -263,7 +351,7 @@ export function AdminRequestsManagement() {
         </Card>
       </div>
 
-      {/* Filtres */}
+      {/* Filtres et recherche */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -279,29 +367,29 @@ export function AdminRequestsManagement() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-40">
+                  <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="open">Ouvertes</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="assigned">Assignées</SelectItem>
                   <SelectItem value="in_progress">En cours</SelectItem>
                   <SelectItem value="completed">Terminées</SelectItem>
                   <SelectItem value="cancelled">Annulées</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Toutes catégories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">Toutes urgences</SelectItem>
+                  <SelectItem value="high">Urgent</SelectItem>
+                  <SelectItem value="medium">Moyen</SelectItem>
+                  <SelectItem value="low">Faible</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -312,110 +400,100 @@ export function AdminRequestsManagement() {
       {/* Liste des demandes */}
       <Card>
         <CardHeader>
-          <CardTitle>Demandes ({filteredRequests.length})</CardTitle>
+          <CardTitle>Demandes de réparation ({filteredRequests.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3">Demande</th>
-                  <th className="text-left p-3">Client</th>
-                  <th className="text-left p-3">Catégorie</th>
-                  <th className="text-left p-3">Localisation</th>
-                  <th className="text-left p-3">Budget</th>
-                  <th className="text-left p-3">Urgence</th>
-                  <th className="text-left p-3">Statut</th>
-                  <th className="text-left p-3">Réponses</th>
-                  <th className="text-left p-3">Date</th>
-                  <th className="text-left p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRequests.map((request) => (
-                  <tr key={request.id} className="border-b hover:bg-gray-50">
-                    <td className="p-3">
-                      <div>
-                        <p className="font-medium">{request.title}</p>
-                        <p className="text-sm text-gray-600 truncate max-w-xs">{request.description}</p>
+          <div className="space-y-4">
+            {filteredRequests.map((request) => (
+              <div key={request.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex items-start space-x-4">
+                  {/* Photo d'illustration */}
+                  <div className="w-20 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                    {request.photos && request.photos.length > 0 ? (
+                      <img
+                        src={request.photos[0] || "/placeholder.svg"}
+                        alt={request.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Wrench className="h-8 w-8 text-gray-400" />
                       </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-xs">{request.client.initials}</span>
+                    )}
+                  </div>
+
+                  {/* Contenu principal */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-medium text-gray-900 truncate">{request.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">{request.description}</p>
+                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 mr-1" />
+                            {request.client.name}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {request.location.city}
+                          </div>
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {formatDate(request.createdAt)}
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {request.client.firstName} {request.client.lastName}
-                          </p>
+                      </div>
+
+                      {/* Badges et actions */}
+                      <div className="flex flex-col items-end space-y-2 ml-4">
+                        <div className="flex space-x-2">
+                          <RequestStatusBadge status={request.status} />
+                          {getUrgencyBadge(request.urgency)}
+                        </div>
+                        <div className="flex space-x-1">
+                          <Button size="sm" variant="outline" onClick={() => handleViewRequest(request)}>
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEditRequest(request)}>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteRequest(request)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant="outline">{request.category}</Badge>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center text-sm">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {request.city} ({request.postalCode})
+                    </div>
+
+                    {/* Informations supplémentaires */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-4">
+                          <span className="font-medium">{request.category}</span>
+                          {request.subcategory && <span className="text-gray-500">• {request.subcategory}</span>}
+                          {request.budget && (
+                            <span className="text-green-600">
+                              {request.budget.min}€ - {request.budget.max}€
+                            </span>
+                          )}
+                        </div>
+                        {request.assignedRepairer && (
+                          <div className="text-blue-600">Assigné à {request.assignedRepairer.name}</div>
+                        )}
                       </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center text-sm">
-                        <Euro className="h-3 w-3 mr-1" />
-                        {request.budget}
-                      </div>
-                    </td>
-                    <td className="p-3">{getUrgencyBadge(request.urgency)}</td>
-                    <td className="p-3">
-                      <Select
-                        value={request.status}
-                        onValueChange={(value: RepairRequest["status"]) => updateRequestStatus(request.id, value)}
-                      >
-                        <SelectTrigger className="w-32">{getStatusBadge(request.status)}</SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="open">Ouverte</SelectItem>
-                          <SelectItem value="in_progress">En cours</SelectItem>
-                          <SelectItem value="completed">Terminée</SelectItem>
-                          <SelectItem value="cancelled">Annulée</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center text-sm">
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        {request.responses?.length || 0}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center text-sm">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {formatDate(request.createdAt)}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => handleViewRequest(request)}>
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleEditRequest(request)}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDeleteRequest(request)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {filteredRequests.length === 0 && (
+              <div className="text-center py-8 text-gray-500">Aucune demande trouvée avec les filtres actuels.</div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -428,95 +506,170 @@ export function AdminRequestsManagement() {
           </DialogHeader>
           {selectedRequest && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label>Titre</Label>
-                    <p className="font-medium">{selectedRequest.title}</p>
-                  </div>
-                  <div>
-                    <Label>Description</Label>
-                    <p className="font-medium">{selectedRequest.description}</p>
-                  </div>
-                  <div>
-                    <Label>Catégorie</Label>
-                    <p className="font-medium">{selectedRequest.category}</p>
-                  </div>
-                  <div>
-                    <Label>Budget</Label>
-                    <p className="font-medium">{selectedRequest.budget}</p>
-                  </div>
+              {/* En-tête avec photo et titre */}
+              <div className="flex items-start space-x-4">
+                <div className="w-32 h-32 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                  {selectedRequest.photos && selectedRequest.photos.length > 0 ? (
+                    <img
+                      src={selectedRequest.photos[0] || "/placeholder.svg"}
+                      alt={selectedRequest.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Wrench className="h-16 w-16 text-gray-400" />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Client</Label>
-                    <p className="font-medium">
-                      {selectedRequest.client.firstName} {selectedRequest.client.lastName}
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Localisation</Label>
-                    <p className="font-medium">
-                      {selectedRequest.city} ({selectedRequest.postalCode})
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Urgence</Label>
-                    <p className="font-medium">{selectedRequest.urgencyLabel}</p>
-                  </div>
-                  <div>
-                    <Label>Statut</Label>
-                    <p className="font-medium">{getStatusBadge(selectedRequest.status)}</p>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold">{selectedRequest.title}</h2>
+                  <p className="text-gray-600 mt-2">{selectedRequest.description}</p>
+                  <div className="flex space-x-2 mt-3">
+                    <RequestStatusBadge status={selectedRequest.status} />
+                    {getUrgencyBadge(selectedRequest.urgency)}
                   </div>
                 </div>
               </div>
 
-              {selectedRequest.photos && selectedRequest.photos.length > 0 && (
-                <div>
-                  <Label>Photos</Label>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    {selectedRequest.photos.map((photo, index) => (
-                      <img
-                        key={index}
-                        src={photo || "/placeholder.svg"}
-                        alt={`Photo ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                    ))}
-                  </div>
-                </div>
+              {/* Informations détaillées */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Informations client */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Client</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      <span className="font-medium">{selectedRequest.client.name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Mail className="h-4 w-4 mr-2" />
+                      <span>{selectedRequest.client.email}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Phone className="h-4 w-4 mr-2" />
+                      <span>{selectedRequest.client.phone}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Localisation */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Localisation</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      <span>{selectedRequest.location.address}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">{selectedRequest.location.city}</span>
+                      <span className="ml-2 text-gray-500">({selectedRequest.location.postalCode})</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Détails techniques */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Détails</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <span className="font-medium">Catégorie:</span>
+                      <span className="ml-2">{selectedRequest.category}</span>
+                    </div>
+                    {selectedRequest.subcategory && (
+                      <div>
+                        <span className="font-medium">Sous-catégorie:</span>
+                        <span className="ml-2">{selectedRequest.subcategory}</span>
+                      </div>
+                    )}
+                    {selectedRequest.budget && (
+                      <div>
+                        <span className="font-medium">Budget:</span>
+                        <span className="ml-2 text-green-600">
+                          {selectedRequest.budget.min}€ - {selectedRequest.budget.max}€
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Réparateur assigné */}
+                {selectedRequest.assignedRepairer && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Réparateur assigné</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center">
+                        <User className="h-4 w-4 mr-2" />
+                        <span className="font-medium">{selectedRequest.assignedRepairer.name}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Mail className="h-4 w-4 mr-2" />
+                        <span>{selectedRequest.assignedRepairer.email}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 mr-2" />
+                        <span>{selectedRequest.assignedRepairer.phone}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Photos supplémentaires */}
+              {selectedRequest.photos && selectedRequest.photos.length > 1 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Photos supplémentaires</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {selectedRequest.photos.slice(1).map((photo, index) => (
+                        <div key={index} className="w-full h-24 bg-gray-200 rounded-lg overflow-hidden">
+                          <img
+                            src={photo || "/placeholder.svg"}
+                            alt={`Photo ${index + 2}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
-              {selectedRequest.responses && selectedRequest.responses.length > 0 && (
-                <div>
-                  <Label>Réponses ({selectedRequest.responses.length})</Label>
-                  <div className="space-y-3 mt-2">
-                    {selectedRequest.responses.map((response) => (
-                      <div key={response.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-medium">
-                              {response.reparateur.firstName} {response.reparateur.lastName}
-                            </p>
-                            {response.reparateur.companyName && (
-                              <p className="text-sm text-gray-600">{response.reparateur.companyName}</p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            {response.price && <p className="font-medium text-green-600">{response.price}</p>}
-                            {response.estimatedTime && (
-                              <p className="text-sm text-gray-600">Durée: {response.estimatedTime}</p>
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-sm">{response.text}</p>
-                        <p className="text-xs text-gray-500 mt-2">{formatDate(response.createdAt)}</p>
-                        {response.isSelected && <Badge className="mt-2 bg-green-500">Sélectionnée</Badge>}
-                      </div>
-                    ))}
-                  </div>
+              {/* Actions rapides */}
+              <div className="flex justify-between items-center pt-4 border-t">
+                <div className="text-sm text-gray-500">
+                  Créée le {formatDate(selectedRequest.createdAt)}
+                  {selectedRequest.updatedAt !== selectedRequest.createdAt && (
+                    <span> • Modifiée le {formatDate(selectedRequest.updatedAt)}</span>
+                  )}
                 </div>
-              )}
+                <div className="flex space-x-2">
+                  <Select
+                    value={selectedRequest.status}
+                    onValueChange={(value) => updateRequestStatus(selectedRequest.id, value as RepairRequest["status"])}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">En attente</SelectItem>
+                      <SelectItem value="assigned">Assignée</SelectItem>
+                      <SelectItem value="in_progress">En cours</SelectItem>
+                      <SelectItem value="completed">Terminée</SelectItem>
+                      <SelectItem value="cancelled">Annulée</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>
