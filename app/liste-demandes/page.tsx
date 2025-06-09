@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Clock, Euro, User, Phone, Filter, Search, Calendar, MessageSquare } from "lucide-react"
+import { MapPin, Clock, Euro, User, Phone, Filter, Search, MessageSquare, CheckCircle, ImageIcon } from "lucide-react"
 import Link from "next/link"
 
-// Données de démonstration
+// Données de démonstration avec photos
 const mockRequests = [
   {
     id: "1",
@@ -30,9 +30,13 @@ const mockRequests = [
       phone: "06 12 34 56 78",
       email: "marie.d@email.com",
     },
-    createdAt: "2024-01-15T10:30:00Z",
+    createdAt: "2024-06-02T10:30:00Z",
     responses: 3,
-    photos: ["/placeholder.svg?height=100&width=100&text=Photo1"],
+    status: "open",
+    photos: [
+      "/placeholder.svg?height=200&width=300&text=Lave-linge+en+panne",
+      "/placeholder.svg?height=200&width=300&text=Eau+stagnante",
+    ],
   },
   {
     id: "2",
@@ -52,9 +56,10 @@ const mockRequests = [
       phone: "06 98 76 54 32",
       email: "pierre.m@email.com",
     },
-    createdAt: "2024-01-14T14:20:00Z",
+    createdAt: "2024-05-14T14:20:00Z",
     responses: 1,
-    photos: [],
+    status: "in_progress",
+    photos: ["/placeholder.svg?height=200&width=300&text=Écran+noir+PC"],
   },
   {
     id: "3",
@@ -74,9 +79,83 @@ const mockRequests = [
       phone: "06 45 67 89 12",
       email: "sophie.l@email.com",
     },
-    createdAt: "2024-01-14T09:15:00Z",
+    createdAt: "2024-05-25T09:15:00Z",
     responses: 5,
-    photos: ["/placeholder.svg?height=100&width=100&text=Photo1", "/placeholder.svg?height=100&width=100&text=Photo2"],
+    status: "open",
+    photos: [
+      "/placeholder.svg?height=200&width=300&text=Fuite+robinet",
+      "/placeholder.svg?height=200&width=300&text=Dégâts+eau",
+    ],
+  },
+  {
+    id: "4",
+    title: "Installation climatisation",
+    description: "Installation d'une climatisation réversible dans un appartement de 50m².",
+    category: "Climatisation",
+    urgency: "Cette semaine",
+    urgencyLevel: "medium",
+    city: "Nice",
+    postalCode: "06000",
+    department: "06",
+    departmentName: "Alpes-Maritimes",
+    budget: "300-500€",
+    client: {
+      firstName: "Thomas",
+      lastName: "R.",
+      phone: "06 78 90 12 34",
+      email: "thomas.r@email.com",
+    },
+    createdAt: "2024-05-20T11:45:00Z",
+    responses: 8,
+    status: "completed",
+    completedAt: "2024-06-01T15:30:00Z",
+    photos: ["/placeholder.svg?height=200&width=300&text=Salon+à+climatiser"],
+  },
+  {
+    id: "5",
+    title: "Réparation téléviseur Sony",
+    description: "Écran qui s'éteint après quelques minutes d'utilisation. TV Sony Bravia de 2020.",
+    category: "Multimédia",
+    urgency: "Flexible",
+    urgencyLevel: "low",
+    city: "Bordeaux",
+    postalCode: "33000",
+    department: "33",
+    departmentName: "Gironde",
+    budget: "70-150€",
+    client: {
+      firstName: "Julie",
+      lastName: "B.",
+      phone: "06 23 45 67 89",
+      email: "julie.b@email.com",
+    },
+    createdAt: "2024-05-10T16:20:00Z",
+    responses: 2,
+    status: "open",
+    photos: [],
+  },
+  {
+    id: "6",
+    title: "Panne chaudière gaz",
+    description: "Ma chaudière ne démarre plus depuis ce matin. Plus d'eau chaude ni de chauffage.",
+    category: "Chauffage",
+    urgency: "Urgent",
+    urgencyLevel: "high",
+    city: "Toulouse",
+    postalCode: "31000",
+    department: "31",
+    departmentName: "Haute-Garonne",
+    budget: "100-200€",
+    client: {
+      firstName: "Michel",
+      lastName: "B.",
+      phone: "06 11 22 33 44",
+      email: "michel.b@email.com",
+    },
+    createdAt: "2024-06-01T08:15:00Z",
+    responses: 0,
+    status: "open",
+    photos: ["/placeholder.svg?height=200&width=300&text=Chaudière+en+panne"],
   },
 ]
 
@@ -111,7 +190,38 @@ export default function ListeDemandesPage() {
     category: "",
     department: "",
     urgency: "",
+    status: "",
   })
+
+  // Fonction pour déterminer si une annonce est "nouvelle" (moins d'une semaine)
+  const isNewRequest = (createdAt: string) => {
+    const created = new Date(createdAt)
+    const now = new Date()
+    const diffTime = now.getTime() - created.getTime()
+    const diffDays = diffTime / (1000 * 60 * 60 * 24)
+    return diffDays <= 7
+  }
+
+  // Fonction pour déterminer si une annonce terminée doit être supprimée (plus de 15 jours)
+  const shouldBeDeleted = (completedAt: string) => {
+    if (!completedAt) return false
+    const completed = new Date(completedAt)
+    const now = new Date()
+    const diffTime = now.getTime() - completed.getTime()
+    const diffDays = diffTime / (1000 * 60 * 60 * 24)
+    return diffDays > 15
+  }
+
+  // Filtrer les annonces qui devraient être supprimées automatiquement
+  useEffect(() => {
+    const filteredByLifecycle = mockRequests.filter((request) => {
+      if (request.status === "completed" && request.completedAt && shouldBeDeleted(request.completedAt)) {
+        return false
+      }
+      return true
+    })
+    setRequests(filteredByLifecycle)
+  }, [])
 
   useEffect(() => {
     let filtered = requests
@@ -137,6 +247,14 @@ export default function ListeDemandesPage() {
       filtered = filtered.filter((request) => request.urgencyLevel === filters.urgency)
     }
 
+    if (filters.status) {
+      if (filters.status === "new") {
+        filtered = filtered.filter((request) => isNewRequest(request.createdAt))
+      } else {
+        filtered = filtered.filter((request) => request.status === filters.status)
+      }
+    }
+
     setFilteredRequests(filtered)
   }, [filters, requests])
 
@@ -153,6 +271,51 @@ export default function ListeDemandesPage() {
     }
   }
 
+  const getStatusBadge = (request: any) => {
+    if (isNewRequest(request.createdAt)) {
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Nouvelle</Badge>
+    }
+
+    if (request.status === "in_progress") {
+      return (
+        <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+          <Clock className="h-3 w-3 mr-1" />
+          En cours
+        </Badge>
+      )
+    }
+
+    if (request.status === "completed") {
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Terminée
+        </Badge>
+      )
+    }
+
+    return null
+  }
+
+  const getResponsesBadge = (count: number) => {
+    let bgColor = "bg-gray-100 text-gray-700"
+
+    if (count === 0) {
+      bgColor = "bg-red-50 text-red-700"
+    } else if (count >= 5) {
+      bgColor = "bg-green-50 text-green-700"
+    } else if (count >= 1) {
+      bgColor = "bg-blue-50 text-blue-700"
+    }
+
+    return (
+      <Badge variant="outline" className={`${bgColor}`}>
+        <MessageSquare className="h-3 w-3 mr-1" />
+        {count}
+      </Badge>
+    )
+  }
+
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -165,7 +328,7 @@ export default function ListeDemandesPage() {
   }
 
   const resetFilters = () => {
-    setFilters({ search: "", category: "", department: "", urgency: "" })
+    setFilters({ search: "", category: "", department: "", urgency: "", status: "" })
   }
 
   return (
@@ -188,7 +351,7 @@ export default function ListeDemandesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               {/* Recherche */}
               <div className="lg:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Recherche</label>
@@ -208,7 +371,7 @@ export default function ListeDemandesPage() {
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Catégorie</label>
                 <Select value={filters.category} onValueChange={(value) => setFilters({ ...filters, category: value })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Toutes les catégories" />
+                    <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les catégories</SelectItem>
@@ -229,7 +392,7 @@ export default function ListeDemandesPage() {
                   onValueChange={(value) => setFilters({ ...filters, department: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Tous les départements" />
+                    <SelectValue placeholder="Tous" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les départements</SelectItem>
@@ -247,13 +410,30 @@ export default function ListeDemandesPage() {
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Urgence</label>
                 <Select value={filters.urgency} onValueChange={(value) => setFilters({ ...filters, urgency: value })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Toutes les urgences" />
+                    <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les urgences</SelectItem>
                     <SelectItem value="high">Urgent</SelectItem>
                     <SelectItem value="medium">Cette semaine</SelectItem>
                     <SelectItem value="low">Flexible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Statut */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Statut</label>
+                <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tous" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="new">Nouvelles</SelectItem>
+                    <SelectItem value="open">Ouvertes</SelectItem>
+                    <SelectItem value="in_progress">En cours</SelectItem>
+                    <SelectItem value="completed">Terminées</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -272,7 +452,7 @@ export default function ListeDemandesPage() {
         </Card>
 
         {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{filteredRequests.length}</div>
@@ -281,110 +461,134 @@ export default function ListeDemandesPage() {
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {filteredRequests.filter((r) => r.urgencyLevel === "high").length}
+              <div className="text-2xl font-bold text-blue-600">
+                {filteredRequests.filter((r) => isNewRequest(r.createdAt)).length}
               </div>
-              <p className="text-sm text-gray-600">Demandes urgentes</p>
+              <p className="text-sm text-gray-600">Nouvelles demandes</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-amber-600">
+                {filteredRequests.filter((r) => r.status === "in_progress").length}
+              </div>
+              <p className="text-sm text-gray-600">En cours</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-600">
-                {filteredRequests.filter((r) => r.responses === 0).length}
+                {filteredRequests.filter((r) => r.status === "completed").length}
               </div>
-              <p className="text-sm text-gray-600">Sans réponse</p>
+              <p className="text-sm text-gray-600">Terminées</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {new Set(filteredRequests.map((r) => r.department)).size}
+                {filteredRequests.reduce((total, r) => total + r.responses, 0)}
               </div>
-              <p className="text-sm text-gray-600">Départements</p>
+              <p className="text-sm text-gray-600">Réponses totales</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Liste des demandes */}
-        <div className="space-y-6">
+        {/* Grid des demandes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRequests.map((request) => (
-            <Card key={request.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        {request.category}
-                      </Badge>
-                      <Badge className={getUrgencyColor(request.urgencyLevel)}>{request.urgency}</Badge>
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-                        {request.department} - {request.departmentName}
-                      </Badge>
-                      <span className="text-sm text-gray-500 flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {getTimeAgo(request.createdAt)}
-                      </span>
-                    </div>
-                    <CardTitle className="text-xl text-gray-900 mb-2">{request.title}</CardTitle>
+            <Card
+              key={request.id}
+              className={`hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden ${
+                request.status === "completed"
+                  ? "border-green-200"
+                  : request.status === "in_progress"
+                    ? "border-amber-200"
+                    : isNewRequest(request.createdAt)
+                      ? "border-blue-200"
+                      : "border-gray-200"
+              }`}
+            >
+              {/* Image en avant-plan */}
+              <div className="relative h-48 bg-gray-100 overflow-hidden">
+                {request.photos && request.photos.length > 0 ? (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={request.photos[0] || "/placeholder.svg"}
+                      alt={request.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {request.photos.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full text-xs flex items-center">
+                        <ImageIcon className="h-3 w-3 mr-1" />+{request.photos.length - 1}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center text-sm text-gray-600 mb-1">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {request.city} ({request.postalCode})
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Euro className="h-4 w-4 mr-1" />
-                      {request.budget}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 mb-4 leading-relaxed">{request.description}</p>
-
-                {/* Photos */}
-                {request.photos.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Photos du problème :</p>
-                    <div className="flex space-x-2">
-                      {request.photos.map((photo, index) => (
-                        <div key={index} className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 border">
-                          <img
-                            src={photo || "/placeholder.svg"}
-                            alt={`Photo ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))}
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                    <div className="text-center text-gray-400">
+                      <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                      <p className="text-sm">Aucune photo</p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-6">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <User className="h-4 w-4 mr-1" />
-                      {request.client.firstName} {request.client.lastName}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      {request.responses} réponse{request.responses > 1 ? "s" : ""}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      {new Date(request.createdAt).toLocaleDateString("fr-FR")}
-                    </div>
-                  </div>
+                {/* Badges superposés */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {getStatusBadge(request)}
+                  <Badge className={getUrgencyColor(request.urgencyLevel)} variant="outline">
+                    {request.urgency}
+                  </Badge>
+                </div>
 
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">
-                      <Phone className="h-4 w-4 mr-1" />
-                      Contacter
-                    </Button>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      Voir les détails
-                    </Button>
+                {/* Badge réponses */}
+                <div className="absolute bottom-2 right-2">{getResponsesBadge(request.responses)}</div>
+              </div>
+
+              <CardContent className="p-4">
+                {/* En-tête */}
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                      {request.category}
+                    </Badge>
+                    <span className="text-xs text-gray-500 flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {getTimeAgo(request.createdAt)}
+                    </span>
                   </div>
+                  <h3 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                    {request.title}
+                  </h3>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-gray-600 line-clamp-2 mb-3">{request.description}</p>
+
+                {/* Informations */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center text-sm text-gray-600">
+                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                    {request.city} ({request.postalCode})
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Euro className="h-4 w-4 mr-2 text-gray-400" />
+                    {request.budget}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <User className="h-4 w-4 mr-2 text-gray-400" />
+                    {request.client.firstName} {request.client.lastName}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Phone className="h-4 w-4 mr-1" />
+                    Contacter
+                  </Button>
+                  <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                    Voir détails
+                  </Button>
                 </div>
               </CardContent>
             </Card>

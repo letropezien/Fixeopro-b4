@@ -4,482 +4,883 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Wrench, User, Mail, Lock, Eye, EyeOff, AlertCircle, Building } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { StorageService } from "@/lib/storage"
+import { GeocodingService } from "@/lib/geocoding"
+import { DepartmentSelector } from "@/components/department-selector"
+import {
+  User,
+  Mail,
+  Lock,
+  Phone,
+  MapPin,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Eye,
+  EyeOff,
+  Wrench,
+  UserCheck,
+} from "lucide-react"
 
 export default function ConnexionPage() {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState("connexion")
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
-  const [loginData, setLoginData] = useState({
+  // États pour la géolocalisation
+  const [isGeolocating, setIsGeolocating] = useState(false)
+  const [isGeolocated, setIsGeolocated] = useState(false)
+  const [geoError, setGeoError] = useState<string | null>(null)
+
+  // Formulaire de connexion
+  const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
-    rememberMe: false,
   })
 
-  const [registerData, setRegisterData] = useState({
+  // Formulaire d'inscription client
+  const [clientForm, setClientForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    userType: "client" as "client" | "reparateur",
-    acceptTerms: false,
     phone: "",
+    address: "",
     city: "",
     postalCode: "",
-    companyName: "",
-    siret: "",
+    department: "",
+    coordinates: null as { lat: number; lng: number } | null,
+    acceptTerms: false,
   })
 
+  // Formulaire d'inscription réparateur
+  const [repairerForm, setRepairerForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    phone: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    department: "",
+    coordinates: null as { lat: number; lng: number } | null,
+    companyName: "",
+    siret: "",
+    specialties: [] as string[],
+    acceptTerms: false,
+  })
+
+  const specialties = [
+    "Électroménager",
+    "Informatique",
+    "Plomberie",
+    "Électricité",
+    "Chauffage",
+    "Serrurerie",
+    "Multimédia",
+    "Téléphonie",
+    "Climatisation",
+  ]
+
+  // Géolocalisation
+  const handleGeolocation = async (userType: "client" | "repairer") => {
+    setIsGeolocating(true)
+    setGeoError(null)
+
+    try {
+      const coordinates = await GeocodingService.getCurrentPosition()
+      if (!coordinates) {
+        throw new Error("Impossible d'obtenir votre position")
+      }
+
+      const address = await GeocodingService.geolocateAndGetAddress()
+
+      if (userType === "client") {
+        setClientForm((prev) => ({
+          ...prev,
+          address: address.street || prev.address,
+          city: address.city || prev.city,
+          postalCode: address.postalCode || prev.postalCode,
+          department: address.department || prev.department,
+          coordinates: coordinates,
+        }))
+      } else {
+        setRepairerForm((prev) => ({
+          ...prev,
+          address: address.street || prev.address,
+          city: address.city || prev.city,
+          postalCode: address.postalCode || prev.postalCode,
+          department: address.department || prev.department,
+          coordinates: coordinates,
+        }))
+      }
+
+      setIsGeolocated(true)
+    } catch (error) {
+      console.error("Erreur de géolocalisation:", error)
+      setGeoError(error instanceof Error ? error.message : "Erreur de géolocalisation")
+    } finally {
+      setIsGeolocating(false)
+    }
+  }
+
+  // Connexion
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
     setError("")
 
     try {
-      // Simulation d'authentification
-      if (loginData.email && loginData.password) {
-        // Créer un utilisateur de démonstration
-        const demoUser = {
-          id: `user_${Date.now()}`,
-          email: loginData.email,
-          firstName: loginData.email.includes("reparateur") ? "Jean" : "Marie",
-          lastName: loginData.email.includes("reparateur") ? "Dupont" : "Martin",
-          userType: loginData.email.includes("reparateur") ? "reparateur" : "client",
-          phone: "06 12 34 56 78",
-          city: "Paris",
-          postalCode: "75001",
-          isEmailVerified: true,
-          createdAt: new Date().toISOString(),
-        }
+      const user = StorageService.authenticateUser(loginForm.email, loginForm.password)
 
-        // Sauvegarder l'utilisateur
-        const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
-        users.push(demoUser)
-        localStorage.setItem("fixeopro_users", JSON.stringify(users))
-        localStorage.setItem("fixeopro_current_user_id", demoUser.id)
-
-        // Redirection selon le type
-        if (demoUser.userType === "reparateur") {
-          router.push("/profil-pro")
-        } else {
-          router.push("/profil")
-        }
+      if (user) {
+        setSuccess("Connexion réussie !")
+        setTimeout(() => {
+          if (user.userType === "admin") {
+            router.push("/admin")
+          } else if (user.userType === "reparateur") {
+            router.push("/profil-pro")
+          } else {
+            router.push("/profil")
+          }
+        }, 1000)
       } else {
-        setError("Veuillez remplir tous les champs")
+        setError("Email ou mot de passe incorrect")
       }
     } catch (error) {
       setError("Erreur lors de la connexion")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const handleRegister = async (e: React.FormEvent) => {
+  // Inscription client
+  const handleClientRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
     setError("")
 
     try {
-      // Validation
-      if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.password) {
-        setError("Veuillez remplir tous les champs obligatoires")
-        return
+      // Validations
+      if (!clientForm.firstName.trim()) {
+        throw new Error("Le prénom est requis")
+      }
+      if (!clientForm.lastName.trim()) {
+        throw new Error("Le nom est requis")
+      }
+      if (!clientForm.email.trim()) {
+        throw new Error("L'email est requis")
+      }
+      if (clientForm.password.length < 6) {
+        throw new Error("Le mot de passe doit contenir au moins 6 caractères")
+      }
+      if (clientForm.password !== clientForm.confirmPassword) {
+        throw new Error("Les mots de passe ne correspondent pas")
+      }
+      if (!clientForm.phone.trim()) {
+        throw new Error("Le téléphone est requis")
+      }
+      if (!clientForm.city.trim()) {
+        throw new Error("La ville est requise")
+      }
+      if (!clientForm.postalCode.trim()) {
+        throw new Error("Le code postal est requis")
+      }
+      if (!clientForm.coordinates) {
+        throw new Error("La géolocalisation est requise")
+      }
+      if (!clientForm.acceptTerms) {
+        throw new Error("Vous devez accepter les conditions d'utilisation")
       }
 
-      if (registerData.password !== registerData.confirmPassword) {
-        setError("Les mots de passe ne correspondent pas")
-        return
+      // Vérifier si l'email existe déjà
+      if (StorageService.getUserByEmail(clientForm.email)) {
+        throw new Error("Un compte avec cet email existe déjà")
       }
 
-      if (!registerData.acceptTerms) {
-        setError("Veuillez accepter les conditions d'utilisation")
-        return
-      }
-
-      // Créer le nouvel utilisateur
       const newUser = {
-        id: `user_${Date.now()}`,
-        email: registerData.email,
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        phone: registerData.phone,
-        city: registerData.city,
-        postalCode: registerData.postalCode,
-        userType: registerData.userType,
-        isEmailVerified: true,
+        id: StorageService.generateId(),
+        email: clientForm.email,
+        password: clientForm.password,
+        firstName: clientForm.firstName,
+        lastName: clientForm.lastName,
+        phone: clientForm.phone,
+        address: clientForm.address,
+        city: clientForm.city,
+        postalCode: clientForm.postalCode,
+        department: clientForm.department,
+        userType: "client" as const,
+        isEmailVerified: false,
         createdAt: new Date().toISOString(),
-        professional:
-          registerData.userType === "reparateur"
-            ? {
-                companyName: registerData.companyName,
-                siret: registerData.siret,
-                specialties: [],
-                description: "",
-              }
-            : undefined,
+        coordinates: clientForm.coordinates,
       }
 
-      // Sauvegarder
-      const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
-      users.push(newUser)
-      localStorage.setItem("fixeopro_users", JSON.stringify(users))
-      localStorage.setItem("fixeopro_current_user_id", newUser.id)
+      StorageService.saveUser(newUser)
+      StorageService.setCurrentUser(newUser.id)
 
-      // Redirection
-      if (registerData.userType === "reparateur") {
-        router.push("/profil-pro")
-      } else {
+      setSuccess("Inscription réussie ! Redirection en cours...")
+      setTimeout(() => {
         router.push("/profil")
-      }
+      }, 1500)
     } catch (error) {
-      setError("Erreur lors de l'inscription")
+      setError(error instanceof Error ? error.message : "Erreur lors de l'inscription")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
+    }
+  }
+
+  // Inscription réparateur
+  const handleRepairerRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+
+    try {
+      // Validations
+      if (!repairerForm.firstName.trim()) {
+        throw new Error("Le prénom est requis")
+      }
+      if (!repairerForm.lastName.trim()) {
+        throw new Error("Le nom est requis")
+      }
+      if (!repairerForm.email.trim()) {
+        throw new Error("L'email est requis")
+      }
+      if (repairerForm.password.length < 6) {
+        throw new Error("Le mot de passe doit contenir au moins 6 caractères")
+      }
+      if (repairerForm.password !== repairerForm.confirmPassword) {
+        throw new Error("Les mots de passe ne correspondent pas")
+      }
+      if (!repairerForm.phone.trim()) {
+        throw new Error("Le téléphone est requis")
+      }
+      if (!repairerForm.city.trim()) {
+        throw new Error("La ville est requise")
+      }
+      if (!repairerForm.postalCode.trim()) {
+        throw new Error("Le code postal est requis")
+      }
+      if (!repairerForm.coordinates) {
+        throw new Error("La géolocalisation est requise")
+      }
+      if (repairerForm.specialties.length === 0) {
+        throw new Error("Veuillez sélectionner au moins une spécialité")
+      }
+      if (!repairerForm.acceptTerms) {
+        throw new Error("Vous devez accepter les conditions d'utilisation")
+      }
+
+      // Vérifier si l'email existe déjà
+      if (StorageService.getUserByEmail(repairerForm.email)) {
+        throw new Error("Un compte avec cet email existe déjà")
+      }
+
+      const newUser = {
+        id: StorageService.generateId(),
+        email: repairerForm.email,
+        password: repairerForm.password,
+        firstName: repairerForm.firstName,
+        lastName: repairerForm.lastName,
+        phone: repairerForm.phone,
+        address: repairerForm.address,
+        city: repairerForm.city,
+        postalCode: repairerForm.postalCode,
+        department: repairerForm.department,
+        userType: "reparateur" as const,
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        coordinates: repairerForm.coordinates,
+        professional: {
+          companyName: repairerForm.companyName,
+          siret: repairerForm.siret,
+          experience: "Débutant",
+          specialties: repairerForm.specialties,
+          description: `Réparateur professionnel spécialisé en ${repairerForm.specialties.join(", ")}`,
+        },
+        subscription: {
+          plan: "trial",
+          status: "trial",
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      }
+
+      StorageService.saveUser(newUser)
+      StorageService.setCurrentUser(newUser.id)
+
+      setSuccess("Inscription réussie ! Période d'essai de 15 jours activée. Redirection en cours...")
+      setTimeout(() => {
+        router.push("/profil-pro")
+      }, 2000)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Erreur lors de l'inscription")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSpecialtyChange = (specialty: string, checked: boolean) => {
+    if (checked) {
+      setRepairerForm((prev) => ({
+        ...prev,
+        specialties: [...prev.specialties, specialty],
+      }))
+    } else {
+      setRepairerForm((prev) => ({
+        ...prev,
+        specialties: prev.specialties.filter((s) => s !== specialty),
+      }))
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
         <div className="text-center mb-8">
-          <Link href="/" className="flex justify-center mb-6">
-            <div className="bg-blue-600 p-3 rounded-full">
-              <Wrench className="h-8 w-8 text-white" />
-            </div>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Fixeo.pro</h1>
-          <p className="text-gray-600">Connectez-vous à votre espace personnel</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Connexion / Inscription</h1>
+          <p className="text-gray-600">Accédez à votre compte ou créez-en un nouveau</p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-600 mr-2" />
-            <span className="text-red-700 text-sm">{error}</span>
-          </div>
-        )}
+        <Card className="shadow-xl">
+          <CardContent className="p-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="connexion" className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Connexion
+                </TabsTrigger>
+                <TabsTrigger value="client" className="flex items-center">
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Client
+                </TabsTrigger>
+                <TabsTrigger value="reparateur" className="flex items-center">
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Réparateur
+                </TabsTrigger>
+              </TabsList>
 
-        <Tabs defaultValue="login" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Connexion</TabsTrigger>
-            <TabsTrigger value="register">Inscription</TabsTrigger>
-          </TabsList>
+              {/* Messages d'erreur et de succès */}
+              {error && (
+                <Alert className="m-6 border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
 
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Se connecter</CardTitle>
-                <CardDescription>Accédez à votre espace personnel</CardDescription>
-              </CardHeader>
-              <CardContent>
+              {success && (
+                <Alert className="m-6 border-green-200 bg-green-50">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">{success}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Connexion */}
+              <TabsContent value="connexion" className="p-6">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle>Se connecter</CardTitle>
+                </CardHeader>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="login-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        id="email"
+                        id="login-email"
                         type="email"
-                        placeholder="votre@email.com"
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                         className="pl-10"
-                        value={loginData.email}
-                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                        disabled={loading}
+                        placeholder="votre@email.com"
+                        required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="password">Mot de passe</Label>
+                    <Label htmlFor="login-password">Mot de passe</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        id="password"
+                        id="login-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                         className="pl-10 pr-10"
-                        value={loginData.password}
-                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                        disabled={loading}
+                        placeholder="••••••••"
+                        required
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                         onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="remember"
-                        checked={loginData.rememberMe}
-                        onCheckedChange={(checked) => setLoginData({ ...loginData, rememberMe: checked as boolean })}
-                      />
-                      <Label htmlFor="remember" className="text-sm">
-                        Se souvenir de moi
-                      </Label>
-                    </div>
-                    <Link href="/mot-de-passe-oublie" className="text-sm text-blue-600 hover:underline">
-                      Mot de passe oublié ?
-                    </Link>
-                  </div>
-
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-                    {loading ? "Connexion..." : "Se connecter"}
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Se connecter
                   </Button>
                 </form>
 
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">Comptes de démonstration :</h4>
-                  <div className="text-sm text-blue-800 space-y-1">
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Comptes de démonstration :</h4>
+                  <div className="text-sm space-y-1">
                     <p>
-                      <strong>Client :</strong> client@demo.com
+                      <strong>Client :</strong> client@demo.com / demo123
                     </p>
                     <p>
-                      <strong>Réparateur :</strong> reparateur@demo.com
+                      <strong>Réparateur :</strong> reparateur@demo.com / demo123
                     </p>
-                    <p className="text-xs text-blue-600">Mot de passe : n'importe lequel</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="register">
-            <Card>
-              <CardHeader>
-                <CardTitle>Créer un compte</CardTitle>
-                <CardDescription>Rejoignez Fixeo.pro en quelques minutes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleRegister} className="space-y-4">
-                  {/* Type de compte */}
-                  <div>
-                    <Label>Type de compte *</Label>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          registerData.userType === "client" ? "border-blue-500 bg-blue-50" : "border-gray-200"
-                        }`}
-                        onClick={() => setRegisterData({ ...registerData, userType: "client" })}
-                      >
-                        <div className="text-center">
-                          <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                          <p className="font-medium">Particulier</p>
-                          <p className="text-xs text-gray-600">Je cherche un réparateur</p>
-                        </div>
-                      </div>
-                      <div
-                        className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                          registerData.userType === "reparateur" ? "border-green-500 bg-green-50" : "border-gray-200"
-                        }`}
-                        onClick={() => setRegisterData({ ...registerData, userType: "reparateur" })}
-                      >
-                        <div className="text-center">
-                          <Building className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                          <p className="font-medium">Professionnel</p>
-                          <p className="text-xs text-gray-600">Je propose mes services</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {/* Inscription Client */}
+              <TabsContent value="client" className="p-6">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle>Inscription Client</CardTitle>
+                  <p className="text-sm text-gray-600">Créez votre compte pour publier des demandes de dépannage</p>
+                </CardHeader>
 
-                  {/* Informations personnelles */}
+                <form onSubmit={handleClientRegister} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="firstName">Prénom *</Label>
+                      <Label htmlFor="client-firstName">Prénom *</Label>
                       <Input
-                        id="firstName"
-                        placeholder="Jean"
-                        value={registerData.firstName}
-                        onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                        disabled={loading}
+                        id="client-firstName"
+                        value={clientForm.firstName}
+                        onChange={(e) => setClientForm({ ...clientForm, firstName: e.target.value })}
+                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Nom *</Label>
+                      <Label htmlFor="client-lastName">Nom *</Label>
                       <Input
-                        id="lastName"
-                        placeholder="Dupont"
-                        value={registerData.lastName}
-                        onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                        disabled={loading}
+                        id="client-lastName"
+                        value={clientForm.lastName}
+                        onChange={(e) => setClientForm({ ...clientForm, lastName: e.target.value })}
+                        required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="registerEmail">Email *</Label>
+                    <Label htmlFor="client-email">Email *</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        id="registerEmail"
+                        id="client-email"
                         type="email"
-                        placeholder="votre@email.com"
+                        value={clientForm.email}
+                        onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                         className="pl-10"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                        disabled={loading}
+                        required
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="phone">Téléphone</Label>
+                      <Label htmlFor="client-password">Mot de passe *</Label>
                       <Input
-                        id="phone"
-                        placeholder="06 12 34 56 78"
-                        value={registerData.phone}
-                        onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
-                        disabled={loading}
+                        id="client-password"
+                        type="password"
+                        value={clientForm.password}
+                        onChange={(e) => setClientForm({ ...clientForm, password: e.target.value })}
+                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor="city">Ville</Label>
+                      <Label htmlFor="client-confirmPassword">Confirmer *</Label>
                       <Input
-                        id="city"
-                        placeholder="Paris"
-                        value={registerData.city}
-                        onChange={(e) => setRegisterData({ ...registerData, city: e.target.value })}
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Champs spécifiques aux réparateurs */}
-                  {registerData.userType === "reparateur" && (
-                    <>
-                      <div>
-                        <Label htmlFor="companyName">Nom de l'entreprise</Label>
-                        <Input
-                          id="companyName"
-                          placeholder="Mon Entreprise SARL"
-                          value={registerData.companyName}
-                          onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
-                          disabled={loading}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="siret">SIRET (optionnel)</Label>
-                        <Input
-                          id="siret"
-                          placeholder="12345678901234"
-                          value={registerData.siret}
-                          onChange={(e) => setRegisterData({ ...registerData, siret: e.target.value })}
-                          disabled={loading}
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  <div>
-                    <Label htmlFor="registerPassword">Mot de passe *</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="registerPassword"
+                        id="client-confirmPassword"
                         type="password"
-                        placeholder="••••••••"
-                        className="pl-10"
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        disabled={loading}
+                        value={clientForm.confirmPassword}
+                        onChange={(e) => setClientForm({ ...clientForm, confirmPassword: e.target.value })}
+                        required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="confirmPassword">Confirmer le mot de passe *</Label>
+                    <Label htmlFor="client-phone">Téléphone *</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
-                        id="confirmPassword"
-                        type="password"
-                        placeholder="••••••••"
+                        id="client-phone"
+                        type="tel"
+                        value={clientForm.phone}
+                        onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                         className="pl-10"
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                        disabled={loading}
+                        placeholder="06 12 34 56 78"
+                        required
                       />
+                    </div>
+                  </div>
+
+                  {/* Géolocalisation */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">📍 Géolocalisation requise</h4>
+                    <p className="text-sm text-blue-800 mb-3">
+                      Nous avons besoin de votre localisation pour vous connecter avec les réparateurs les plus proches.
+                    </p>
+
+                    <div className="mb-3">
+                      {isGeolocating ? (
+                        <div className="flex items-center text-blue-600">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Géolocalisation en cours...
+                        </div>
+                      ) : isGeolocated ? (
+                        <div className="flex items-center text-green-600">
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          Adresse géolocalisée avec succès
+                        </div>
+                      ) : geoError ? (
+                        <div className="flex items-center text-red-600">
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          {geoError}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => handleGeolocation("client")}
+                      disabled={isGeolocating}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isGeolocating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Localisation...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {isGeolocated ? "Actualiser ma position" : "Géolocaliser mon adresse"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="client-address">Adresse</Label>
+                    <Input
+                      id="client-address"
+                      value={clientForm.address}
+                      onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+                      placeholder="Numéro et nom de rue"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="client-city">Ville *</Label>
+                      <Input
+                        id="client-city"
+                        value={clientForm.city}
+                        onChange={(e) => setClientForm({ ...clientForm, city: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="client-postalCode">Code postal *</Label>
+                      <Input
+                        id="client-postalCode"
+                        value={clientForm.postalCode}
+                        onChange={(e) => setClientForm({ ...clientForm, postalCode: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <DepartmentSelector
+                      value={clientForm.department}
+                      onValueChange={(value) => setClientForm({ ...clientForm, department: value })}
+                      label="Département"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="client-terms"
+                      checked={clientForm.acceptTerms}
+                      onCheckedChange={(checked) => setClientForm({ ...clientForm, acceptTerms: checked === true })}
+                    />
+                    <Label htmlFor="client-terms" className="text-sm">
+                      J'accepte les conditions d'utilisation et la politique de confidentialité
+                    </Label>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading || !isGeolocated}>
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Créer mon compte client
+                  </Button>
+                </form>
+              </TabsContent>
+
+              {/* Inscription Réparateur */}
+              <TabsContent value="reparateur" className="p-6">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle>Inscription Réparateur</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Rejoignez notre réseau de professionnels - 15 jours d'essai gratuit
+                  </p>
+                </CardHeader>
+
+                <form onSubmit={handleRepairerRegister} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="repairer-firstName">Prénom *</Label>
+                      <Input
+                        id="repairer-firstName"
+                        value={repairerForm.firstName}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, firstName: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="repairer-lastName">Nom *</Label>
+                      <Input
+                        id="repairer-lastName"
+                        value={repairerForm.lastName}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, lastName: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="repairer-email">Email *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="repairer-email"
+                        type="email"
+                        value={repairerForm.email}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, email: e.target.value })}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="repairer-password">Mot de passe *</Label>
+                      <Input
+                        id="repairer-password"
+                        type="password"
+                        value={repairerForm.password}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, password: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="repairer-confirmPassword">Confirmer *</Label>
+                      <Input
+                        id="repairer-confirmPassword"
+                        type="password"
+                        value={repairerForm.confirmPassword}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, confirmPassword: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="repairer-phone">Téléphone *</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="repairer-phone"
+                        type="tel"
+                        value={repairerForm.phone}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, phone: e.target.value })}
+                        className="pl-10"
+                        placeholder="06 12 34 56 78"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Géolocalisation */}
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-900 mb-2">📍 Géolocalisation requise</h4>
+                    <p className="text-sm text-green-800 mb-3">
+                      Votre position nous permet d'afficher votre zone d'intervention aux clients.
+                    </p>
+
+                    <div className="mb-3">
+                      {isGeolocating ? (
+                        <div className="flex items-center text-green-600">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Géolocalisation en cours...
+                        </div>
+                      ) : isGeolocated ? (
+                        <div className="flex items-center text-green-600">
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          Adresse géolocalisée avec succès
+                        </div>
+                      ) : geoError ? (
+                        <div className="flex items-center text-red-600">
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          {geoError}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => handleGeolocation("repairer")}
+                      disabled={isGeolocating}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {isGeolocating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Localisation...
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="h-4 w-4 mr-2" />
+                          {isGeolocated ? "Actualiser ma position" : "Géolocaliser mon adresse"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="repairer-address">Adresse</Label>
+                    <Input
+                      id="repairer-address"
+                      value={repairerForm.address}
+                      onChange={(e) => setRepairerForm({ ...repairerForm, address: e.target.value })}
+                      placeholder="Numéro et nom de rue"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="repairer-city">Ville *</Label>
+                      <Input
+                        id="repairer-city"
+                        value={repairerForm.city}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, city: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="repairer-postalCode">Code postal *</Label>
+                      <Input
+                        id="repairer-postalCode"
+                        value={repairerForm.postalCode}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, postalCode: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <DepartmentSelector
+                      value={repairerForm.department}
+                      onValueChange={(value) => setRepairerForm({ ...repairerForm, department: value })}
+                      label="Département"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="repairer-companyName">Nom de l'entreprise</Label>
+                      <Input
+                        id="repairer-companyName"
+                        value={repairerForm.companyName}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, companyName: e.target.value })}
+                        placeholder="Optionnel"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="repairer-siret">SIRET</Label>
+                      <Input
+                        id="repairer-siret"
+                        value={repairerForm.siret}
+                        onChange={(e) => setRepairerForm({ ...repairerForm, siret: e.target.value })}
+                        placeholder="Optionnel"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Spécialités * (sélectionnez au moins une)</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {specialties.map((specialty) => (
+                        <div key={specialty} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`specialty-${specialty}`}
+                            checked={repairerForm.specialties.includes(specialty)}
+                            onCheckedChange={(checked) => handleSpecialtyChange(specialty, checked === true)}
+                          />
+                          <Label htmlFor={`specialty-${specialty}`} className="text-sm cursor-pointer">
+                            {specialty}
+                          </Label>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="acceptTerms"
-                      checked={registerData.acceptTerms}
-                      onCheckedChange={(checked) =>
-                        setRegisterData({ ...registerData, acceptTerms: checked as boolean })
-                      }
+                      id="repairer-terms"
+                      checked={repairerForm.acceptTerms}
+                      onCheckedChange={(checked) => setRepairerForm({ ...repairerForm, acceptTerms: checked === true })}
                     />
-                    <Label htmlFor="acceptTerms" className="text-sm">
-                      J'accepte les{" "}
-                      <Link href="/conditions" className="text-blue-600 hover:underline">
-                        conditions d'utilisation
-                      </Link>
+                    <Label htmlFor="repairer-terms" className="text-sm">
+                      J'accepte les conditions d'utilisation et la politique de confidentialité
                     </Label>
                   </div>
 
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-                    {loading ? "Création..." : "Créer mon compte"}
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      🎉 <strong>15 jours d'essai gratuit</strong> avec toutes les fonctionnalités !
+                    </p>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={isLoading || !isGeolocated}
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Créer mon compte réparateur
                   </Button>
                 </form>
-
-                {registerData.userType === "reparateur" && (
-                  <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                    <h4 className="font-medium text-green-900 mb-2">🎉 Avantages réparateur :</h4>
-                    <ul className="text-sm text-green-800 space-y-1">
-                      <li>• 15 jours d'essai gratuit</li>
-                      <li>• Accès à toutes les demandes</li>
-                      <li>• Gestion simplifiée des interventions</li>
-                      <li>• Support dédié</li>
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            {registerData.userType === "client" ? (
-              <>
-                Vous êtes un professionnel ?{" "}
-                <button
-                  onClick={() => setRegisterData({ ...registerData, userType: "reparateur" })}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  Créer un compte réparateur
-                </button>
-              </>
-            ) : (
-              <>
-                Vous êtes un particulier ?{" "}
-                <button
-                  onClick={() => setRegisterData({ ...registerData, userType: "client" })}
-                  className="text-blue-600 hover:underline font-medium"
-                >
-                  Créer un compte client
-                </button>
-              </>
-            )}
-          </p>
-        </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
