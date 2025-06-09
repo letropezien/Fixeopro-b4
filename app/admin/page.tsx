@@ -40,8 +40,10 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // Mot de passe admin sécurisé
-    if (password === "FixeoAdmin2024!") {
+    // Récupérer le mot de passe stocké ou utiliser le défaut
+    const storedPassword = localStorage.getItem("admin_password") || "FixeoAdmin2024!"
+
+    if (password === storedPassword) {
       localStorage.setItem("admin_authenticated", "true")
       setIsAuthenticated(true)
       setError("")
@@ -448,41 +450,176 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Settings className="h-5 w-5" />
-                  <span>Paramètres système</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Configuration générale</h3>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span>Maintenance programmée</span>
-                        <Button variant="outline" size="sm">
-                          Configurer
-                        </Button>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Notifications email</span>
-                        <Button variant="outline" size="sm">
-                          Gérer
-                        </Button>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Sauvegarde automatique</span>
-                        <Button variant="outline" size="sm">
-                          Planifier
-                        </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Changement de mot de passe admin */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Shield className="h-5 w-5" />
+                    <span>Sécurité Administrateur</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const formData = new FormData(e.target as HTMLFormElement)
+                      const currentPassword = formData.get("currentPassword") as string
+                      const newPassword = formData.get("newPassword") as string
+                      const confirmPassword = formData.get("confirmPassword") as string
+
+                      // Vérifier le mot de passe actuel
+                      const storedPassword = localStorage.getItem("admin_password") || "FixeoAdmin2024!"
+                      if (currentPassword !== storedPassword) {
+                        alert("Mot de passe actuel incorrect")
+                        return
+                      }
+
+                      if (newPassword !== confirmPassword) {
+                        alert("Les nouveaux mots de passe ne correspondent pas")
+                        return
+                      }
+
+                      if (newPassword.length < 8) {
+                        alert("Le nouveau mot de passe doit contenir au moins 8 caractères")
+                        return
+                      }
+
+                      // Sauvegarder le nouveau mot de passe
+                      localStorage.setItem("admin_password", newPassword)
+                      alert("Mot de passe modifié avec succès !")
+
+                      // Réinitialiser le formulaire
+                      ;(e.target as HTMLFormElement).reset()
+                    }}
+                    className="space-y-4"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+                      <Input
+                        type="password"
+                        name="currentPassword"
+                        required
+                        placeholder="Entrez votre mot de passe actuel"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+                      <Input
+                        type="password"
+                        name="newPassword"
+                        required
+                        placeholder="Entrez le nouveau mot de passe"
+                        minLength={8}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Confirmer le nouveau mot de passe
+                      </label>
+                      <Input
+                        type="password"
+                        name="confirmPassword"
+                        required
+                        placeholder="Confirmez le nouveau mot de passe"
+                        minLength={8}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
+                      Changer le mot de passe
+                    </Button>
+                  </form>
+
+                  <div className="mt-6 p-4 bg-yellow-50 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-800">Conseils de sécurité</h4>
+                        <ul className="text-sm text-yellow-700 mt-1 space-y-1">
+                          <li>• Utilisez au moins 8 caractères</li>
+                          <li>• Mélangez majuscules, minuscules et chiffres</li>
+                          <li>• Ajoutez des caractères spéciaux (!@#$%)</li>
+                          <li>• Ne partagez jamais votre mot de passe</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Configuration générale */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Settings className="h-5 w-5" />
+                    <span>Configuration Système</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-medium mb-4">Paramètres généraux</h3>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">Maintenance programmée</span>
+                            <p className="text-sm text-gray-600">Planifier les maintenances système</p>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Configurer
+                          </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">Notifications email</span>
+                            <p className="text-sm text-gray-600">Gérer les alertes automatiques</p>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Gérer
+                          </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">Sauvegarde automatique</span>
+                            <p className="text-sm text-gray-600">Planifier les sauvegardes</p>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Planifier
+                          </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">Logs système</span>
+                            <p className="text-sm text-gray-600">Consulter l'historique des actions</p>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Voir les logs
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-medium mb-4">Informations système</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Version :</span>
+                          <span className="font-medium">Fixeo.pro v2.1.0</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Dernière mise à jour :</span>
+                          <span className="font-medium">15 janvier 2024</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Statut :</span>
+                          <Badge className="bg-green-100 text-green-800">Opérationnel</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
