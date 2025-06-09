@@ -6,6 +6,7 @@ import { Wrench, Search, MapPin, Star, Clock, Shield, TrendingUp, BookOpen } fro
 import { CategoryImage } from "@/components/category-image"
 import { RandomRepairers } from "@/components/random-repairers"
 import { CategoriesService } from "@/lib/categories-service"
+import { VisitCounter } from "@/components/visit-counter"
 
 export default function HomePage() {
   // Récupérer toutes les catégories depuis le service
@@ -299,6 +300,13 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Compteur de visites */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <VisitCounter />
         </div>
       </section>
 

@@ -37,6 +37,8 @@ export interface User {
   avatar?: string
   emailVerifiedAt?: string // Date de vérification de l'email
   emailVerifiedBy?: "user" | "admin" // Qui a vérifié l'email
+  passwordChangedAt?: string // Date du dernier changement de mot de passe
+  passwordChangedBy?: "user" | "admin" // Qui a changé le mot de passe
 }
 
 export interface RepairResponse {
@@ -320,10 +322,32 @@ export class StorageService {
 
       // Mettre à jour le mot de passe
       user.password = newPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.passwordChangedBy = "user"
+
       this.saveUser(user)
       return true
     } catch (error) {
       console.error("Erreur lors du changement de mot de passe:", error)
+      return false
+    }
+  }
+
+  // Changement de mot de passe par l'admin (sans vérification de l'ancien)
+  static adminChangePassword(userId: string, newPassword: string): boolean {
+    try {
+      const user = this.getUserById(userId)
+      if (!user) return false
+
+      // Mettre à jour le mot de passe
+      user.password = newPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.passwordChangedBy = "admin"
+
+      this.saveUser(user)
+      return true
+    } catch (error) {
+      console.error("Erreur lors du changement de mot de passe par l'admin:", error)
       return false
     }
   }
@@ -398,6 +422,9 @@ export class StorageService {
 
       // Mettre à jour le mot de passe
       user.password = newPassword
+      user.passwordChangedAt = new Date().toISOString()
+      user.passwordChangedBy = "user"
+
       this.saveUser(user)
 
       // Marquer le token comme utilisé

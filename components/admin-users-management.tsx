@@ -25,6 +25,7 @@ import {
   Trash2,
   UserCheck,
   Clock,
+  Key,
 } from "lucide-react"
 import { StorageService, type User } from "@/lib/storage"
 
@@ -39,6 +40,9 @@ export function AdminUsersManagement() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false)
   const [editForm, setEditForm] = useState<Partial<User>>({})
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   useEffect(() => {
     loadUsers()
@@ -188,6 +192,39 @@ export function AdminUsersManagement() {
   }
 
   const unverifiedCount = users.filter((u) => !u.isEmailVerified).length
+
+  const handleChangePassword = (user: User) => {
+    setSelectedUser(user)
+    setNewPassword("")
+    setConfirmPassword("")
+    setIsPasswordModalOpen(true)
+  }
+
+  const changePassword = () => {
+    if (!selectedUser) return
+
+    if (newPassword !== confirmPassword) {
+      alert("Les mots de passe ne correspondent pas")
+      return
+    }
+
+    if (newPassword.length < 6) {
+      alert("Le mot de passe doit contenir au moins 6 caractères")
+      return
+    }
+
+    const success = StorageService.adminChangePassword(selectedUser.id, newPassword)
+    if (success) {
+      loadUsers()
+      setIsPasswordModalOpen(false)
+      setSelectedUser(null)
+      setNewPassword("")
+      setConfirmPassword("")
+      alert(`Mot de passe modifié avec succès pour ${selectedUser.firstName} ${selectedUser.lastName}`)
+    } else {
+      alert("Erreur lors de la modification du mot de passe")
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -480,6 +517,15 @@ export function AdminUsersManagement() {
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleChangePassword(user)}
+                          className="text-blue-600 hover:text-blue-700"
+                          title="Changer le mot de passe"
+                        >
+                          <Key className="h-3 w-3" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -763,6 +809,59 @@ export function AdminUsersManagement() {
                 </Button>
                 <Button variant="destructive" onClick={deleteUser}>
                   Supprimer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de changement de mot de passe */}
+      <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Changer le mot de passe</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Modifier le mot de passe pour{" "}
+                  <strong>
+                    {selectedUser.firstName} {selectedUser.lastName}
+                  </strong>
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 caractères"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirmer le nouveau mot de passe"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={changePassword} disabled={!newPassword || !confirmPassword}>
+                  Modifier le mot de passe
                 </Button>
               </div>
             </div>
