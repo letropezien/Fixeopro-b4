@@ -3,15 +3,36 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Wrench, Menu, User, Settings, LogOut, Bell, Shield } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Wrench, Menu, User, Settings, LogOut, Bell, Shield, Eye, MessageSquare, CheckCircle } from "lucide-react"
+import { StorageService } from "@/lib/storage"
+
+interface Notification {
+  id: string
+  type: "new_request" | "new_response" | "request_update"
+  title: string
+  message: string
+  requestId: string
+  isRead: boolean
+  createdAt: string
+  data?: any
+}
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     // Vérifier l'état de connexion
@@ -22,9 +43,104 @@ export default function Header() {
       if (user) {
         setCurrentUser(user)
         setIsLoggedIn(true)
+        loadNotifications(user)
       }
     }
   }, [])
+
+  const loadNotifications = (user: any) => {
+    if (!user) return
+
+    const allNotifications: Notification[] = []
+
+    if (user.userType === "reparateur") {
+      // Notifications pour les réparateurs
+      const requests = StorageService.getRepairRequests()
+      const specialties = user.professional?.specialties || []
+
+      // Nouvelles demandes dans les spécialités
+      const relevantRequests = requests.filter(
+        (request) =>
+          request.status === "open" &&
+          specialties.some((specialty) => request.category.toLowerCase().includes(specialty.toLowerCase())),
+      )
+
+      relevantRequests.slice(0, 5).forEach((request) => {
+        allNotifications.push({
+          id: `new_request_${request.id}`,
+          type: "new_request",
+          title: "Nouvelle demande dans votre spécialité",
+          message: `${request.title} - ${request.city}`,
+          requestId: request.id,
+          isRead: false,
+          createdAt: request.createdAt,
+          data: request,
+        })
+      })
+    } else {
+      // Notifications pour les clients
+      const clientRequests = StorageService.getRepairRequestsByClient(user.id)
+
+      clientRequests.forEach((request) => {
+        if (request.responses && request.responses.length > 0) {
+          request.responses.slice(0, 3).forEach((response: any) => {
+            allNotifications.push({
+              id: `response_${response.id}`,
+              type: "new_response",
+              title: "Nouvelle réponse à votre demande",
+              message: `${response.reparateur?.companyName || response.reparateur?.firstName} a répondu à "${request.title}"`,
+              requestId: request.id,
+              isRead: false,
+              createdAt: response.createdAt,
+              data: { request, response },
+            })
+          })
+        }
+      })
+    }
+
+    // Trier par date (plus récent en premier)
+    allNotifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    setNotifications(allNotifications.slice(0, 5)) // Limiter à 5 notifications
+    setUnreadCount(allNotifications.filter((n) => !n.isRead).length)
+  }
+
+  const markAsRead = (notificationId: string) => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === notificationId ? { ...notification, isRead: true } : notification,
+      ),
+    )
+    setUnreadCount((prev) => Math.max(0, prev - 1))
+  }
+
+  const markAllAsRead = () => {
+    setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })))
+    setUnreadCount(0)
+  }
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+    if (diffInHours < 1) return "Il y a moins d'1h"
+    if (diffInHours < 24) return `Il y a ${diffInHours}h`
+    const diffInDays = Math.floor(diffInHours / 24)
+    return `Il y a ${diffInDays} jour${diffInDays > 1 ? "s" : ""}`
+  }
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "new_request":
+        return <Bell className="h-4 w-4 text-blue-600" />
+      case "new_response":
+        return <MessageSquare className="h-4 w-4 text-green-600" />
+      default:
+        return <Bell className="h-4 w-4 text-gray-600" />
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("fixeopro_current_user_id")
@@ -107,13 +223,84 @@ export default function Header() {
                   </Link>
                 )}
 
-                {/* Notifications */}
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    3
-                  </span>
-                </Button>
+                {/* Notifications Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="relative">
+                      <Bell className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80" align="end">
+                    <div className="px-3 py-2 border-b">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold">Notifications</h3>
+                        {unreadCount > 0 && (
+                          <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Tout marquer comme lu
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-gray-500">
+                        <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">Aucune notification</p>
+                      </div>
+                    ) : (
+                      <>
+                        {notifications.map((notification) => (
+                          <DropdownMenuItem
+                            key={notification.id}
+                            className={`px-3 py-3 cursor-pointer ${!notification.isRead ? "bg-blue-50" : ""}`}
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            <div className="flex items-start space-x-3 w-full">
+                              <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                  <p
+                                    className={`text-sm font-medium ${!notification.isRead ? "text-gray-900" : "text-gray-700"}`}
+                                  >
+                                    {notification.title}
+                                  </p>
+                                  {!notification.isRead && (
+                                    <Badge variant="secondary" className="bg-red-100 text-red-800 text-xs">
+                                      Nouveau
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p
+                                  className={`text-sm ${!notification.isRead ? "text-gray-800" : "text-gray-600"} line-clamp-2`}
+                                >
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">{getTimeAgo(notification.createdAt)}</p>
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href="/notifications"
+                            className="px-3 py-2 text-center text-blue-600 hover:text-blue-700"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Voir toutes les notifications
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* Menu utilisateur */}
                 <DropdownMenu>
@@ -214,6 +401,26 @@ export default function Header() {
                     Contact
                   </Link>
                 </div>
+
+                {/* Notifications mobile */}
+                {isLoggedIn && (
+                  <div className="border-t pt-4">
+                    <Link
+                      href="/notifications"
+                      className="flex items-center justify-between text-lg font-medium text-gray-700 hover:text-blue-600"
+                    >
+                      <div className="flex items-center">
+                        <Bell className="h-5 w-5 mr-2" />
+                        Notifications
+                      </div>
+                      {unreadCount > 0 && (
+                        <Badge variant="secondary" className="bg-red-100 text-red-800">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="border-t pt-6 space-y-3">
