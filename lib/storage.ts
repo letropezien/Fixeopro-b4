@@ -64,13 +64,21 @@ export interface RepairResponse {
   price?: string
   estimatedTime?: string
   createdAt: string
-  isSelected: boolean
+  status: "pending" | "accepted" | "rejected" // Nouveau statut
   reparateur: {
     firstName: string
     lastName: string
     companyName?: string
     avatar?: string
   }
+  clientMessages?: Array<{
+    text: string
+    createdAt: string
+  }>
+  reminders?: Array<{
+    text: string
+    createdAt: string
+  }>
 }
 
 export interface RepairRequest {
@@ -89,7 +97,7 @@ export interface RepairRequest {
   createdAt: string
   status: "open" | "in_progress" | "completed" | "cancelled"
   responses: RepairResponse[] // Changé pour stocker les réponses complètes
-  selectedResponseId?: string // ID de la réponse sélectionnée
+  selectedResponseIds?: string[] // IDs des réponses sélectionnées (acceptées)
   client: {
     firstName: string
     lastName: string
@@ -515,8 +523,9 @@ export class StorageService {
         request.responses = []
       }
 
-      // Vérifier le statut en fonction des réponses
-      if (request.selectedResponseId && request.status === "open") {
+      // Vérifier le statut en fonction des réponses acceptées
+      const acceptedResponses = request.responses.filter((r) => r.status === "accepted")
+      if (acceptedResponses.length > 0 && request.status === "open") {
         request.status = "in_progress"
       }
 
@@ -636,11 +645,13 @@ export class StorageService {
         price: response.price,
         estimatedTime: response.estimatedTime,
         createdAt: new Date().toISOString(),
-        isSelected: false,
+        status: "pending", // Nouveau statut par défaut
         reparateur: response.reparateur || {
           firstName: "Réparateur",
           lastName: "",
         },
+        clientMessages: [],
+        reminders: [],
       }
 
       // Ajouter la réponse à la demande
@@ -658,29 +669,98 @@ export class StorageService {
     }
   }
 
-  // Nouvelle méthode pour sélectionner une réponse
-  static selectResponse(requestId: string, responseId: string): boolean {
+  // Nouvelle méthode pour mettre à jour le statut d'une réponse
+  static updateResponseStatus(requestId: string, responseId: string, status: "accepted" | "rejected"): boolean {
     try {
       const request = this.getRepairRequestById(requestId)
       if (!request) return false
 
-      // Mettre à jour le statut de la demande
-      request.status = "in_progress"
-      request.selectedResponseId = responseId
+      // Trouver et mettre à jour la réponse
+      const responseIndex = request.responses.findIndex((r) => r.id === responseId)
+      if (responseIndex === -1) return false
 
-      // Marquer la réponse comme sélectionnée
-      request.responses = request.responses.map((r) => ({
-        ...r,
-        isSelected: r.id === responseId,
-      }))
+      request.responses[responseIndex].status = status
+
+      // Si accepté, mettre à jour le statut de la demande
+      if (status === "accepted") {
+        request.status = "in_progress"
+        // Ajouter l'ID à la liste des réponses sélectionnées
+        if (!request.selectedResponseIds) {
+          request.selectedResponseIds = []
+        }
+        if (!request.selectedResponseIds.includes(responseId)) {
+          request.selectedResponseIds.push(responseId)
+        }
+      }
 
       // Sauvegarder la demande mise à jour
       this.saveRepairRequest(request)
       return true
     } catch (error) {
-      console.error("Erreur lors de la sélection de la réponse:", error)
+      console.error("Erreur lors de la mise à jour du statut de la réponse:", error)
       return false
     }
+  }
+
+  // Nouvelle méthode pour ajouter un message client à une réponse
+  static addClientMessageToResponse(requestId: string, reparateurId: string, message: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver la réponse du réparateur
+      const response = request.responses.find((r) => r.reparateurId === reparateurId)
+      if (!response) return false
+
+      // Ajouter le message
+      if (!response.clientMessages) {
+        response.clientMessages = []
+      }
+      response.clientMessages.push({
+        text: message,
+        createdAt: new Date().toISOString(),
+      })
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du message client:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour ajouter un rappel à une réponse
+  static addReminderToResponse(requestId: string, reparateurId: string, message: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver la réponse du réparateur
+      const response = request.responses.find((r) => r.reparateurId === reparateurId)
+      if (!response) return false
+
+      // Ajouter le rappel
+      if (!response.reminders) {
+        response.reminders = []
+      }
+      response.reminders.push({
+        text: message,
+        createdAt: new Date().toISOString(),
+      })
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du rappel:", error)
+      return false
+    }
+  }
+
+  // Ancienne méthode pour sélectionner une réponse (maintenant mise à jour)
+  static selectResponse(requestId: string, responseId: string): boolean {
+    return this.updateResponseStatus(requestId, responseId, "accepted")
   }
 
   // Nouvelle méthode pour marquer une demande comme terminée
@@ -1182,12 +1262,14 @@ export class StorageService {
                 price: "400€",
                 estimatedTime: "3 heures",
                 createdAt: new Date().toISOString(),
-                isSelected: false,
+                status: "pending",
                 reparateur: {
                   firstName: "Thomas",
                   lastName: "Martin",
                   companyName: "Répar'Tout",
                 },
+                clientMessages: [],
+                reminders: [],
               },
               {
                 id: "response_2",
@@ -1197,12 +1279,14 @@ export class StorageService {
                 price: "450€",
                 estimatedTime: "4 heures",
                 createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                isSelected: false,
+                status: "pending",
                 reparateur: {
                   firstName: "Marie",
                   lastName: "Dubois",
                   companyName: "ElectroFix",
                 },
+                clientMessages: [],
+                reminders: [],
               },
             ],
             client: {
@@ -1227,7 +1311,7 @@ export class StorageService {
             city: "Paris",
             postalCode: "75001",
             status: "in_progress",
-            selectedResponseId: "response_3",
+            selectedResponseIds: ["response_3"],
             responses: [
               {
                 id: "response_3",
@@ -1237,12 +1321,19 @@ export class StorageService {
                 price: "120€",
                 estimatedTime: "1 heure",
                 createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-                isSelected: true,
+                status: "accepted",
                 reparateur: {
                   firstName: "Thomas",
                   lastName: "Martin",
                   companyName: "Répar'Tout",
                 },
+                clientMessages: [
+                  {
+                    text: "Bonjour, à quelle heure pouvez-vous passer aujourd'hui ?",
+                    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+                  },
+                ],
+                reminders: [],
               },
             ],
             client: {
@@ -1267,7 +1358,7 @@ export class StorageService {
             city: "Paris",
             postalCode: "75001",
             status: "completed",
-            selectedResponseId: "response_4",
+            selectedResponseIds: ["response_4"],
             responses: [
               {
                 id: "response_4",
@@ -1277,12 +1368,14 @@ export class StorageService {
                 price: "130€",
                 estimatedTime: "2 heures",
                 createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-                isSelected: true,
+                status: "accepted",
                 reparateur: {
                   firstName: "Marie",
                   lastName: "Dubois",
                   companyName: "ElectroFix",
                 },
+                clientMessages: [],
+                reminders: [],
               },
             ],
             client: {

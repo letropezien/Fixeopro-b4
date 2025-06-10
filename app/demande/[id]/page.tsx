@@ -23,12 +23,19 @@ import {
   XCircle,
   Euro,
   Lock,
+  ThumbsUp,
+  ThumbsDown,
+  Send,
+  UserCheck,
+  AlertTriangle,
 } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DemandeDetailsPage() {
   const params = useParams()
   const id = params.id as string
+  const { toast } = useToast()
 
   const [request, setRequest] = useState<any>(null)
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -44,6 +51,11 @@ export default function DemandeDetailsPage() {
   const [cancelReason, setCancelReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null)
+  const [clientMessageDialogOpen, setClientMessageDialogOpen] = useState(false)
+  const [clientMessage, setClientMessage] = useState("")
+  const [selectedReparateurId, setSelectedReparateurId] = useState<string | null>(null)
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false)
+  const [reminderMessage, setReminderMessage] = useState("")
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,8 +89,8 @@ export default function DemandeDetailsPage() {
       setRequest(loadedRequest)
       setCurrentUser(user)
 
-      if (loadedRequest.selectedResponseId) {
-        setSelectedResponseId(loadedRequest.selectedResponseId)
+      if (loadedRequest.selectedResponseIds && loadedRequest.selectedResponseIds.length > 0) {
+        setSelectedResponseId(loadedRequest.selectedResponseIds[0])
       }
     } catch (err) {
       console.error("Erreur lors du chargement des données:", err)
@@ -168,6 +180,7 @@ export default function DemandeDetailsPage() {
           companyName: currentUser?.professional?.companyName,
         },
         createdAt: new Date().toISOString(),
+        status: "pending", // Nouveau statut: pending, accepted, rejected
       }
 
       StorageService.addResponseToRequest(id, response)
@@ -179,10 +192,20 @@ export default function DemandeDetailsPage() {
         setResponseTime("")
         setIsSubmitting(false)
         setDialogOpen(false)
+
+        toast({
+          title: "Réponse envoyée",
+          description: "Votre proposition a été envoyée au client.",
+        })
       }, 1000)
     } catch (err) {
       console.error("Erreur lors de l'envoi de la réponse:", err)
       setIsSubmitting(false)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'envoi de votre réponse.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -196,12 +219,87 @@ export default function DemandeDetailsPage() {
       if (success) {
         fetchData()
         setSelectResponseDialogOpen(false)
+        toast({
+          title: "Réparateur sélectionné",
+          description: "Vous avez sélectionné un réparateur pour cette demande.",
+        })
       } else {
         setError("Erreur lors de la sélection du réparateur")
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de la sélection du réparateur.",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erreur lors de la sélection du réparateur:", err)
       setError("Erreur lors de la sélection du réparateur")
+    }
+  }
+
+  const handleSendClientMessage = async () => {
+    if (!clientMessage.trim() || !selectedReparateurId) return
+
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.addClientMessageToResponse(id, selectedReparateurId, clientMessage)
+      if (success) {
+        fetchData()
+        setClientMessageDialogOpen(false)
+        setClientMessage("")
+        setSelectedReparateurId(null)
+        toast({
+          title: "Message envoyé",
+          description: "Votre message a été envoyé au réparateur.",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'envoi du message.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'envoi du message:", err)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'envoi du message.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleSendReminder = async () => {
+    if (!reminderMessage.trim() || !selectedReparateurId) return
+
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.addReminderToResponse(id, selectedReparateurId, reminderMessage)
+      if (success) {
+        fetchData()
+        setReminderDialogOpen(false)
+        setReminderMessage("")
+        setSelectedReparateurId(null)
+        toast({
+          title: "Rappel envoyé",
+          description: "Votre rappel a été envoyé au réparateur.",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'envoi du rappel.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'envoi du rappel:", err)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'envoi du rappel.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -214,8 +312,17 @@ export default function DemandeDetailsPage() {
         fetchData()
         setCancelDialogOpen(false)
         setCancelReason("")
+        toast({
+          title: "Demande annulée",
+          description: "Votre demande a été annulée avec succès.",
+        })
       } else {
         setError("Erreur lors de l'annulation de la demande")
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'annulation de la demande.",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erreur lors de l'annulation de la demande:", err)
@@ -231,12 +338,77 @@ export default function DemandeDetailsPage() {
       if (success) {
         fetchData()
         setCompleteDialogOpen(false)
+        toast({
+          title: "Demande terminée",
+          description: "Votre demande a été marquée comme terminée.",
+        })
       } else {
         setError("Erreur lors de la complétion de la demande")
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de la complétion de la demande.",
+          variant: "destructive",
+        })
       }
     } catch (err) {
       console.error("Erreur lors de la complétion de la demande:", err)
       setError("Erreur lors de la complétion de la demande")
+    }
+  }
+
+  const handleAcceptResponse = async (responseId: string) => {
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.updateResponseStatus(id, responseId, "accepted")
+      if (success) {
+        fetchData()
+        toast({
+          title: "Proposition acceptée",
+          description: "Vous avez accepté la proposition du réparateur.",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors de l'acceptation de la proposition.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Erreur lors de l'acceptation de la proposition:", err)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'acceptation de la proposition.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRejectResponse = async (responseId: string) => {
+    try {
+      const { StorageService } = await import("@/services/storage.service")
+
+      const success = StorageService.updateResponseStatus(id, responseId, "rejected")
+      if (success) {
+        fetchData()
+        toast({
+          title: "Proposition refusée",
+          description: "Vous avez refusé la proposition du réparateur.",
+        })
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors du refus de la proposition.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Erreur lors du refus de la proposition:", err)
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors du refus de la proposition.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -255,6 +427,11 @@ export default function DemandeDetailsPage() {
 
       // Pour les réparateurs, vérifier l'abonnement ou la période d'essai
       if (currentUser.userType !== "reparateur") return false
+
+      // Si le réparateur a une réponse acceptée, il peut voir les infos
+      if (request?.responses?.some((r) => r.reparateurId === currentUser.id && r.status === "accepted")) {
+        return true
+      }
 
       if (currentUser.subscription?.status === "active") return true
       if (currentUser.subscription?.status === "trial") {
@@ -275,8 +452,7 @@ export default function DemandeDetailsPage() {
     return (
       currentUser &&
       request &&
-      request.selectedResponseId &&
-      request.responses?.some((r: any) => r.id === request.selectedResponseId && r.reparateurId === currentUser.id)
+      request.responses?.some((r: any) => r.status === "accepted" && r.reparateurId === currentUser.id)
     )
   }
 
@@ -309,6 +485,19 @@ export default function DemandeDetailsPage() {
 
   const canSelectRepairer = () => {
     return isClientOwner() && request && request.status === "open" && request.responses && request.responses.length > 0
+  }
+
+  const getResponseStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge className="bg-blue-100 text-blue-800">En attente</Badge>
+      case "accepted":
+        return <Badge className="bg-green-100 text-green-800">Accepté</Badge>
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-800">Refusé</Badge>
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">Inconnu</Badge>
+    }
   }
 
   if (loading) {
@@ -383,7 +572,9 @@ export default function DemandeDetailsPage() {
                   <div>
                     <h3 className="font-medium text-yellow-800">Demande en cours de traitement</h3>
                     <p className="text-sm text-yellow-700">
-                      Un réparateur a été sélectionné et travaille actuellement sur cette demande.
+                      {request.responses?.filter((r: any) => r.status === "accepted").length > 0
+                        ? `${request.responses?.filter((r: any) => r.status === "accepted").length} réparateur(s) travaille(nt) actuellement sur cette demande.`
+                        : "Un réparateur a été sélectionné et travaille actuellement sur cette demande."}
                     </p>
                   </div>
                 </>
@@ -614,54 +805,6 @@ export default function DemandeDetailsPage() {
                 </div>
 
                 <div>
-                  {canSelectRepairer() && (
-                    <Dialog open={selectResponseDialogOpen} onOpenChange={setSelectResponseDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700">Choisir un réparateur</Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Choisir un réparateur</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
-                          {request.responses?.map((response: any) => (
-                            <div
-                              key={response.id}
-                              className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                                selectedResponseId === response.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
-                              }`}
-                              onClick={() => setSelectedResponseId(response.id)}
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="font-medium">
-                                  {response.reparateur?.companyName ||
-                                    `${response.reparateur?.firstName || "Réparateur"} ${response.reparateur?.lastName || ""}`}
-                                </div>
-                                <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
-                              </div>
-                              <p className="text-gray-700 mb-2">{response.text}</p>
-                              {response.price && (
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <Euro className="h-4 w-4 mr-1" />
-                                  <span>Prix: {response.price}€</span>
-                                </div>
-                              )}
-                              {response.estimatedTime && (
-                                <div className="flex items-center text-sm text-gray-600">
-                                  <Clock className="h-4 w-4 mr-1" />
-                                  <span>Délai: {response.estimatedTime}</span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        <Button onClick={handleSelectResponse} disabled={!selectedResponseId} className="w-full">
-                          Sélectionner ce réparateur
-                        </Button>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-
                   {canRespond() && (
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                       <DialogTrigger asChild>
@@ -735,7 +878,11 @@ export default function DemandeDetailsPage() {
                       <div
                         key={response.id}
                         className={`border rounded-lg p-4 ${
-                          response.id === request.selectedResponseId ? "border-green-500 bg-green-50" : ""
+                          response.status === "accepted"
+                            ? "border-green-500 bg-green-50"
+                            : response.status === "rejected"
+                              ? "border-red-200 bg-red-50"
+                              : ""
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -743,11 +890,11 @@ export default function DemandeDetailsPage() {
                             {response.reparateur?.companyName ||
                               `${response.reparateur?.firstName || "Réparateur"} ${response.reparateur?.lastName || ""}`}
                           </div>
-                          <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="text-xs text-gray-500">{formatDate(response.createdAt)}</div>
+                            {getResponseStatusBadge(response.status || "pending")}
+                          </div>
                         </div>
-                        {response.id === request.selectedResponseId && (
-                          <Badge className="bg-green-500 text-white mb-2">Sélectionné</Badge>
-                        )}
                         <p className="text-gray-700 mb-2">{response.text}</p>
                         {response.price && (
                           <div className="flex items-center text-sm text-gray-600 mb-1">
@@ -761,6 +908,123 @@ export default function DemandeDetailsPage() {
                             <span>Délai: {response.estimatedTime}</span>
                           </div>
                         )}
+
+                        {/* Messages du client */}
+                        {response.clientMessages && response.clientMessages.length > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <h4 className="text-sm font-medium mb-2">Messages du client</h4>
+                            <div className="space-y-2">
+                              {response.clientMessages.map((msg: any, idx: number) => (
+                                <div key={idx} className="bg-blue-50 p-2 rounded-md text-sm">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="font-medium text-blue-800">Client</span>
+                                    <span className="text-xs text-gray-500">{formatDate(msg.createdAt)}</span>
+                                  </div>
+                                  <p className="text-gray-700">{msg.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Rappels */}
+                        {response.reminders && response.reminders.length > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <h4 className="text-sm font-medium mb-2">Rappels envoyés</h4>
+                            <div className="space-y-2">
+                              {response.reminders.map((reminder: any, idx: number) => (
+                                <div key={idx} className="bg-yellow-50 p-2 rounded-md text-sm">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="font-medium text-yellow-800">Rappel</span>
+                                    <span className="text-xs text-gray-500">{formatDate(reminder.createdAt)}</span>
+                                  </div>
+                                  <p className="text-gray-700">{reminder.text}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions pour le client */}
+                        {isClientOwner() && response.status === "pending" && (
+                          <div className="mt-3 pt-3 border-t flex justify-between">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-600 border-green-200"
+                              onClick={() => handleAcceptResponse(response.id)}
+                            >
+                              <ThumbsUp className="h-4 w-4 mr-1" />
+                              Accepter
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-200"
+                              onClick={() => handleRejectResponse(response.id)}
+                            >
+                              <ThumbsDown className="h-4 w-4 mr-1" />
+                              Refuser
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Actions pour le client - Contacter le réparateur */}
+                        {isClientOwner() && response.status === "accepted" && (
+                          <div className="mt-3 pt-3 border-t flex justify-between">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReparateurId(response.reparateurId)
+                                setClientMessage("")
+                                setClientMessageDialogOpen(true)
+                              }}
+                            >
+                              <Send className="h-4 w-4 mr-1" />
+                              Envoyer un message
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedReparateurId(response.reparateurId)
+                                setReminderMessage("")
+                                setReminderDialogOpen(true)
+                              }}
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-1" />
+                              Envoyer un rappel
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Statut pour le réparateur */}
+                        {currentUser &&
+                          currentUser.userType === "reparateur" &&
+                          currentUser.id === response.reparateurId && (
+                            <div className="mt-3 pt-3 border-t">
+                              {response.status === "accepted" ? (
+                                <div className="bg-green-50 p-2 rounded-md flex items-center">
+                                  <UserCheck className="h-4 w-4 text-green-600 mr-2" />
+                                  <span className="text-sm text-green-800">
+                                    Votre proposition a été acceptée par le client
+                                  </span>
+                                </div>
+                              ) : response.status === "rejected" ? (
+                                <div className="bg-red-50 p-2 rounded-md flex items-center">
+                                  <XCircle className="h-4 w-4 text-red-600 mr-2" />
+                                  <span className="text-sm text-red-800">
+                                    Votre proposition a été refusée par le client
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="bg-blue-50 p-2 rounded-md flex items-center">
+                                  <Clock className="h-4 w-4 text-blue-600 mr-2" />
+                                  <span className="text-sm text-blue-800">En attente de réponse du client</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                       </div>
                     ))}
                   </div>
@@ -778,6 +1042,64 @@ export default function DemandeDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Dialog pour envoyer un message au réparateur */}
+      <Dialog open={clientMessageDialogOpen} onOpenChange={setClientMessageDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Envoyer un message au réparateur</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Label htmlFor="clientMessage">Votre message</Label>
+            <Textarea
+              id="clientMessage"
+              placeholder="Écrivez votre message au réparateur..."
+              value={clientMessage}
+              onChange={(e) => setClientMessage(e.target.value)}
+              rows={4}
+            />
+            <Button
+              onClick={handleSendClientMessage}
+              disabled={!clientMessage.trim() || !selectedReparateurId}
+              className="w-full"
+            >
+              Envoyer le message
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour envoyer un rappel au réparateur */}
+      <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Envoyer un rappel au réparateur</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-yellow-50 p-3 rounded-md">
+              <p className="text-sm text-yellow-800">
+                Utilisez cette fonction si le réparateur ne répond pas ou si vous avez besoin d'une mise à jour sur
+                l'avancement des travaux.
+              </p>
+            </div>
+            <Label htmlFor="reminderMessage">Votre message de rappel</Label>
+            <Textarea
+              id="reminderMessage"
+              placeholder="Écrivez votre message de rappel..."
+              value={reminderMessage}
+              onChange={(e) => setReminderMessage(e.target.value)}
+              rows={4}
+            />
+            <Button
+              onClick={handleSendReminder}
+              disabled={!reminderMessage.trim() || !selectedReparateurId}
+              className="w-full"
+            >
+              Envoyer le rappel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
