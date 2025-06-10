@@ -1,554 +1,297 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { StorageService } from "../../services/storageService"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, User, UserPlus } from "lucide-react"
 
 export default function Connexion() {
-  const [activeTab, setActiveTab] = useState("connexion")
-  const [emailLogin, setEmailLogin] = useState("")
-  const [passwordLogin, setPasswordLogin] = useState("")
-  const [nomClient, setNomClient] = useState("")
-  const [prenomClient, setPrenomClient] = useState("")
-  const [emailClient, setEmailClient] = useState("")
-  const [passwordClient, setPasswordClient] = useState("")
-  const [adresseClient, setAdresseClient] = useState("")
-  const [telephoneClient, setTelephoneClient] = useState("")
-  const [nomReparateur, setNomReparateur] = useState("")
-  const [prenomReparateur, setPrenomReparateur] = useState("")
-  const [emailReparateur, setEmailReparateur] = useState("")
-  const [passwordReparateur, setPasswordReparateur] = useState("")
-  const [adresseReparateur, setAdresseReparateur] = useState("")
-  const [telephoneReparateur, setTelephoneReparateur] = useState("")
-  const [specialiteReparateur, setSpecialiteReparateur] = useState("")
-  const [latitude, setLatitude] = useState(null)
-  const [longitude, setLongitude] = useState(null)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
-  const [notificationPreferences, setNotificationPreferences] = useState({
-    email: true,
-    sms: false,
-  })
-
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const router = useRouter()
 
-  useEffect(() => {
-    // Obtenir la géolocalisation au montage du composant
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLatitude(position.coords.latitude)
-          setLongitude(position.coords.longitude)
-        },
-        (error) => {
-          console.error("Erreur de géolocalisation:", error)
-          setErrorMessage("Erreur de géolocalisation. Veuillez activer la localisation.")
-        },
+  // États pour la connexion
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+
+  // États pour l'inscription
+  const [registerEmail, setRegisterEmail] = useState("")
+  const [registerPassword, setRegisterPassword] = useState("")
+  const [registerName, setRegisterName] = useState("")
+  const [registerPhone, setRegisterPhone] = useState("")
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      // Vérifier les comptes de démonstration
+      const demoAccounts = [
+        { email: "admin@fixeopro.com", password: "admin123", type: "admin" },
+        { email: "client@demo.com", password: "demo123", type: "client" },
+        { email: "reparateur@demo.com", password: "demo123", type: "reparateur" },
+        { email: "test@test.com", password: "test", type: "client" },
+      ]
+
+      const demoAccount = demoAccounts.find(
+        (account) => account.email === loginEmail && account.password === loginPassword,
       )
-    } else {
-      console.error("La géolocalisation n'est pas prise en charge par ce navigateur.")
-      setErrorMessage("La géolocalisation n'est pas prise en charge par ce navigateur.")
-    }
-  }, [])
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setErrorMessage("") // Réinitialiser les messages d'erreur
-    setSuccessMessage("")
+      if (demoAccount) {
+        // Simuler une connexion réussie
+        const userData = {
+          id: Math.random().toString(36).substr(2, 9),
+          email: demoAccount.email,
+          type: demoAccount.type,
+          name:
+            demoAccount.type === "admin"
+              ? "Administrateur"
+              : demoAccount.type === "client"
+                ? "Client Démo"
+                : "Réparateur Démo",
+        }
 
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: emailLogin, password: passwordLogin }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const user = data.user
-
-        // Stocker l'ID de l'utilisateur dans le StorageService
-        StorageService.setItem("fixeopro_current_user_id", user.id)
+        // Stocker dans localStorage
+        localStorage.setItem("fixeopro_current_user_id", userData.id)
+        localStorage.setItem("fixeopro_user_data", JSON.stringify(userData))
 
         // Déclencher l'événement de changement de connexion
         window.dispatchEvent(new CustomEvent("fixeopro-login-change"))
 
-        // Rediriger l'utilisateur vers la page d'accueil
-        router.push("/")
+        setSuccess("Connexion réussie ! Redirection en cours...")
+
+        setTimeout(() => {
+          if (demoAccount.type === "admin") {
+            router.push("/admin")
+          } else {
+            router.push("/")
+          }
+        }, 1000)
       } else {
-        // Gérer les erreurs d'authentification
-        console.error("Erreur d'authentification")
-        setErrorMessage("Email ou mot de passe incorrect.")
+        setError("Email ou mot de passe incorrect")
       }
     } catch (error) {
       console.error("Erreur lors de la connexion:", error)
-      setErrorMessage("Erreur lors de la connexion. Veuillez réessayer.")
+      setError("Erreur lors de la connexion. Veuillez réessayer.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleRegisterClient = async (e) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrorMessage("")
-    setSuccessMessage("")
-
-    // Validation basique côté client
-    if (!nomClient || !prenomClient || !emailClient || !passwordClient || !adresseClient || !telephoneClient) {
-      setErrorMessage("Veuillez remplir tous les champs.")
-      return
-    }
+    setIsLoading(true)
+    setError("")
+    setSuccess("")
 
     try {
-      const response = await fetch("/api/registerClient", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nom: nomClient,
-          prenom: prenomClient,
-          email: emailClient,
-          password: passwordClient,
-          adresse: adresseClient,
-          telephone: telephoneClient,
-          latitude,
-          longitude,
-        }),
-      })
-
-      if (response.ok) {
-        setSuccessMessage("Inscription réussie! Vous pouvez maintenant vous connecter.")
-        // Réinitialiser les champs du formulaire
-        setNomClient("")
-        setPrenomClient("")
-        setEmailClient("")
-        setPasswordClient("")
-        setAdresseClient("")
-        setTelephoneClient("")
-        setActiveTab("connexion") // Rediriger vers l'onglet de connexion
-      } else {
-        const errorData = await response.json()
-        setErrorMessage(errorData.message || "Erreur lors de l'inscription.")
+      // Validation simple
+      if (!registerName || !registerEmail || !registerPassword) {
+        setError("Veuillez remplir tous les champs obligatoires")
+        return
       }
+
+      // Simuler une inscription réussie
+      const userData = {
+        id: Math.random().toString(36).substr(2, 9),
+        email: registerEmail,
+        name: registerName,
+        phone: registerPhone,
+        type: "client",
+        createdAt: new Date().toISOString(),
+      }
+
+      // Stocker dans localStorage
+      const existingUsers = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
+      existingUsers.push(userData)
+      localStorage.setItem("fixeopro_users", JSON.stringify(existingUsers))
+
+      setSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
+
+      // Réinitialiser le formulaire
+      setRegisterName("")
+      setRegisterEmail("")
+      setRegisterPassword("")
+      setRegisterPhone("")
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error)
-      setErrorMessage("Erreur lors de l'inscription. Veuillez réessayer.")
+      setError("Erreur lors de l'inscription. Veuillez réessayer.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleRegisterReparateur = async (e) => {
-    e.preventDefault()
-    setErrorMessage("")
-    setSuccessMessage("")
-
-    // Validation basique côté client
-    if (
-      !nomReparateur ||
-      !prenomReparateur ||
-      !emailReparateur ||
-      !passwordReparateur ||
-      !adresseReparateur ||
-      !telephoneReparateur ||
-      !specialiteReparateur
-    ) {
-      setErrorMessage("Veuillez remplir tous les champs.")
-      return
-    }
-
-    try {
-      const response = await fetch("/api/registerReparateur", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nom: nomReparateur,
-          prenom: prenomReparateur,
-          email: emailReparateur,
-          password: passwordReparateur,
-          adresse: adresseReparateur,
-          telephone: telephoneReparateur,
-          specialite: specialiteReparateur,
-          latitude,
-          longitude,
-          notificationPreferences,
-        }),
-      })
-
-      if (response.ok) {
-        setSuccessMessage("Inscription réussie! Vous pouvez maintenant vous connecter.")
-        // Réinitialiser les champs du formulaire
-        setNomReparateur("")
-        setPrenomReparateur("")
-        setEmailReparateur("")
-        setPasswordReparateur("")
-        setAdresseReparateur("")
-        setTelephoneReparateur("")
-        setSpecialiteReparateur("")
-        setActiveTab("connexion") // Rediriger vers l'onglet de connexion
-      } else {
-        const errorData = await response.json()
-        setErrorMessage(errorData.message || "Erreur lors de l'inscription.")
+  const handleDemoLogin = (email: string, password: string) => {
+    setLoginEmail(email)
+    setLoginPassword(password)
+    // Déclencher automatiquement la connexion
+    setTimeout(() => {
+      const form = document.getElementById("login-form") as HTMLFormElement
+      if (form) {
+        form.requestSubmit()
       }
-    } catch (error) {
-      console.error("Erreur lors de l'inscription:", error)
-      setErrorMessage("Erreur lors de l'inscription. Veuillez réessayer.")
-    }
-  }
-
-  const handleDemoLogin = async (email, password) => {
-    setErrorMessage("")
-    setSuccessMessage("")
-
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const user = data.user
-
-        // Stocker l'ID de l'utilisateur dans le StorageService
-        StorageService.setItem("fixeopro_current_user_id", user.id)
-
-        // Déclencher l'événement de changement de connexion
-        window.dispatchEvent(new CustomEvent("fixeopro-login-change"))
-
-        // Rediriger l'utilisateur vers la page d'accueil
-        router.push("/")
-      } else {
-        // Gérer les erreurs d'authentification
-        console.error("Erreur d'authentification")
-        setErrorMessage("Email ou mot de passe incorrect.")
-      }
-    } catch (error) {
-      console.error("Erreur lors de la connexion:", error)
-      setErrorMessage("Erreur lors de la connexion. Veuillez réessayer.")
-    }
+    }, 100)
   }
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h2 className="text-2xl font-semibold mb-4">Connexion</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">FixeoPro</CardTitle>
+          <CardDescription className="text-center">
+            Connectez-vous à votre compte ou créez-en un nouveau
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Connexion
+              </TabsTrigger>
+              <TabsTrigger value="register" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Inscription
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Barre d'onglets */}
-        <div className="flex border-b">
-          <button
-            className={`px-4 py-2 font-semibold ${
-              activeTab === "connexion" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("connexion")}
-          >
-            Connexion
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold ${
-              activeTab === "client" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("client")}
-          >
-            Client
-          </button>
-          <button
-            className={`px-4 py-2 font-semibold ${
-              activeTab === "reparateur" ? "border-b-2 border-blue-500 text-blue-500" : "text-gray-500"
-            }`}
-            onClick={() => setActiveTab("reparateur")}
-          >
-            Réparateur
-          </button>
-        </div>
+            {error && (
+              <Alert className="mt-4 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">{error}</AlertDescription>
+              </Alert>
+            )}
 
-        {errorMessage && <div className="text-red-500 mt-4">{errorMessage}</div>}
-        {successMessage && <div className="text-green-500 mt-4">{successMessage}</div>}
+            {success && (
+              <Alert className="mt-4 border-green-200 bg-green-50">
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              </Alert>
+            )}
 
-        {/* Formulaire de connexion */}
-        {activeTab === "connexion" && (
-          <div>
-            <form onSubmit={handleLogin}>
-              <div className="mb-4">
-                <label htmlFor="emailLogin" className="block text-gray-700 text-sm font-bold mb-2">
-                  Email:
-                </label>
-                <input
-                  type="email"
-                  id="emailLogin"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  value={emailLogin}
-                  onChange={(e) => setEmailLogin(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="mb-6">
-                <label htmlFor="passwordLogin" className="block text-gray-700 text-sm font-bold mb-2">
-                  Mot de passe:
-                </label>
-                <input
-                  type="password"
-                  id="passwordLogin"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  value={passwordLogin}
-                  onChange={(e) => setPasswordLogin(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <button
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                  type="submit"
-                >
+            <TabsContent value="login" className="space-y-4">
+              <form id="login-form" onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Mot de passe</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Se connecter
-                </button>
-                <a className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" href="#">
-                  Mot de passe oublié?
-                </a>
+                </Button>
+              </form>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 text-center">Comptes de démonstration :</p>
+                <div className="grid gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDemoLogin("admin@fixeopro.com", "admin123")}
+                    className="w-full"
+                  >
+                    Admin (admin@fixeopro.com)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDemoLogin("client@demo.com", "demo123")}
+                    className="w-full"
+                  >
+                    Client (client@demo.com)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDemoLogin("reparateur@demo.com", "demo123")}
+                    className="w-full"
+                  >
+                    Réparateur (reparateur@demo.com)
+                  </Button>
+                </div>
               </div>
-            </form>
-            <div className="mt-4">
-              <button
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mr-2"
-                onClick={() => handleDemoLogin("client@demo.com", "password")}
-              >
-                Démo Client
-              </button>
-              <button
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                onClick={() => handleDemoLogin("reparateur@demo.com", "password")}
-              >
-                Démo Réparateur
-              </button>
-            </div>
-          </div>
-        )}
+            </TabsContent>
 
-        {/* Formulaire d'inscription Client */}
-        {activeTab === "client" && (
-          <form onSubmit={handleRegisterClient}>
-            <div className="mb-4">
-              <label htmlFor="nomClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Nom:
-              </label>
-              <input
-                type="text"
-                id="nomClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={nomClient}
-                onChange={(e) => setNomClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="prenomClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Prénom:
-              </label>
-              <input
-                type="text"
-                id="prenomClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={prenomClient}
-                onChange={(e) => setPrenomClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="emailClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Email:
-              </label>
-              <input
-                type="email"
-                id="emailClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={emailClient}
-                onChange={(e) => setEmailClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-6">
-              <label htmlFor="passwordClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Mot de passe:
-              </label>
-              <input
-                type="password"
-                id="passwordClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={passwordClient}
-                onChange={(e) => setPasswordClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="adresseClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Adresse:
-              </label>
-              <input
-                type="text"
-                id="adresseClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={adresseClient}
-                onChange={(e) => setAdresseClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="telephoneClient" className="block text-gray-700 text-sm font-bold mb-2">
-                Téléphone:
-              </label>
-              <input
-                type="tel"
-                id="telephoneClient"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={telephoneClient}
-                onChange={(e) => setTelephoneClient(e.target.value)}
-                required
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <button
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                type="submit"
-              >
-                S'inscrire
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Formulaire d'inscription Réparateur */}
-        {activeTab === "reparateur" && (
-          <form onSubmit={handleRegisterReparateur}>
-            <div className="mb-4">
-              <label htmlFor="nomReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Nom:
-              </label>
-              <input
-                type="text"
-                id="nomReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={nomReparateur}
-                onChange={(e) => setNomReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="prenomReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Prénom:
-              </label>
-              <input
-                type="text"
-                id="prenomReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={prenomReparateur}
-                onChange={(e) => setPrenomReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="emailReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Email:
-              </label>
-              <input
-                type="email"
-                id="emailReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={emailReparateur}
-                onChange={(e) => setEmailReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-6">
-              <label htmlFor="passwordReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Mot de passe:
-              </label>
-              <input
-                type="password"
-                id="passwordReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={passwordReparateur}
-                onChange={(e) => setPasswordReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="adresseReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Adresse:
-              </label>
-              <input
-                type="text"
-                id="adresseReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={adresseReparateur}
-                onChange={(e) => setAdresseReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="telephoneReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Téléphone:
-              </label>
-              <input
-                type="tel"
-                id="telephoneReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={telephoneReparateur}
-                onChange={(e) => setTelephoneReparateur(e.target.value)}
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label htmlFor="specialiteReparateur" className="block text-gray-700 text-sm font-bold mb-2">
-                Spécialité:
-              </label>
-              <input
-                type="text"
-                id="specialiteReparateur"
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                value={specialiteReparateur}
-                onChange={(e) => setSpecialiteReparateur(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Préférences de notification */}
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Préférences de notification:</label>
-              <label className="inline-flex items-center">
-                <input
-                  type="checkbox"
-                  className="form-checkbox h-5 w-5 text-blue-500"
-                  checked={notificationPreferences.email}
-                  onChange={(e) => setNotificationPreferences({ ...notificationPreferences, email: e.target.checked })}
-                />
-                <span className="ml-2 text-gray-700">Email</span>
-              </label>
-              <label className="inline-flex items-center ml-6">
-                <input
-                  type="checkbox"
-                  className="form-checkbox h-5 w-5 text-blue-500"
-                  checked={notificationPreferences.sms}
-                  onChange={(e) => setNotificationPreferences({ ...notificationPreferences, sms: e.target.checked })}
-                />
-                <span className="ml-2 text-gray-700">SMS</span>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <button
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                type="submit"
-              >
-                S'inscrire
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+            <TabsContent value="register" className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-name">Nom complet *</Label>
+                  <Input
+                    id="register-name"
+                    type="text"
+                    placeholder="Jean Dupont"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-email">Email *</Label>
+                  <Input
+                    id="register-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Mot de passe *</Label>
+                  <Input
+                    id="register-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-phone">Téléphone</Label>
+                  <Input
+                    id="register-phone"
+                    type="tel"
+                    placeholder="06 12 34 56 78"
+                    value={registerPhone}
+                    onChange={(e) => setRegisterPhone(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Créer un compte
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }
