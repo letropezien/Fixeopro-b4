@@ -37,10 +37,11 @@ export default function Connexion() {
     try {
       // Vérifier les comptes de démonstration
       const demoAccounts = [
-        { email: "admin@fixeopro.com", password: "admin123", type: "admin" },
+        { email: "admin@fixe.com", password: "admin123", type: "admin" },
         { email: "client@demo.com", password: "demo123", type: "client" },
         { email: "reparateur@demo.com", password: "demo123", type: "reparateur" },
         { email: "test@test.com", password: "test", type: "client" },
+        { email: "vipsttropez@gmail.com", password: "vips123", type: "admin" }, // Compte ajouté
       ]
 
       const demoAccount = demoAccounts.find(
@@ -206,36 +207,6 @@ export default function Connexion() {
                   Se connecter
                 </Button>
               </form>
-
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600 text-center">Comptes de démonstration :</p>
-                <div className="grid gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDemoLogin("admin@fixeopro.com", "admin123")}
-                    className="w-full"
-                  >
-                    Admin (admin@fixeopro.com)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDemoLogin("client@demo.com", "demo123")}
-                    className="w-full"
-                  >
-                    Client (client@demo.com)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDemoLogin("reparateur@demo.com", "demo123")}
-                    className="w-full"
-                  >
-                    Réparateur (reparateur@demo.com)
-                  </Button>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="register" className="space-y-4">
