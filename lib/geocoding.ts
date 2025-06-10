@@ -175,4 +175,77 @@ export class GeocodingService {
     const address = await this.reverseGeocode(coordinates)
     return address
   }
+
+  // Géocoder une adresse (convertir adresse en coordonnées)
+  static async geocodeAddress(address: string): Promise<Coordinates | null> {
+    try {
+      // Essayer d'abord avec l'API Nominatim (OpenStreetMap)
+      const nominatimResult = await this.geocodeWithNominatim(address)
+      if (nominatimResult) {
+        return nominatimResult
+      }
+    } catch (error) {
+      console.warn("Erreur avec Nominatim pour le géocodage:", error)
+    }
+
+    // Fallback : utiliser notre base de données locale
+    return this.geocodeLocal(address)
+  }
+
+  // Géocodage avec l'API Nominatim (OpenStreetMap)
+  private static async geocodeWithNominatim(address: string): Promise<Coordinates | null> {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&accept-language=fr`,
+        {
+          headers: {
+            "User-Agent": "Fixeo.pro/1.0",
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data && data.length > 0) {
+        const result = data[0]
+        return {
+          lat: Number.parseFloat(result.lat),
+          lng: Number.parseFloat(result.lon),
+        }
+      }
+
+      return null
+    } catch (error) {
+      console.error("Erreur Nominatim géocodage:", error)
+      return null
+    }
+  }
+
+  // Géocodage local (fallback)
+  private static geocodeLocal(address: string): Coordinates | null {
+    // Rechercher dans notre base de données locale
+    const addressLower = address.toLowerCase()
+
+    for (const city of FRENCH_CITIES) {
+      if (addressLower.includes(city.name.toLowerCase()) || addressLower.includes(city.postalCode)) {
+        return {
+          lat: city.lat,
+          lng: city.lng,
+        }
+      }
+    }
+
+    // Si aucune ville trouvée, retourner Paris par défaut
+    return {
+      lat: 48.8566,
+      lng: 2.3522,
+    }
+  }
 }
+
+// Export direct de la fonction geocodeAddress pour compatibilité
+export const geocodeAddress = GeocodingService.geocodeAddress.bind(GeocodingService)

@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { User, Bell, Shield, Calendar, Mail, Loader2 } from "lucide-react"
+import { User, Bell, Shield, Calendar, Mail, Loader2, MapPin } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import PhotoUpload from "@/components/photo-upload"
 import { emailService } from "@/lib/email-service"
+import { DepartmentSelector } from "@/components/department-selector"
+import { geocodeAddress } from "@/lib/geocoding"
 
 export default function ProfilPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
@@ -40,6 +42,9 @@ export default function ProfilPage() {
   const [isResendingEmail, setIsResendingEmail] = useState(false)
   const [lastEmailSent, setLastEmailSent] = useState<Date | null>(null)
 
+  const [isLocating, setIsLocating] = useState(false)
+  const [selectedDepartment, setSelectedDepartment] = useState(currentUser?.department || "")
+
   useEffect(() => {
     if (currentUser) {
       setUserRequests(StorageService.getRepairRequestsByClient(currentUser.id))
@@ -48,6 +53,11 @@ export default function ProfilPage() {
 
   const handleSaveProfile = () => {
     if (!currentUser) return
+
+    if (!selectedDepartment) {
+      alert("Veuillez sélectionner votre département")
+      return
+    }
 
     const updatedUser = {
       ...currentUser,
@@ -58,6 +68,7 @@ export default function ProfilPage() {
       address: userProfile.address,
       city: userProfile.city,
       postalCode: userProfile.postalCode,
+      department: selectedDepartment,
       avatar: userProfile.avatar,
     }
 
@@ -117,6 +128,53 @@ export default function ProfilPage() {
       return `Attendre ${remainingTime}s`
     }
     return "Renvoyer l'email"
+  }
+
+  const handleGeolocation = async () => {
+    setIsLocating(true)
+    try {
+      if (!navigator.geolocation) {
+        alert("La géolocalisation n'est pas supportée par votre navigateur")
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords
+            const address = await geocodeAddress(latitude, longitude)
+
+            if (address) {
+              setUserProfile({
+                ...userProfile,
+                address: address.address,
+                city: address.city,
+                postalCode: address.postalCode,
+              })
+
+              // Déterminer le département à partir du code postal
+              const deptCode = address.postalCode?.substring(0, 2)
+              if (deptCode) {
+                setSelectedDepartment(deptCode)
+              }
+            }
+          } catch (error) {
+            console.error("Erreur lors du géocodage:", error)
+            alert("Impossible de récupérer l'adresse à partir de votre position")
+          } finally {
+            setIsLocating(false)
+          }
+        },
+        (error) => {
+          console.error("Erreur de géolocalisation:", error)
+          alert("Impossible d'accéder à votre position. Vérifiez les autorisations de votre navigateur.")
+          setIsLocating(false)
+        },
+      )
+    } catch (error) {
+      console.error("Erreur:", error)
+      setIsLocating(false)
+    }
   }
 
   if (!currentUser) {
@@ -215,11 +273,24 @@ export default function ProfilPage() {
                   </div>
                   <div>
                     <Label htmlFor="address">Adresse</Label>
-                    <Input
-                      id="address"
-                      value={userProfile.address}
-                      onChange={(e) => setUserProfile({ ...userProfile, address: e.target.value })}
-                    />
+                    <div className="flex space-x-2">
+                      <Input
+                        id="address"
+                        value={userProfile.address}
+                        onChange={(e) => setUserProfile({ ...userProfile, address: e.target.value })}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGeolocation}
+                        disabled={isLocating}
+                        className="flex-shrink-0"
+                      >
+                        {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {isLocating && <p className="text-sm text-blue-600 mt-1">Récupération de votre position...</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -238,6 +309,10 @@ export default function ProfilPage() {
                         onChange={(e) => setUserProfile({ ...userProfile, postalCode: e.target.value })}
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="department">Département *</Label>
+                    <DepartmentSelector value={selectedDepartment} onValueChange={setSelectedDepartment} required />
                   </div>
                   <div>
                     <Label htmlFor="bio">Bio</Label>

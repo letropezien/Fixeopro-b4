@@ -429,12 +429,19 @@ export default function Header() {
               <>
                 {/* Actions selon le type d'utilisateur */}
                 {currentUser?.userType === "client" && (
-                  <Link href="/demande-reparation">
-                    <Button variant="outline" size="sm">
-                      <Wrench className="h-4 w-4 mr-1" />
-                      Nouvelle demande
-                    </Button>
-                  </Link>
+                  <>
+                    <Link href="/demande-reparation">
+                      <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                        <Wrench className="h-4 w-4 mr-1" />
+                        Nouvelle demande
+                      </Button>
+                    </Link>
+                    <Link href="/mes-demandes">
+                      <Button variant="ghost" size="sm">
+                        Mes demandes
+                      </Button>
+                    </Link>
+                  </>
                 )}
 
                 {currentUser?.userType === "reparateur" && (
@@ -747,6 +754,22 @@ export default function Header() {
                           {currentUser?.userType === "reparateur" ? "Réparateur" : "Client"}
                         </p>
                       </div>
+                      {currentUser?.userType === "client" && (
+                        <>
+                          <Link href="/demande-reparation">
+                            <Button variant="outline" className="w-full border-blue-600 text-blue-600">
+                              <Wrench className="h-4 w-4 mr-2" />
+                              Nouvelle demande
+                            </Button>
+                          </Link>
+                          <Link href="/mes-demandes">
+                            <Button variant="ghost" className="w-full">
+                              <Bell className="h-4 w-4 mr-2" />
+                              Mes demandes
+                            </Button>
+                          </Link>
+                        </>
+                      )}
                       <Link href={currentUser?.userType === "reparateur" ? "/profil-pro" : "/profil"}>
                         <Button variant="outline" className="w-full">
                           <User className="h-4 w-4 mr-2" />
