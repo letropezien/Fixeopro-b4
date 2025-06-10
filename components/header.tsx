@@ -72,18 +72,59 @@ export default function Header() {
   }
 
   useEffect(() => {
-    // Vérifier l'état de connexion
-    const userId = localStorage.getItem("fixeopro_current_user_id")
-    if (userId) {
-      const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
-      const user = users.find((u: any) => u.id === userId)
-      if (user) {
-        setCurrentUser(user)
-        setIsLoggedIn(true)
-        loadNotifications(user)
+    // Fonction pour charger les données utilisateur
+    const loadUserData = () => {
+      const userId = localStorage.getItem("fixeopro_current_user_id")
+      if (userId) {
+        const users = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
+        const user = users.find((u: any) => u.id === userId)
+        if (user) {
+          setCurrentUser(user)
+          setIsLoggedIn(true)
+          loadNotifications(user)
+        }
+      } else {
+        setCurrentUser(null)
+        setIsLoggedIn(false)
+        setNotifications([])
+        setUnreadCount(0)
       }
     }
+
+    // Charger les données au montage
+    loadUserData()
+
+    // Écouter les changements de localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "fixeopro_current_user_id" || e.key === "fixeopro_users") {
+        loadUserData()
+      }
+    }
+
+    // Écouter les événements personnalisés pour les changements de connexion
+    const handleLoginChange = () => {
+      setTimeout(loadUserData, 100) // Petit délai pour s'assurer que localStorage est mis à jour
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("fixeopro-login-change", handleLoginChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("fixeopro-login-change", handleLoginChange)
+    }
   }, [])
+
+  // Ajouter un effet pour rafraîchir périodiquement les notifications
+  useEffect(() => {
+    if (currentUser) {
+      const interval = setInterval(() => {
+        loadNotifications(currentUser)
+      }, 30000) // Rafraîchir toutes les 30 secondes
+
+      return () => clearInterval(interval)
+    }
+  }, [currentUser])
 
   const loadNotifications = (user: any) => {
     if (!user) return

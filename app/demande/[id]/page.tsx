@@ -1013,14 +1013,61 @@ export default function DemandeDetailsPage() {
 
                               <div>
                                 <Label>Photos du travail terminé (optionnel)</Label>
-                                <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                  <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                  <p className="text-sm text-gray-600">
-                                    Glissez-déposez des photos ou cliquez pour sélectionner
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Ajoutez des photos du travail terminé pour aider les futurs clients
-                                  </p>
+                                <div className="mt-2">
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const files = Array.from(e.target.files || [])
+                                      files.forEach((file) => {
+                                        const reader = new FileReader()
+                                        reader.onload = (event) => {
+                                          const result = event.target?.result as string
+                                          setReviewPhotos((prev) => [...prev, result])
+                                        }
+                                        reader.readAsDataURL(file)
+                                      })
+                                    }}
+                                    className="hidden"
+                                    id="review-photos"
+                                  />
+                                  <label
+                                    htmlFor="review-photos"
+                                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors block"
+                                  >
+                                    <Camera className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                                    <p className="text-sm text-gray-600">Cliquez pour sélectionner des photos</p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Ajoutez des photos du travail terminé pour aider les futurs clients
+                                    </p>
+                                  </label>
+
+                                  {reviewPhotos.length > 0 && (
+                                    <div className="mt-4">
+                                      <p className="text-sm font-medium mb-2">Photos sélectionnées :</p>
+                                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {reviewPhotos.map((photo, index) => (
+                                          <div key={index} className="relative">
+                                            <img
+                                              src={photo || "/placeholder.svg"}
+                                              alt={`Photo ${index + 1}`}
+                                              className="w-full h-20 object-cover rounded-md"
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setReviewPhotos((prev) => prev.filter((_, i) => i !== index))
+                                              }
+                                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                            >
+                                              ×
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
