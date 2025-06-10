@@ -894,8 +894,10 @@ export default function DemandeDetailsPage() {
                           <p className="text-gray-700 mb-3">{review.comment}</p>
                           <div className="text-sm text-gray-600">
                             <span className="font-medium">Réparateur :</span>{" "}
-                            {review.reparateur.companyName ||
-                              `${review.reparateur.firstName} ${review.reparateur.lastName}`}
+                            <Link href={`/profil-pro/${review.reparateurId}`} className="text-blue-600 hover:underline">
+                              {review.reparateur.companyName ||
+                                `${review.reparateur.firstName} ${review.reparateur.lastName}`}
+                            </Link>
                           </div>
                           {review.photos && review.photos.length > 0 && (
                             <div className="mt-3">

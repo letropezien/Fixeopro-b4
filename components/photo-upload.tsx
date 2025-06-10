@@ -167,34 +167,43 @@ export default function PhotoUpload({
       <div className="space-y-4">
         {/* Aperçu de la photo */}
         <div className="flex flex-col items-center">
-          <div
-            className={`${getAvatarSize()} rounded-full overflow-hidden bg-gray-100 mb-2 relative group`}
-            style={{
-              backgroundImage: photos[0] ? `url(${photos[0]})` : "none",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {!photos[0] && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <User className="h-1/2 w-1/2 text-gray-400" />
-              </div>
-            )}
-            {photos[0] && (
+          <div className="relative group">
+            <div
+              className={`${getAvatarSize()} rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 relative group cursor-pointer`}
+              onClick={openFileDialog}
+            >
+              {photos[0] ? (
+                <img
+                  src={photos[0] || "/placeholder.svg"}
+                  alt="Photo de profil"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Camera className="h-1/3 w-1/3 text-gray-400" />
+                </div>
+              )}
               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all">
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removePhoto(0)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
+            </div>
+            {photos[0] && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  removePhoto(0)
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
             )}
           </div>
 
-          <Button variant="outline" size="sm" onClick={openFileDialog} className="mt-2">
+          <Button variant="outline" size="sm" onClick={openFileDialog} className="mt-3">
+            <Upload className="h-4 w-4 mr-2" />
             {buttonText || (photos[0] ? "Changer la photo" : "Ajouter une photo")}
           </Button>
         </div>
@@ -340,9 +349,6 @@ export default function PhotoUpload({
     </div>
   )
 }
-
-// Ajout de l'icône User qui était manquante
-import { User } from "lucide-react"
 
 // Export nommé pour compatibilité avec les imports existants
 export { PhotoUpload }

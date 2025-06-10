@@ -128,7 +128,7 @@ export default function ProfilProPage() {
       setFormData({
         ...formData,
         professional: {
-          ...formData.professional,
+          ...formData.professional.socialMedia,
           socialMedia: {
             ...formData.professional.socialMedia,
             [socialField]: value,
@@ -426,7 +426,13 @@ export default function ProfilProPage() {
                   {formData.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
-              <PhotoUpload onPhotoChange={handleAvatarChange} currentPhoto={avatar} buttonText="Changer la photo" />
+              <PhotoUpload
+                onPhotoChange={handleAvatarChange}
+                currentPhoto={avatar}
+                multiple={false}
+                buttonText="Changer la photo"
+                size="lg"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
