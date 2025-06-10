@@ -128,7 +128,7 @@ export default function CategoriesPage() {
     // Charger les catégories depuis le service
     const loadCategories = () => {
       try {
-        // Forcer la réinitialisation des catégories pour s'assurer que Multimédia est présent
+        // Forcer la réinitialisation des catégories pour s'assurer que toutes sont présentes
         CategoriesService.resetCategories()
 
         // Charger toutes les catégories
@@ -136,6 +136,8 @@ export default function CategoriesPage() {
         console.log(
           "Catégories chargées:",
           allCategories.map((c) => c.name),
+          "Total:",
+          allCategories.length,
         )
         setCategories(allCategories)
       } catch (error) {
@@ -151,6 +153,17 @@ export default function CategoriesPage() {
   // Fonction pour extraire les services à partir des sous-catégories
   const getServicesFromSubcategories = (category: Category) => {
     return category.subCategories.map((sub) => sub.name)
+  }
+
+  // Fonction pour obtenir l'URL de l'image de la catégorie
+  const getCategoryImageUrl = (category: Category) => {
+    // Si la catégorie a une image définie, l'utiliser
+    if (category.image) {
+      return category.image
+    }
+
+    // Sinon, utiliser une image par défaut basée sur l'ID de la catégorie
+    return `/placeholder.svg?height=200&width=300&text=${category.name}`
   }
 
   return (
@@ -214,7 +227,7 @@ export default function CategoriesPage() {
           {isLoading ? (
             // Skeleton loader pendant le chargement
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[...Array(9)].map((_, index) => (
+              {[...Array(16)].map((_, index) => (
                 <div key={index} className="h-96 bg-gray-100 animate-pulse rounded-lg"></div>
               ))}
             </div>
@@ -223,16 +236,24 @@ export default function CategoriesPage() {
               {categories.map((category) => {
                 const displayData = getCategoryDisplayData(category.id)
                 const services = getServicesFromSubcategories(category)
+                const imageUrl = getCategoryImageUrl(category)
 
                 return (
                   <Link key={category.id} href={`/categories/${category.id}`}>
                     <Card className="h-full hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden">
                       <div className="relative">
-                        <img
-                          src={category.image || `/placeholder.svg?height=200&width=300&text=${category.name}`}
-                          alt={`Réparation ${category.name}`}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <div className="w-full h-48 bg-gray-100 overflow-hidden">
+                          <img
+                            src={imageUrl || "/placeholder.svg"}
+                            alt={`Réparation ${category.name}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              // Fallback en cas d'erreur de chargement d'image
+                              const target = e.target as HTMLImageElement
+                              target.src = `/placeholder.svg?height=200&width=300&text=${category.name}`
+                            }}
+                          />
+                        </div>
                         <div className="absolute top-4 left-4">
                           <div className="text-4xl bg-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
                             {category.icon}

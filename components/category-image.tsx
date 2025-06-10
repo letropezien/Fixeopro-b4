@@ -30,15 +30,22 @@ export function CategoryImage({ category, alt, className, fill, width, height, p
 
     // Utiliser l'image par défaut du dossier public
     const defaultImages: Record<string, string> = {
-      electromenager: "/images/categories/electromenager.png",
-      informatique: "/images/categories/informatique.png",
-      plomberie: "/images/categories/plomberie.png",
-      electricite: "/images/categories/electricite.png",
-      chauffage: "/images/categories/chauffage.png",
-      serrurerie: "/images/categories/serrurerie.png",
-      multimedia: "/images/categories/multimedia.png",
-      telephonie: "/images/categories/telephonie.png",
-      climatisation: "/images/categories/climatisation.png",
+      electromenager: "/images/categories/electromenager.jpg",
+      informatique: "/images/categories/informatique.jpg",
+      plomberie: "/images/categories/plomberie.jpg",
+      electricite: "/images/categories/electricite.jpg",
+      chauffage: "/images/categories/chauffage.jpg",
+      serrurerie: "/images/categories/serrurerie.jpg",
+      multimedia: "/images/categories/multimedia.jpg",
+      telephonie: "/images/categories/telephonie.jpg",
+      climatisation: "/images/categories/climatisation.jpg",
+      vitrerie: "/images/categories/vitrerie.jpg",
+      menuiserie: "/images/categories/menuiserie.jpg",
+      jardinage: "/images/categories/jardinage.jpg",
+      automobile: "/images/categories/automobile.jpg",
+      nettoyage: "/images/categories/nettoyage.jpg",
+      demenagement: "/images/categories/demenagement.jpg",
+      electronique: "/images/categories/electronique.jpg",
     }
 
     return (
@@ -60,6 +67,13 @@ export function CategoryImage({ category, alt, className, fill, width, height, p
       multimedia: "Technicien installant système home cinéma - équipement audiovisuel",
       telephonie: "Réparateur changeant écran smartphone - réparation mobile express",
       climatisation: "Frigoriste installant climatisation - système de refroidissement",
+      vitrerie: "Vitrier remplaçant vitre cassée - installation double vitrage",
+      menuiserie: "Menuisier fabriquant meuble sur mesure - réparation porte en bois",
+      jardinage: "Jardinier réparant tondeuse - entretien outils de jardinage",
+      automobile: "Mécanicien réparant voiture - diagnostic automobile professionnel",
+      nettoyage: "Service de nettoyage professionnel - désinfection maison et bureau",
+      demenagement: "Service de déménagement - transport de meubles sécurisé",
+      electronique: "Réparation appareils électroniques - TV, console, appareil photo",
     }
 
     return altTexts[category.toLowerCase()] || `Réparation ${category} professionnel`

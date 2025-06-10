@@ -19,6 +19,7 @@ import AdminPromoCodes from "@/components/admin-promo-codes"
 import AdminEmailConfig from "@/components/admin-email-config"
 import AdminLegalContent from "@/components/admin-legal-content"
 import AdminSiteSettings from "@/components/admin-site-settings"
+import { Analytics } from "@/components/admin/analytics"
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -140,8 +141,9 @@ export default function AdminPage() {
 
         {/* Onglets de gestion */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="requests">Demandes</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="categories">Catégories</TabsTrigger>
@@ -154,6 +156,10 @@ export default function AdminPage() {
 
           <TabsContent value="overview" className="space-y-6">
             <Overview />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <Analytics />
           </TabsContent>
 
           <TabsContent value="requests">

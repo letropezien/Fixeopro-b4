@@ -6,6 +6,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import QuickActionWidget from "@/components/quick-action-widget"
 import { SessionProvider } from "@/components/auth-provider"
+import CookieConsentBanner from "@/components/cookie-consent-banner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
           <main>{children}</main>
           <Footer />
           <QuickActionWidget />
+          <CookieConsentBanner />
         </SessionProvider>
       </body>
     </html>
