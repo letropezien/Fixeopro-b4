@@ -64,7 +64,7 @@ export interface RepairResponse {
   price?: string
   estimatedTime?: string
   createdAt: string
-  status: "pending" | "accepted" | "rejected" // Nouveau statut
+  status: "pending" | "accepted" | "rejected" | "confirmed" | "in_progress" // Nouveaux statuts
   reparateur: {
     firstName: string
     lastName: string
@@ -79,6 +79,29 @@ export interface RepairResponse {
     text: string
     createdAt: string
   }>
+  reparateurMessages?: Array<{
+    text: string
+    createdAt: string
+  }>
+  confirmedAt?: string // Date de confirmation par le réparateur
+  startedAt?: string // Date de début des travaux
+}
+
+export interface Review {
+  id: string
+  requestId: string
+  responseId: string
+  clientId: string
+  reparateurId: string
+  rating: number // 1 à 5 étoiles
+  comment: string
+  photos?: string[] // Photos du travail terminé
+  createdAt: string
+  reparateur: {
+    firstName: string
+    lastName: string
+    companyName?: string
+  }
 }
 
 export interface RepairRequest {
@@ -98,6 +121,7 @@ export interface RepairRequest {
   status: "open" | "in_progress" | "completed" | "cancelled"
   responses: RepairResponse[] // Changé pour stocker les réponses complètes
   selectedResponseIds?: string[] // IDs des réponses sélectionnées (acceptées)
+  confirmedResponseIds?: string[] // IDs des réponses confirmées par les réparateurs
   client: {
     firstName: string
     lastName: string
@@ -113,6 +137,7 @@ export interface RepairRequest {
   completedAt?: string // Date de fin des travaux
   cancelledAt?: string // Date d'annulation
   cancelReason?: string // Raison d'annulation
+  reviews?: Review[] // Avis laissés par le client
 }
 
 // Interface pour les tokens de réinitialisation de mot de passe
@@ -523,9 +548,14 @@ export class StorageService {
         request.responses = []
       }
 
-      // Vérifier le statut en fonction des réponses acceptées
-      const acceptedResponses = request.responses.filter((r) => r.status === "accepted")
-      if (acceptedResponses.length > 0 && request.status === "open") {
+      // S'assurer que les avis sont un tableau
+      if (!request.reviews) {
+        request.reviews = []
+      }
+
+      // Vérifier le statut en fonction des réponses confirmées
+      const confirmedResponses = request.responses.filter((r) => r.status === "confirmed" || r.status === "in_progress")
+      if (confirmedResponses.length > 0 && request.status === "open") {
         request.status = "in_progress"
       }
 
@@ -652,6 +682,7 @@ export class StorageService {
         },
         clientMessages: [],
         reminders: [],
+        reparateurMessages: [],
       }
 
       // Ajouter la réponse à la demande
@@ -681,10 +712,8 @@ export class StorageService {
 
       request.responses[responseIndex].status = status
 
-      // Si accepté, mettre à jour le statut de la demande
+      // Si accepté, ajouter à la liste des réponses sélectionnées
       if (status === "accepted") {
-        request.status = "in_progress"
-        // Ajouter l'ID à la liste des réponses sélectionnées
         if (!request.selectedResponseIds) {
           request.selectedResponseIds = []
         }
@@ -698,6 +727,147 @@ export class StorageService {
       return true
     } catch (error) {
       console.error("Erreur lors de la mise à jour du statut de la réponse:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour confirmer la prise en charge par le réparateur
+  static confirmRepairTakeover(requestId: string, responseId: string, message?: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver et mettre à jour la réponse
+      const responseIndex = request.responses.findIndex((r) => r.id === responseId)
+      if (responseIndex === -1) return false
+
+      request.responses[responseIndex].status = "confirmed"
+      request.responses[responseIndex].confirmedAt = new Date().toISOString()
+
+      // Ajouter un message du réparateur si fourni
+      if (message) {
+        if (!request.responses[responseIndex].reparateurMessages) {
+          request.responses[responseIndex].reparateurMessages = []
+        }
+        request.responses[responseIndex].reparateurMessages!.push({
+          text: message,
+          createdAt: new Date().toISOString(),
+        })
+      }
+
+      // Ajouter à la liste des réponses confirmées
+      if (!request.confirmedResponseIds) {
+        request.confirmedResponseIds = []
+      }
+      if (!request.confirmedResponseIds.includes(responseId)) {
+        request.confirmedResponseIds.push(responseId)
+      }
+
+      // Mettre à jour le statut de la demande
+      request.status = "in_progress"
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de la confirmation de la prise en charge:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour commencer les travaux
+  static startRepairWork(requestId: string, responseId: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver et mettre à jour la réponse
+      const responseIndex = request.responses.findIndex((r) => r.id === responseId)
+      if (responseIndex === -1) return false
+
+      request.responses[responseIndex].status = "in_progress"
+      request.responses[responseIndex].startedAt = new Date().toISOString()
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors du démarrage des travaux:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour ajouter un message du réparateur
+  static addReparateurMessage(requestId: string, responseId: string, message: string): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver la réponse
+      const response = request.responses.find((r) => r.id === responseId)
+      if (!response) return false
+
+      // Ajouter le message
+      if (!response.reparateurMessages) {
+        response.reparateurMessages = []
+      }
+      response.reparateurMessages.push({
+        text: message,
+        createdAt: new Date().toISOString(),
+      })
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'ajout du message du réparateur:", error)
+      return false
+    }
+  }
+
+  // Nouvelle méthode pour ajouter un avis avec photos
+  static addReview(
+    requestId: string,
+    responseId: string,
+    reviewData: {
+      rating: number
+      comment: string
+      photos?: string[]
+    },
+  ): boolean {
+    try {
+      const request = this.getRepairRequestById(requestId)
+      if (!request) return false
+
+      // Trouver la réponse
+      const response = request.responses.find((r) => r.id === responseId)
+      if (!response) return false
+
+      // Créer l'avis
+      const review: Review = {
+        id: `review_${this.generateId()}`,
+        requestId,
+        responseId,
+        clientId: request.clientId,
+        reparateurId: response.reparateurId,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+        photos: reviewData.photos || [],
+        createdAt: new Date().toISOString(),
+        reparateur: response.reparateur,
+      }
+
+      // Ajouter l'avis à la demande
+      if (!request.reviews) {
+        request.reviews = []
+      }
+      request.reviews.push(review)
+
+      // Sauvegarder la demande mise à jour
+      this.saveRepairRequest(request)
+      return true
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de l'avis:", error)
       return false
     }
   }
@@ -763,8 +933,16 @@ export class StorageService {
     return this.updateResponseStatus(requestId, responseId, "accepted")
   }
 
-  // Nouvelle méthode pour marquer une demande comme terminée
-  static completeRequest(requestId: string): boolean {
+  // Nouvelle méthode pour marquer une demande comme terminée avec avis
+  static completeRequestWithReview(
+    requestId: string,
+    reviewData?: {
+      responseId: string
+      rating: number
+      comment: string
+      photos?: string[]
+    },
+  ): boolean {
     try {
       const request = this.getRepairRequestById(requestId)
       if (!request) return false
@@ -773,6 +951,15 @@ export class StorageService {
       request.status = "completed"
       request.completedAt = new Date().toISOString()
 
+      // Ajouter l'avis si fourni
+      if (reviewData) {
+        this.addReview(requestId, reviewData.responseId, {
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+          photos: reviewData.photos,
+        })
+      }
+
       // Sauvegarder la demande mise à jour
       this.saveRepairRequest(request)
       return true
@@ -780,6 +967,11 @@ export class StorageService {
       console.error("Erreur lors de la complétion de la demande:", error)
       return false
     }
+  }
+
+  // Ancienne méthode pour marquer une demande comme terminée
+  static completeRequest(requestId: string): boolean {
+    return this.completeRequestWithReview(requestId)
   }
 
   // Nouvelle méthode pour annuler une demande
@@ -1151,6 +1343,7 @@ export class StorageService {
             createdAt: new Date().toISOString(),
             coordinates: { lat: 48.8566, lng: 2.3522 },
             photos: [],
+            reviews: [],
           },
           {
             id: "demo_request_2",
@@ -1173,72 +1366,7 @@ export class StorageService {
             createdAt: new Date().toISOString(),
             coordinates: { lat: 45.764, lng: 4.8357 },
             photos: [],
-          },
-          {
-            id: "demo_request_3",
-            clientId: "demo_client_1",
-            title: "Écran d'ordinateur cassé",
-            description: "L'écran de mon ordinateur portable est fissuré",
-            category: "informatique",
-            urgency: "this-week",
-            urgencyLabel: "Cette semaine",
-            budget: "150-300€",
-            city: "Marseille",
-            postalCode: "13001",
-            status: "open",
-            responses: [],
-            client: {
-              firstName: "Jean",
-              lastName: "Dupont",
-              initials: "JD",
-            },
-            createdAt: new Date().toISOString(),
-            coordinates: { lat: 43.2965, lng: 5.3698 },
-            photos: [],
-          },
-          {
-            id: "demo_request_4",
-            clientId: "demo_client_1",
-            title: "Réparation iPhone",
-            description: "Écran cassé sur iPhone 13",
-            category: "téléphonie",
-            urgency: "flexible",
-            urgencyLabel: "Flexible",
-            budget: "80-150€",
-            city: "Toulouse",
-            postalCode: "31000",
-            status: "open",
-            responses: [],
-            client: {
-              firstName: "Jean",
-              lastName: "Dupont",
-              initials: "JD",
-            },
-            createdAt: new Date().toISOString(),
-            coordinates: { lat: 43.6047, lng: 1.4442 },
-            photos: [],
-          },
-          {
-            id: "demo_request_5",
-            clientId: "demo_client_1",
-            title: "Panne de chauffage",
-            description: "Radiateur qui ne chauffe plus",
-            category: "chauffage",
-            urgency: "urgent",
-            urgencyLabel: "Urgent",
-            budget: "200-400€",
-            city: "Nice",
-            postalCode: "06000",
-            status: "open",
-            responses: [],
-            client: {
-              firstName: "Jean",
-              lastName: "Dupont",
-              initials: "JD",
-            },
-            createdAt: new Date().toISOString(),
-            coordinates: { lat: 43.7102, lng: 7.262 },
-            photos: [],
+            reviews: [],
           },
           // Ajouter une demande avec des réponses
           {
@@ -1259,7 +1387,7 @@ export class StorageService {
                 requestId: "demo_request_6",
                 reparateurId: "demo_reparateur_1",
                 text: "Je peux vous proposer l'installation d'une climatisation réversible pour 400€ tout compris. Je suis disponible dès jeudi.",
-                price: "400€",
+                price: "400",
                 estimatedTime: "3 heures",
                 createdAt: new Date().toISOString(),
                 status: "pending",
@@ -1270,16 +1398,17 @@ export class StorageService {
                 },
                 clientMessages: [],
                 reminders: [],
+                reparateurMessages: [],
               },
               {
                 id: "response_2",
                 requestId: "demo_request_6",
                 reparateurId: "demo_reparateur_2",
                 text: "Bonjour, je peux vous installer une climatisation de qualité pour 450€ avec garantie 2 ans. Disponible lundi prochain.",
-                price: "450€",
+                price: "450",
                 estimatedTime: "4 heures",
                 createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                status: "pending",
+                status: "accepted",
                 reparateur: {
                   firstName: "Marie",
                   lastName: "Dubois",
@@ -1287,8 +1416,10 @@ export class StorageService {
                 },
                 clientMessages: [],
                 reminders: [],
+                reparateurMessages: [],
               },
             ],
+            selectedResponseIds: ["response_2"],
             client: {
               firstName: "Jean",
               lastName: "Dupont",
@@ -1297,55 +1428,9 @@ export class StorageService {
             createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
             coordinates: { lat: 48.8566, lng: 2.3522 },
             photos: [],
+            reviews: [],
           },
-          // Ajouter une demande en cours
-          {
-            id: "demo_request_7",
-            clientId: "demo_client_1",
-            title: "Réparation lave-vaisselle",
-            description: "Mon lave-vaisselle fait un bruit étrange et ne lave plus correctement",
-            category: "électroménager",
-            urgency: "same-day",
-            urgencyLabel: "Aujourd'hui",
-            budget: "100-200€",
-            city: "Paris",
-            postalCode: "75001",
-            status: "in_progress",
-            selectedResponseIds: ["response_3"],
-            responses: [
-              {
-                id: "response_3",
-                requestId: "demo_request_7",
-                reparateurId: "demo_reparateur_1",
-                text: "Je peux intervenir aujourd'hui pour diagnostiquer et réparer votre lave-vaisselle. Tarif : 120€ incluant le déplacement.",
-                price: "120€",
-                estimatedTime: "1 heure",
-                createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-                status: "accepted",
-                reparateur: {
-                  firstName: "Thomas",
-                  lastName: "Martin",
-                  companyName: "Répar'Tout",
-                },
-                clientMessages: [
-                  {
-                    text: "Bonjour, à quelle heure pouvez-vous passer aujourd'hui ?",
-                    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-                  },
-                ],
-                reminders: [],
-              },
-            ],
-            client: {
-              firstName: "Jean",
-              lastName: "Dupont",
-              initials: "JD",
-            },
-            createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            coordinates: { lat: 48.8566, lng: 2.3522 },
-            photos: [],
-          },
-          // Ajouter une demande terminée
+          // Ajouter une demande terminée avec avis
           {
             id: "demo_request_8",
             clientId: "demo_client_1",
@@ -1359,16 +1444,19 @@ export class StorageService {
             postalCode: "75001",
             status: "completed",
             selectedResponseIds: ["response_4"],
+            confirmedResponseIds: ["response_4"],
             responses: [
               {
                 id: "response_4",
                 requestId: "demo_request_8",
                 reparateurId: "demo_reparateur_2",
                 text: "Je peux réparer votre télévision. Il s'agit probablement d'un problème de carte T-CON. Prix estimé : 130€.",
-                price: "130€",
+                price: "130",
                 estimatedTime: "2 heures",
                 createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-                status: "accepted",
+                status: "confirmed",
+                confirmedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+                startedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
                 reparateur: {
                   firstName: "Marie",
                   lastName: "Dubois",
@@ -1376,6 +1464,12 @@ export class StorageService {
                 },
                 clientMessages: [],
                 reminders: [],
+                reparateurMessages: [
+                  {
+                    text: "Je confirme la prise en charge de votre demande. Je passerai demain matin vers 10h.",
+                    createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+                  },
+                ],
               },
             ],
             client: {
@@ -1387,31 +1481,25 @@ export class StorageService {
             completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
             coordinates: { lat: 48.8566, lng: 2.3522 },
             photos: [],
-          },
-          // Ajouter une demande annulée
-          {
-            id: "demo_request_9",
-            clientId: "demo_client_1",
-            title: "Réparation vélo électrique",
-            description: "Mon vélo électrique ne s'allume plus",
-            category: "autres",
-            urgency: "flexible",
-            urgencyLabel: "Flexible",
-            budget: "50-100€",
-            city: "Paris",
-            postalCode: "75001",
-            status: "cancelled",
-            responses: [],
-            client: {
-              firstName: "Jean",
-              lastName: "Dupont",
-              initials: "JD",
-            },
-            createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-            cancelledAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-            cancelReason: "J'ai trouvé une autre solution",
-            coordinates: { lat: 48.8566, lng: 2.3522 },
-            photos: [],
+            reviews: [
+              {
+                id: "review_1",
+                requestId: "demo_request_8",
+                responseId: "response_4",
+                clientId: "demo_client_1",
+                reparateurId: "demo_reparateur_2",
+                rating: 5,
+                comment:
+                  "Excellent travail ! Marie a été très professionnelle et a résolu le problème rapidement. Je recommande vivement !",
+                photos: [],
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+                reparateur: {
+                  firstName: "Marie",
+                  lastName: "Dubois",
+                  companyName: "ElectroFix",
+                },
+              },
+            ],
           },
         ]
 
