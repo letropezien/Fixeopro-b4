@@ -13,11 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { StorageService } from "@/lib/storage"
 import { PhotoUpload } from "@/components/photo-upload"
-import { Facebook, Instagram, Linkedin } from "lucide-react"
+import { Facebook, Instagram, Linkedin, MapPin, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bell, MapPin, Clock, Filter } from "lucide-react"
+import { Bell, Clock, Filter } from "lucide-react"
 import { CategoriesService } from "@/lib/categories-service"
 
 export default function ProfilProPage() {
@@ -57,6 +57,7 @@ export default function ProfilProPage() {
     categories: [] as string[],
     urgencyLevels: ["urgent", "same-day", "this-week", "flexible"] as string[],
   })
+  const [isLocating, setIsLocating] = useState(false)
 
   useEffect(() => {
     const currentUser = StorageService.getCurrentUser()
@@ -169,22 +170,12 @@ export default function ProfilProPage() {
     setAvatar(imageUrl)
   }
 
-  const handleCompanyPhotoChange = (imageUrl: string) => {
+  const handleCompanyPhotosChange = (photos: string[]) => {
     setFormData({
       ...formData,
       professional: {
         ...formData.professional,
-        companyPhotos: [...formData.professional.companyPhotos, imageUrl],
-      },
-    })
-  }
-
-  const removeCompanyPhoto = (photoUrl: string) => {
-    setFormData({
-      ...formData,
-      professional: {
-        ...formData.professional,
-        companyPhotos: formData.professional.companyPhotos.filter((p) => p !== photoUrl),
+        companyPhotos: photos,
       },
     })
   }
@@ -212,6 +203,82 @@ export default function ProfilProPage() {
         ? prev.urgencyLevels.filter((l) => l !== level)
         : [...prev.urgencyLevels, level],
     }))
+  }
+
+  const handleGeolocation = async () => {
+    setIsLocating(true)
+    try {
+      if (!navigator.geolocation) {
+        setMessage({ type: "error", text: "La géolocalisation n'est pas supportée par votre navigateur" })
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords
+
+            // Simuler un géocodage inverse
+            // En production, utilisez un service comme Google Geocoding API
+            const cities = [
+              { name: "Paris", postalCode: "75001", lat: 48.8566, lng: 2.3522 },
+              { name: "Lyon", postalCode: "69001", lat: 45.764, lng: 4.8357 },
+              { name: "Marseille", postalCode: "13001", lat: 43.2965, lng: 5.3698 },
+              { name: "Toulouse", postalCode: "31000", lat: 43.6047, lng: 1.4442 },
+              { name: "Nice", postalCode: "06000", lat: 43.7102, lng: 7.262 },
+            ]
+
+            // Trouver la ville la plus proche
+            let closestCity = cities[0]
+            let minDistance = calculateDistance(latitude, longitude, closestCity.lat, closestCity.lng)
+
+            for (const city of cities) {
+              const distance = calculateDistance(latitude, longitude, city.lat, city.lng)
+              if (distance < minDistance) {
+                minDistance = distance
+                closestCity = city
+              }
+            }
+
+            setFormData({
+              ...formData,
+              city: closestCity.name,
+              postalCode: closestCity.postalCode,
+            })
+
+            setMessage({ type: "success", text: `Localisation réussie : ${closestCity.name}` })
+          } catch (error) {
+            console.error("Erreur lors du géocodage:", error)
+            setMessage({ type: "error", text: "Impossible de récupérer l'adresse à partir de votre position" })
+          } finally {
+            setIsLocating(false)
+          }
+        },
+        (error) => {
+          console.error("Erreur de géolocalisation:", error)
+          setMessage({
+            type: "error",
+            text: "Impossible d'accéder à votre position. Vérifiez les autorisations de votre navigateur.",
+          })
+          setIsLocating(false)
+        },
+      )
+    } catch (error) {
+      console.error("Erreur:", error)
+      setIsLocating(false)
+    }
+  }
+
+  // Fonction pour calculer la distance entre deux points GPS
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371 // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * (Math.PI / 180)
+    const dLng = (lng2 - lng1) * (Math.PI / 180)
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -359,7 +426,7 @@ export default function ProfilProPage() {
                   {formData.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
-              <PhotoUpload onImageUploaded={handleAvatarChange} buttonText="Changer la photo" />
+              <PhotoUpload onPhotoChange={handleAvatarChange} currentPhoto={avatar} buttonText="Changer la photo" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -417,13 +484,30 @@ export default function ProfilProPage() {
                 <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Paris" />
               </div>
             </div>
+
+            {/* Bouton de géolocalisation */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGeolocation}
+                disabled={isLocating}
+                className="flex items-center gap-2"
+              >
+                {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                {isLocating ? "Localisation en cours..." : "Utiliser ma position actuelle"}
+              </Button>
+              <p className="text-xs text-gray-500 mt-1">
+                Utilisez cette option pour remplir automatiquement votre ville et code postal
+              </p>
+            </div>
           </CardContent>
         </Card>
 
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Informations professionnelles</CardTitle>
-            <CardDescription>Détails de votre entreprise</CardDescription>
+            <CardDescription>Détails sur votre entreprise et vos services</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -433,12 +517,13 @@ export default function ProfilProPage() {
                 name="professional.companyName"
                 value={formData.professional.companyName}
                 onChange={handleChange}
-                placeholder="Ma Société de Réparation"
+                placeholder="Mon Entreprise SARL"
+                required
               />
             </div>
 
             <div>
-              <Label htmlFor="siret">Numéro SIRET</Label>
+              <Label htmlFor="siret">SIRET</Label>
               <Input
                 id="siret"
                 name="professional.siret"
@@ -449,13 +534,13 @@ export default function ProfilProPage() {
             </div>
 
             <div>
-              <Label htmlFor="experience">Expérience</Label>
+              <Label htmlFor="experience">Années d'expérience</Label>
               <Input
                 id="experience"
                 name="professional.experience"
                 value={formData.professional.experience}
                 onChange={handleChange}
-                placeholder="10 ans dans la réparation électroménager"
+                placeholder="5 ans"
               />
             </div>
 
@@ -466,8 +551,8 @@ export default function ProfilProPage() {
                 name="professional.description"
                 value={formData.professional.description}
                 onChange={handleChange}
-                placeholder="Décrivez votre activité, vos services, votre expertise..."
-                rows={5}
+                placeholder="Décrivez votre entreprise, vos services et votre expertise..."
+                rows={4}
               />
             </div>
 
@@ -478,82 +563,91 @@ export default function ProfilProPage() {
                 name="professional.website"
                 value={formData.professional.website}
                 onChange={handleChange}
-                placeholder="https://www.monsite.fr"
+                placeholder="https://mon-site.com"
               />
             </div>
 
-            <div className="space-y-4">
-              <Label>Réseaux sociaux</Label>
-
-              <div className="flex items-center space-x-2">
-                <Facebook className="h-5 w-5 text-blue-600" />
-                <Input
-                  id="facebook"
-                  name="socialMedia.facebook"
-                  value={formData.professional.socialMedia.facebook}
-                  onChange={handleChange}
-                  placeholder="https://facebook.com/votre-page"
-                  className="flex-1"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Instagram className="h-5 w-5 text-pink-600" />
-                <Input
-                  id="instagram"
-                  name="socialMedia.instagram"
-                  value={formData.professional.socialMedia.instagram}
-                  onChange={handleChange}
-                  placeholder="https://instagram.com/votre-compte"
-                  className="flex-1"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Linkedin className="h-5 w-5 text-blue-700" />
-                <Input
-                  id="linkedin"
-                  name="socialMedia.linkedin"
-                  value={formData.professional.socialMedia.linkedin}
-                  onChange={handleChange}
-                  placeholder="https://linkedin.com/in/votre-profil"
-                  className="flex-1"
-                />
-              </div>
-
-              <p className="text-xs text-gray-500 mt-1">
-                Ajoutez les URLs complètes de vos profils sociaux (avec https://)
-              </p>
-            </div>
-
             <div>
-              <Label htmlFor="specialties">Spécialités</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {formData.professional.specialties.map((specialty, index) => (
-                  <Badge key={index} variant="secondary" className="px-3 py-1">
+              <Label>Spécialités</Label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  value={newSpecialty}
+                  onChange={(e) => setNewSpecialty(e.target.value)}
+                  placeholder="Ajouter une spécialité"
+                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSpecialty())}
+                />
+                <Button type="button" onClick={addSpecialty}>
+                  Ajouter
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.professional.specialties.map((specialty) => (
+                  <Badge key={specialty} variant="secondary" className="cursor-pointer">
                     {specialty}
                     <button
                       type="button"
-                      className="ml-2 text-gray-500 hover:text-gray-700"
                       onClick={() => removeSpecialty(specialty)}
+                      className="ml-2 text-red-500 hover:text-red-700"
                     >
                       ×
                     </button>
                   </Badge>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <Input
-                  id="newSpecialty"
-                  value={newSpecialty}
-                  onChange={(e) => setNewSpecialty(e.target.value)}
-                  placeholder="Ajouter une spécialité"
-                  className="flex-1"
-                />
-                <Button type="button" variant="outline" onClick={addSpecialty}>
-                  Ajouter
-                </Button>
-              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Photos de l'entreprise</CardTitle>
+            <CardDescription>
+              Ajoutez des photos de votre entreprise, de vos réalisations et de votre équipe (illimité)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PhotoUpload
+              currentPhotos={formData.professional.companyPhotos}
+              onPhotosChange={handleCompanyPhotosChange}
+              maxPhotos={999} // Nombre illimité
+              label="Photos de l'entreprise"
+              description="Ajoutez autant de photos que vous le souhaitez pour présenter votre entreprise"
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Réseaux sociaux</CardTitle>
+            <CardDescription>Vos profils sur les réseaux sociaux</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Facebook className="h-5 w-5 text-blue-600" />
+              <Input
+                name="socialMedia.facebook"
+                value={formData.professional.socialMedia.facebook}
+                onChange={handleChange}
+                placeholder="https://facebook.com/votre-page"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Instagram className="h-5 w-5 text-pink-600" />
+              <Input
+                name="socialMedia.instagram"
+                value={formData.professional.socialMedia.instagram}
+                onChange={handleChange}
+                placeholder="https://instagram.com/votre-compte"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Linkedin className="h-5 w-5 text-blue-700" />
+              <Input
+                name="socialMedia.linkedin"
+                value={formData.professional.socialMedia.linkedin}
+                onChange={handleChange}
+                placeholder="https://linkedin.com/in/votre-profil"
+              />
             </div>
           </CardContent>
         </Card>
@@ -565,17 +659,19 @@ export default function ProfilProPage() {
               Préférences de notifications
             </CardTitle>
             <CardDescription>
-              Configurez vos préférences pour recevoir des notifications ciblées selon vos critères
+              Configurez comment vous souhaitez recevoir les notifications de nouvelles demandes
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Activation des notifications */}
             <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Recevoir des notifications</Label>
-                <p className="text-sm text-gray-500">Activez pour recevoir des notifications de nouvelles demandes</p>
+              <div>
+                <Label htmlFor="enableNotifications" className="text-base font-medium">
+                  Recevoir des notifications
+                </Label>
+                <p className="text-sm text-gray-600">Activez pour recevoir des notifications de nouvelles demandes</p>
               </div>
               <Switch
+                id="enableNotifications"
                 checked={notificationPreferences.enableNotifications}
                 onCheckedChange={(checked) => handleNotificationPreferenceChange("enableNotifications", checked)}
               />
@@ -583,9 +679,8 @@ export default function ProfilProPage() {
 
             {notificationPreferences.enableNotifications && (
               <>
-                {/* Distance maximale */}
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
+                <div>
+                  <Label className="text-base font-medium flex items-center gap-2 mb-3">
                     <MapPin className="h-4 w-4" />
                     Distance maximale
                   </Label>
@@ -594,140 +689,86 @@ export default function ProfilProPage() {
                     onValueChange={(value) => handleNotificationPreferenceChange("maxDistance", Number.parseInt(value))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez une distance" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="5">5 km</SelectItem>
                       <SelectItem value="10">10 km</SelectItem>
-                      <SelectItem value="15">15 km</SelectItem>
                       <SelectItem value="25">25 km</SelectItem>
                       <SelectItem value="50">50 km</SelectItem>
                       <SelectItem value="100">100 km</SelectItem>
-                      <SelectItem value="200">200 km (toute la France)</SelectItem>
+                      <SelectItem value="999">Toute la France</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600 mt-1">
                     Vous recevrez des notifications pour les demandes dans un rayon de{" "}
-                    {notificationPreferences.maxDistance} km autour de votre localisation
+                    {notificationPreferences.maxDistance === 999
+                      ? "toute la France"
+                      : `${notificationPreferences.maxDistance} km`}
                   </p>
                 </div>
 
-                {/* Catégories */}
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
+                <div>
+                  <Label className="text-base font-medium flex items-center gap-2 mb-3">
                     <Filter className="h-4 w-4" />
-                    Catégories d'intervention
+                    Catégories d'intérêt
                   </Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {CategoriesService.getEnabledCategories().map((category) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {CategoriesService.getCategories().map((category) => (
                       <div key={category.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`category-${category.id}`}
-                          checked={notificationPreferences.categories.includes(category.id)}
-                          onCheckedChange={() => toggleCategory(category.id)}
+                          checked={notificationPreferences.categories.includes(category.name)}
+                          onCheckedChange={() => toggleCategory(category.name)}
                         />
-                        <Label
-                          htmlFor={`category-${category.id}`}
-                          className="text-sm font-normal capitalize cursor-pointer"
-                        >
+                        <Label htmlFor={`category-${category.id}`} className="text-sm">
                           {category.name}
                         </Label>
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600 mt-2">
                     Sélectionnez les catégories pour lesquelles vous souhaitez recevoir des notifications
                   </p>
                 </div>
 
-                {/* Niveaux d'urgence */}
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
+                <div>
+                  <Label className="text-base font-medium flex items-center gap-2 mb-3">
                     <Clock className="h-4 w-4" />
-                    Niveaux d'urgence acceptés
+                    Niveaux d'urgence
                   </Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
                     {[
-                      { value: "urgent", label: "Urgent", color: "text-red-600" },
-                      { value: "same-day", label: "Aujourd'hui", color: "text-orange-600" },
-                      { value: "this-week", label: "Cette semaine", color: "text-yellow-600" },
-                      { value: "flexible", label: "Flexible", color: "text-green-600" },
+                      { id: "urgent", label: "Urgent (dans les 2h)", color: "text-red-600" },
+                      { id: "same-day", label: "Même jour", color: "text-orange-600" },
+                      { id: "this-week", label: "Cette semaine", color: "text-yellow-600" },
+                      { id: "flexible", label: "Flexible", color: "text-green-600" },
                     ].map((urgency) => (
-                      <div key={urgency.value} className="flex items-center space-x-2">
+                      <div key={urgency.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`urgency-${urgency.value}`}
-                          checked={notificationPreferences.urgencyLevels.includes(urgency.value)}
-                          onCheckedChange={() => toggleUrgencyLevel(urgency.value)}
+                          id={`urgency-${urgency.id}`}
+                          checked={notificationPreferences.urgencyLevels.includes(urgency.id)}
+                          onCheckedChange={() => toggleUrgencyLevel(urgency.id)}
                         />
-                        <Label
-                          htmlFor={`urgency-${urgency.value}`}
-                          className={`text-sm font-normal cursor-pointer ${urgency.color}`}
-                        >
+                        <Label htmlFor={`urgency-${urgency.id}`} className={`text-sm ${urgency.color}`}>
                           {urgency.label}
                         </Label>
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-600 mt-2">
                     Choisissez les niveaux d'urgence pour lesquels vous souhaitez être notifié
                   </p>
-                </div>
-
-                {/* Résumé des préférences */}
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">Résumé de vos préférences</h4>
-                  <div className="text-sm text-blue-800 space-y-1">
-                    <p>
-                      • Distance : <span className="font-medium">{notificationPreferences.maxDistance} km</span>
-                    </p>
-                    <p>
-                      • Catégories :{" "}
-                      <span className="font-medium">{notificationPreferences.categories.length} sélectionnée(s)</span>
-                    </p>
-                    <p>
-                      • Urgences :{" "}
-                      <span className="font-medium">{notificationPreferences.urgencyLevels.length} niveau(x)</span>
-                    </p>
-                  </div>
                 </div>
               </>
             )}
           </CardContent>
         </Card>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Photos de l'entreprise</CardTitle>
-            <CardDescription>Ajoutez des photos de vos locaux, réalisations, etc.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              {formData.professional.companyPhotos.map((photo, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={photo || "/placeholder.svg"}
-                    alt={`Photo ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-md"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeCompanyPhoto(photo)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-            <PhotoUpload onImageUploaded={handleCompanyPhotoChange} buttonText="Ajouter une photo" />
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit" disabled={saving}>
-            {saving ? "Sauvegarde en cours..." : "Sauvegarder les modifications"}
-          </Button>
-        </div>
+        <Button type="submit" className="w-full" disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Sauvegarder le profil
+        </Button>
       </form>
     </div>
   )

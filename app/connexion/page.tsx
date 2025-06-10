@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Loader2, User, UserPlus, RefreshCw, Users, Wrench } from "lucide-react"
+import { Loader2, User, UserPlus, RefreshCw, Users, Wrench, MapPin, Check, Info } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 
 export default function Connexion() {
@@ -32,6 +32,10 @@ export default function Connexion() {
   const [registerUserType, setRegisterUserType] = useState<"client" | "reparateur">("client")
   const [registerCompanyName, setRegisterCompanyName] = useState("")
   const [registerSpecialties, setRegisterSpecialties] = useState("")
+  const [selectedPlan, setSelectedPlan] = useState<string>("standard")
+  const [isLocating, setIsLocating] = useState(false)
+  const [registerCity, setRegisterCity] = useState("")
+  const [registerPostalCode, setRegisterPostalCode] = useState("")
 
   // État pour la réinitialisation
   const [resetEmail, setResetEmail] = useState("")
@@ -83,6 +87,74 @@ export default function Connexion() {
     }
   }
 
+  const handleGeolocation = async () => {
+    setIsLocating(true)
+    try {
+      if (!navigator.geolocation) {
+        alert("La géolocalisation n'est pas supportée par votre navigateur")
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords
+
+            // Simuler un géocodage inverse
+            // En production, utilisez un service comme Google Geocoding API
+            const cities = [
+              { name: "Paris", postalCode: "75001", lat: 48.8566, lng: 2.3522 },
+              { name: "Lyon", postalCode: "69001", lat: 45.764, lng: 4.8357 },
+              { name: "Marseille", postalCode: "13001", lat: 43.2965, lng: 5.3698 },
+              { name: "Toulouse", postalCode: "31000", lat: 43.6047, lng: 1.4442 },
+              { name: "Nice", postalCode: "06000", lat: 43.7102, lng: 7.262 },
+            ]
+
+            // Trouver la ville la plus proche
+            let closestCity = cities[0]
+            let minDistance = calculateDistance(latitude, longitude, closestCity.lat, closestCity.lng)
+
+            for (const city of cities) {
+              const distance = calculateDistance(latitude, longitude, city.lat, city.lng)
+              if (distance < minDistance) {
+                minDistance = distance
+                closestCity = city
+              }
+            }
+
+            setRegisterCity(closestCity.name)
+            setRegisterPostalCode(closestCity.postalCode)
+          } catch (error) {
+            console.error("Erreur lors du géocodage:", error)
+            alert("Impossible de récupérer l'adresse à partir de votre position")
+          } finally {
+            setIsLocating(false)
+          }
+        },
+        (error) => {
+          console.error("Erreur de géolocalisation:", error)
+          alert("Impossible d'accéder à votre position. Vérifiez les autorisations de votre navigateur.")
+          setIsLocating(false)
+        },
+      )
+    } catch (error) {
+      console.error("Erreur:", error)
+      setIsLocating(false)
+    }
+  }
+
+  // Fonction pour calculer la distance entre deux points GPS
+  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371 // Rayon de la Terre en km
+    const dLat = (lat2 - lat1) * (Math.PI / 180)
+    const dLng = (lng2 - lng1) * (Math.PI / 180)
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -123,8 +195,8 @@ export default function Connexion() {
         lastName: lastName,
         phone: registerPhone || "",
         address: "",
-        city: "",
-        postalCode: "",
+        city: registerCity || "",
+        postalCode: registerPostalCode || "",
         userType: registerUserType,
         isEmailVerified: false,
         createdAt: "", // Sera généré automatiquement par StorageService
@@ -146,6 +218,12 @@ export default function Connexion() {
               urgencyLevels: ["urgent", "same-day", "this-week", "flexible"],
             },
           },
+          subscription: {
+            plan: selectedPlan,
+            status: "trial",
+            startDate: new Date().toISOString(),
+            endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+          },
         }),
       }
 
@@ -165,6 +243,8 @@ export default function Connexion() {
         setRegisterCompanyName("")
         setRegisterSpecialties("")
         setRegisterUserType("client")
+        setRegisterCity("")
+        setRegisterPostalCode("")
       } else {
         setError("Erreur lors de la création du compte")
       }
@@ -235,6 +315,39 @@ export default function Connexion() {
       setError("Erreur lors de la réinitialisation des données.")
     }
   }
+
+  // Plans disponibles
+  const plans = [
+    {
+      id: "standard",
+      name: "Standard",
+      price: "19.99€/mois",
+      features: ["Accès aux demandes", "Profil professionnel", "Support par email"],
+    },
+    {
+      id: "premium",
+      name: "Premium",
+      price: "39.99€/mois",
+      features: [
+        "Accès prioritaire aux demandes",
+        "Profil mis en avant",
+        "Support prioritaire",
+        "Statistiques avancées",
+      ],
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "59.99€/mois",
+      features: [
+        "Accès illimité aux demandes",
+        "Profil premium",
+        "Support dédié",
+        "Outils marketing",
+        "Formations exclusives",
+      ],
+    },
+  ]
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -413,6 +526,32 @@ export default function Connexion() {
                   />
                 </div>
 
+                {/* Géolocalisation */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>Localisation</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGeolocation}
+                      disabled={isLocating}
+                      className="flex items-center gap-1"
+                    >
+                      {isLocating ? <Loader2 className="h-3 w-3 animate-spin" /> : <MapPin className="h-3 w-3" />}
+                      {isLocating ? "Localisation..." : "Me localiser"}
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Ville" value={registerCity} onChange={(e) => setRegisterCity(e.target.value)} />
+                    <Input
+                      placeholder="Code postal"
+                      value={registerPostalCode}
+                      onChange={(e) => setRegisterPostalCode(e.target.value)}
+                    />
+                  </div>
+                </div>
+
                 {/* Champs spécifiques aux réparateurs */}
                 {registerUserType === "reparateur" && (
                   <>
@@ -438,6 +577,57 @@ export default function Connexion() {
                         required
                       />
                       <p className="text-xs text-gray-500">Séparez les spécialités par des virgules</p>
+                    </div>
+
+                    {/* Notification de période d'essai */}
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2">
+                      <Info className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium">Période d'essai de 15 jours</p>
+                        <p>
+                          Profitez de 15 jours d'essai gratuit sans engagement. Vous pourrez choisir votre forfait à
+                          tout moment.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Sélection de forfait */}
+                    <div className="space-y-3">
+                      <Label className="text-base font-medium">Choisissez votre forfait</Label>
+                      <div className="grid gap-3">
+                        {plans.map((plan) => (
+                          <div
+                            key={plan.id}
+                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                              selectedPlan === plan.id ? "border-blue-500 bg-blue-50" : "hover:border-gray-300"
+                            }`}
+                            onClick={() => setSelectedPlan(plan.id)}
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="font-medium">{plan.name}</h3>
+                              <div className="flex items-center">
+                                <span className="font-bold text-blue-600 mr-2">{plan.price}</span>
+                                {selectedPlan === plan.id && (
+                                  <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                    <Check className="h-3 w-3 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {plan.features.map((feature, i) => (
+                                <li key={i} className="flex items-center gap-1">
+                                  <Check className="h-3 w-3 text-green-500" />
+                                  {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 italic">
+                        Vous pourrez modifier votre forfait à tout moment depuis votre profil.
+                      </p>
                     </div>
                   </>
                 )}
