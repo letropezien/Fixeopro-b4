@@ -377,7 +377,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href="/" className="flex items-center space-x-2" onClick={() => (window.location.href = "/")}>
             <div className="bg-blue-600 p-2 rounded-lg">
               <Wrench className="h-6 w-6 text-white" />
             </div>
@@ -405,14 +405,16 @@ export default function Header() {
 
           {/* Actions */}
           <div className="hidden lg:flex items-center space-x-2">
+            {/* Bouton Demande de dépannage - toujours visible */}
+            <Link href="/demande-reparation">
+              <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                <Wrench className="h-4 w-4 mr-1" />
+                Dépannage
+              </Button>
+            </Link>
+
             {!isLoggedIn ? (
               <>
-                <Link href="/demande-reparation">
-                  <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                    <Wrench className="h-4 w-4 mr-1" />
-                    Dépannage
-                  </Button>
-                </Link>
                 <Link href="/devenir-reparateur">
                   <Button size="sm" className="bg-green-600 hover:bg-green-700">
                     <User className="h-4 w-4 mr-1" />
@@ -429,24 +431,16 @@ export default function Header() {
               <>
                 {/* Actions selon le type d'utilisateur */}
                 {currentUser?.userType === "client" && (
-                  <>
-                    <Link href="/demande-reparation">
-                      <Button variant="outline" size="sm" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-                        <Wrench className="h-4 w-4 mr-1" />
-                        Nouvelle demande
-                      </Button>
-                    </Link>
-                    <Link href="/mes-demandes">
-                      <Button variant="ghost" size="sm">
-                        Mes demandes
-                      </Button>
-                    </Link>
-                  </>
+                  <Link href="/mes-demandes">
+                    <Button variant="ghost" size="sm">
+                      Mes demandes
+                    </Button>
+                  </Link>
                 )}
 
                 {currentUser?.userType === "reparateur" && (
                   <Link href="/mes-interventions">
-                    <Button variant="outline" size="sm">
+                    <Button variant="ghost" size="sm">
                       <Wrench className="h-4 w-4 mr-1" />
                       Mes interventions
                     </Button>
@@ -724,14 +718,16 @@ export default function Header() {
 
                 {/* Actions */}
                 <div className="border-t pt-6 space-y-3">
+                  {/* Bouton Demande de dépannage - toujours visible en mobile */}
+                  <Link href="/demande-reparation">
+                    <Button variant="outline" className="w-full border-blue-600 text-blue-600">
+                      <Wrench className="h-4 w-4 mr-2" />
+                      Demander un dépannage
+                    </Button>
+                  </Link>
+
                   {!isLoggedIn ? (
                     <>
-                      <Link href="/demande-reparation">
-                        <Button variant="outline" className="w-full border-blue-600 text-blue-600">
-                          <Wrench className="h-4 w-4 mr-2" />
-                          Demander un dépannage
-                        </Button>
-                      </Link>
                       <Link href="/devenir-reparateur">
                         <Button className="w-full bg-green-600 hover:bg-green-700">
                           <User className="h-4 w-4 mr-2" />
@@ -755,20 +751,12 @@ export default function Header() {
                         </p>
                       </div>
                       {currentUser?.userType === "client" && (
-                        <>
-                          <Link href="/demande-reparation">
-                            <Button variant="outline" className="w-full border-blue-600 text-blue-600">
-                              <Wrench className="h-4 w-4 mr-2" />
-                              Nouvelle demande
-                            </Button>
-                          </Link>
-                          <Link href="/mes-demandes">
-                            <Button variant="ghost" className="w-full">
-                              <Bell className="h-4 w-4 mr-2" />
-                              Mes demandes
-                            </Button>
-                          </Link>
-                        </>
+                        <Link href="/mes-demandes">
+                          <Button variant="ghost" className="w-full">
+                            <Bell className="h-4 w-4 mr-2" />
+                            Mes demandes
+                          </Button>
+                        </Link>
                       )}
                       <Link href={currentUser?.userType === "reparateur" ? "/profil-pro" : "/profil"}>
                         <Button variant="outline" className="w-full">
