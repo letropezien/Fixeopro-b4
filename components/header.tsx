@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -25,6 +27,8 @@ import {
   MessageSquare,
   CheckCircle,
   MapPin,
+  Trash2,
+  X,
 } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 
@@ -69,6 +73,29 @@ export default function Header() {
     const readNotifications = getReadNotifications(userId)
     const allRead = [...new Set([...readNotifications, ...notificationIds])]
     localStorage.setItem(key, JSON.stringify(allRead))
+  }
+
+  // Nouvelles fonctions pour gérer la suppression des notifications
+  const getDeletedNotifications = (userId: string): string[] => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const saveDeletedNotification = (userId: string, notificationId: string) => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const deletedNotifications = getDeletedNotifications(userId)
+    if (!deletedNotifications.includes(notificationId)) {
+      deletedNotifications.push(notificationId)
+      localStorage.setItem(key, JSON.stringify(deletedNotifications))
+    }
+  }
+
+  const removeAllNotifications = (userId: string, notificationIds: string[]) => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const deletedNotifications = getDeletedNotifications(userId)
+    const allDeleted = [...new Set([...deletedNotifications, ...notificationIds])]
+    localStorage.setItem(key, JSON.stringify(allDeleted))
   }
 
   useEffect(() => {
@@ -131,6 +158,7 @@ export default function Header() {
 
     const allNotifications: Notification[] = []
     const readNotificationIds = getReadNotifications(user.id)
+    const deletedNotificationIds = getDeletedNotifications(user.id)
 
     if (user.userType === "reparateur") {
       // Utiliser les préférences de notification pour filtrer les demandes
@@ -149,6 +177,10 @@ export default function Header() {
         }
 
         const notificationId = `filtered_request_${request.id}`
+
+        // Exclure les notifications supprimées
+        if (deletedNotificationIds.includes(notificationId)) return
+
         const isRead = readNotificationIds.includes(notificationId)
 
         allNotifications.push({
@@ -184,6 +216,10 @@ export default function Header() {
         }
 
         const notificationId = `other_request_${request.id}`
+
+        // Exclure les notifications supprimées
+        if (deletedNotificationIds.includes(notificationId)) return
+
         const isRead = readNotificationIds.includes(notificationId)
 
         allNotifications.push({
@@ -192,7 +228,7 @@ export default function Header() {
           title: "Autre demande disponible",
           message: `${request.title} - ${request.city}${distance ? ` (${distance.toFixed(1)}km)` : ""}`,
           requestId: request.id,
-          isRead: isRead, // Utiliser l'état persisté au lieu de true par défaut
+          isRead: isRead,
           createdAt: request.createdAt,
           distance: distance,
           data: request,
@@ -206,6 +242,10 @@ export default function Header() {
         if (request.responses && request.responses.length > 0) {
           request.responses.slice(0, 3).forEach((response: any) => {
             const notificationId = `response_${response.id}`
+
+            // Exclure les notifications supprimées
+            if (deletedNotificationIds.includes(notificationId)) return
+
             const isRead = readNotificationIds.includes(notificationId)
 
             allNotifications.push({
@@ -259,6 +299,36 @@ export default function Header() {
       setUnreadCount(0) // Directement à 0 car toutes sont lues
       return updated
     })
+  }
+
+  const deleteNotification = (notificationId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation() // Empêcher la navigation vers la demande
+    }
+
+    if (!currentUser) return
+
+    // Sauvegarder dans localStorage
+    saveDeletedNotification(currentUser.id, notificationId)
+
+    // Mettre à jour l'état local
+    setNotifications((prev) => {
+      const updated = prev.filter((notification) => notification.id !== notificationId)
+      // Recalculer le compteur après la suppression
+      const unread = updated.filter((n) => !n.isRead).length
+      setUnreadCount(unread)
+      return updated
+    })
+  }
+
+  const deleteAllNotifications = () => {
+    if (!currentUser) return
+
+    const allNotificationIds = notifications.map((n) => n.id)
+    removeAllNotifications(currentUser.id, allNotificationIds)
+
+    setNotifications([])
+    setUnreadCount(0)
   }
 
   const getTimeAgo = (dateString: string) => {
@@ -395,6 +465,12 @@ export default function Header() {
                           Notifications {unreadCount > 0 && `(${unreadCount} non lues)`}
                         </h3>
                         <div className="flex items-center space-x-2">
+                          {notifications.length > 0 && (
+                            <Button variant="ghost" size="sm" onClick={deleteAllNotifications} className="text-red-600">
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Tout supprimer
+                            </Button>
+                          )}
                           {unreadCount > 0 && (
                             <Button variant="ghost" size="sm" onClick={markAllAsRead}>
                               <CheckCircle className="h-4 w-4 mr-1" />
@@ -432,7 +508,7 @@ export default function Header() {
                           .map((notification) => (
                             <DropdownMenuItem
                               key={notification.id}
-                              className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)}`}
+                              className={`px-3 py-3 cursor-pointer ${getNotificationStyle(notification)} relative group`}
                               onClick={() => {
                                 markAsRead(notification.id)
                                 window.location.href = `/demande/${notification.requestId}`
@@ -475,6 +551,16 @@ export default function Header() {
                                     Cliquer pour voir les détails →
                                   </p>
                                 </div>
+
+                                {/* Bouton de suppression */}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => deleteNotification(notification.id, e)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
                               </div>
                             </DropdownMenuItem>
                           ))}

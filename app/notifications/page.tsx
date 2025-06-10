@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Bell, MapPin, User, MessageSquare, Eye, CheckCircle } from "lucide-react"
+import { Bell, MapPin, User, MessageSquare, Eye, CheckCircle, Trash2, X } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 import Link from "next/link"
 
@@ -23,6 +23,53 @@ export default function NotificationsPage() {
   const [currentUser, setCurrentUser] = useState(StorageService.getCurrentUser())
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showReadNotifications, setShowReadNotifications] = useState(true)
+
+  // Fonctions pour gérer la persistance des notifications
+  const getReadNotifications = (userId: string): string[] => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const saveReadNotification = (userId: string, notificationId: string) => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const readNotifications = getReadNotifications(userId)
+    if (!readNotifications.includes(notificationId)) {
+      readNotifications.push(notificationId)
+      localStorage.setItem(key, JSON.stringify(readNotifications))
+    }
+  }
+
+  const markAllNotificationsAsRead = (userId: string, notificationIds: string[]) => {
+    const key = `fixeopro_read_notifications_${userId}`
+    const readNotifications = getReadNotifications(userId)
+    const allRead = [...new Set([...readNotifications, ...notificationIds])]
+    localStorage.setItem(key, JSON.stringify(allRead))
+  }
+
+  // Fonctions pour gérer la suppression des notifications
+  const getDeletedNotifications = (userId: string): string[] => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const saveDeletedNotification = (userId: string, notificationId: string) => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const deletedNotifications = getDeletedNotifications(userId)
+    if (!deletedNotifications.includes(notificationId)) {
+      deletedNotifications.push(notificationId)
+      localStorage.setItem(key, JSON.stringify(deletedNotifications))
+    }
+  }
+
+  const deleteAllNotifications = (userId: string, notificationIds: string[]) => {
+    const key = `fixeopro_deleted_notifications_${userId}`
+    const deletedNotifications = getDeletedNotifications(userId)
+    const allDeleted = [...new Set([...deletedNotifications, ...notificationIds])]
+    localStorage.setItem(key, JSON.stringify(allDeleted))
+  }
 
   useEffect(() => {
     if (currentUser) {
@@ -34,6 +81,8 @@ export default function NotificationsPage() {
     if (!currentUser) return
 
     const allNotifications: Notification[] = []
+    const readNotificationIds = getReadNotifications(currentUser.id)
+    const deletedNotificationIds = getDeletedNotifications(currentUser.id)
 
     if (currentUser.userType === "reparateur") {
       // Notifications pour les réparateurs
@@ -48,13 +97,20 @@ export default function NotificationsPage() {
       )
 
       relevantRequests.forEach((request) => {
+        const notificationId = `new_request_${request.id}`
+
+        // Exclure les notifications supprimées
+        if (deletedNotificationIds.includes(notificationId)) return
+
+        const isRead = readNotificationIds.includes(notificationId)
+
         allNotifications.push({
-          id: `new_request_${request.id}`,
+          id: notificationId,
           type: "new_request",
           title: "Nouvelle demande dans votre spécialité",
           message: `${request.title} - ${request.city}`,
           requestId: request.id,
-          isRead: false,
+          isRead: isRead,
           createdAt: request.createdAt,
           data: request,
         })
@@ -66,13 +122,20 @@ export default function NotificationsPage() {
       clientRequests.forEach((request) => {
         if (request.responses && request.responses.length > 0) {
           request.responses.forEach((response: any) => {
+            const notificationId = `response_${response.id}`
+
+            // Exclure les notifications supprimées
+            if (deletedNotificationIds.includes(notificationId)) return
+
+            const isRead = readNotificationIds.includes(notificationId)
+
             allNotifications.push({
-              id: `response_${response.id}`,
+              id: notificationId,
               type: "new_response",
               title: "Nouvelle réponse à votre demande",
               message: `${response.reparateur?.companyName || response.reparateur?.firstName} a répondu à "${request.title}"`,
               requestId: request.id,
-              isRead: false,
+              isRead: isRead,
               createdAt: response.createdAt,
               data: { request, response },
             })
@@ -89,6 +152,10 @@ export default function NotificationsPage() {
   }
 
   const markAsRead = (notificationId: string) => {
+    if (!currentUser) return
+
+    saveReadNotification(currentUser.id, notificationId)
+
     setNotifications((prev) =>
       prev.map((notification) =>
         notification.id === notificationId ? { ...notification, isRead: true } : notification,
@@ -98,7 +165,35 @@ export default function NotificationsPage() {
   }
 
   const markAllAsRead = () => {
+    if (!currentUser) return
+
+    const allNotificationIds = notifications.map((n) => n.id)
+    markAllNotificationsAsRead(currentUser.id, allNotificationIds)
+
     setNotifications((prev) => prev.map((notification) => ({ ...notification, isRead: true })))
+    setUnreadCount(0)
+  }
+
+  const deleteNotification = (notificationId: string) => {
+    if (!currentUser) return
+
+    saveDeletedNotification(currentUser.id, notificationId)
+
+    setNotifications((prev) => {
+      const updated = prev.filter((notification) => notification.id !== notificationId)
+      const unread = updated.filter((n) => !n.isRead).length
+      setUnreadCount(unread)
+      return updated
+    })
+  }
+
+  const deleteAllNotificationsHandler = () => {
+    if (!currentUser) return
+
+    const allNotificationIds = notifications.map((n) => n.id)
+    deleteAllNotifications(currentUser.id, allNotificationIds)
+
+    setNotifications([])
     setUnreadCount(0)
   }
 
@@ -154,6 +249,8 @@ export default function NotificationsPage() {
     )
   }
 
+  const filteredNotifications = showReadNotifications ? notifications : notifications.filter((n) => !n.isRead)
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -170,12 +267,28 @@ export default function NotificationsPage() {
                   : "Réponses à vos demandes de dépannage"}
               </p>
             </div>
-            {unreadCount > 0 && (
-              <Button onClick={markAllAsRead} variant="outline">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Tout marquer comme lu
+            <div className="flex items-center space-x-2">
+              {notifications.length > 0 && (
+                <Button
+                  onClick={deleteAllNotificationsHandler}
+                  variant="outline"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Tout supprimer
+                </Button>
+              )}
+              {unreadCount > 0 && (
+                <Button onClick={markAllAsRead} variant="outline">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Tout marquer comme lu
+                </Button>
+              )}
+              <Button onClick={() => setShowReadNotifications(!showReadNotifications)} variant="outline">
+                <Eye className="h-4 w-4 mr-2" />
+                {showReadNotifications ? "Masquer lues" : "Voir lues"}
               </Button>
-            )}
+            </div>
           </div>
         </div>
 
@@ -203,10 +316,10 @@ export default function NotificationsPage() {
 
         {/* Liste des notifications */}
         <div className="space-y-4">
-          {notifications.map((notification) => (
+          {filteredNotifications.map((notification) => (
             <Card
               key={notification.id}
-              className={`transition-all duration-200 hover:shadow-md ${getNotificationColor(notification.type, notification.isRead)}`}
+              className={`transition-all duration-200 hover:shadow-md ${getNotificationColor(notification.type, notification.isRead)} relative group`}
             >
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
@@ -264,29 +377,60 @@ export default function NotificationsPage() {
                           Marquer comme lu
                         </Button>
                       )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteNotification(notification.id)}
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Bouton de suppression rapide */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4 h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => deleteNotification(notification.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {notifications.length === 0 && (
+        {filteredNotifications.length === 0 && (
           <Card className="text-center py-12">
             <CardContent>
               <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Aucune notification</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {showReadNotifications ? "Aucune notification" : "Aucune notification non lue"}
+              </h3>
               <p className="text-gray-600 mb-4">
-                {currentUser.userType === "reparateur"
-                  ? "Vous n'avez pas de nouvelles demandes dans vos spécialités pour le moment."
-                  : "Vous n'avez pas de nouvelles réponses à vos demandes pour le moment."}
+                {showReadNotifications
+                  ? currentUser.userType === "reparateur"
+                    ? "Vous n'avez pas de nouvelles demandes dans vos spécialités pour le moment."
+                    : "Vous n'avez pas de nouvelles réponses à vos demandes pour le moment."
+                  : "Toutes vos notifications ont été lues."}
               </p>
-              <Button asChild>
-                <Link href={currentUser.userType === "reparateur" ? "/demandes-disponibles" : "/demande-reparation"}>
-                  {currentUser.userType === "reparateur" ? "Voir toutes les demandes" : "Créer une demande"}
-                </Link>
-              </Button>
+              {!showReadNotifications && notifications.length > 0 && (
+                <Button onClick={() => setShowReadNotifications(true)} variant="outline">
+                  Afficher toutes les notifications
+                </Button>
+              )}
+              {showReadNotifications && (
+                <Button asChild>
+                  <Link href={currentUser.userType === "reparateur" ? "/demandes-disponibles" : "/demande-reparation"}>
+                    {currentUser.userType === "reparateur" ? "Voir toutes les demandes" : "Créer une demande"}
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
