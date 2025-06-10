@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bell, MapPin, Clock, Filter } from "lucide-react"
+import { CategoriesService } from "@/lib/categories-service"
 
 export default function ProfilProPage() {
   const router = useRouter()
@@ -618,31 +619,18 @@ export default function ProfilProPage() {
                     Catégories d'intervention
                   </Label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      "électroménager",
-                      "électricité",
-                      "plomberie",
-                      "chauffage",
-                      "climatisation",
-                      "informatique",
-                      "téléphonie",
-                      "électronique",
-                      "jardinage",
-                      "bricolage",
-                      "serrurerie",
-                      "autres",
-                    ].map((category) => (
-                      <div key={category} className="flex items-center space-x-2">
+                    {CategoriesService.getEnabledCategories().map((category) => (
+                      <div key={category.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`category-${category}`}
-                          checked={notificationPreferences.categories.includes(category)}
-                          onCheckedChange={() => toggleCategory(category)}
+                          id={`category-${category.id}`}
+                          checked={notificationPreferences.categories.includes(category.id)}
+                          onCheckedChange={() => toggleCategory(category.id)}
                         />
                         <Label
-                          htmlFor={`category-${category}`}
+                          htmlFor={`category-${category.id}`}
                           className="text-sm font-normal capitalize cursor-pointer"
                         >
-                          {category}
+                          {category.name}
                         </Label>
                       </div>
                     ))}
