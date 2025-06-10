@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, User, UserPlus, RefreshCw } from "lucide-react"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Loader2, User, UserPlus, RefreshCw, Users, Wrench } from "lucide-react"
 import { StorageService } from "@/lib/storage"
 
 export default function Connexion() {
@@ -28,6 +29,9 @@ export default function Connexion() {
   const [registerPassword, setRegisterPassword] = useState("")
   const [registerName, setRegisterName] = useState("")
   const [registerPhone, setRegisterPhone] = useState("")
+  const [registerUserType, setRegisterUserType] = useState<"client" | "reparateur">("client")
+  const [registerCompanyName, setRegisterCompanyName] = useState("")
+  const [registerSpecialties, setRegisterSpecialties] = useState("")
 
   // État pour la réinitialisation
   const [resetEmail, setResetEmail] = useState("")
@@ -92,6 +96,14 @@ export default function Connexion() {
         return
       }
 
+      // Validation spécifique pour les réparateurs
+      if (registerUserType === "reparateur") {
+        if (!registerCompanyName || !registerSpecialties) {
+          setError("Veuillez remplir le nom de l'entreprise et les spécialités pour un compte réparateur")
+          return
+        }
+      }
+
       // Vérifier si l'utilisateur existe déjà
       const existingUser = StorageService.getUserByEmail(registerEmail)
       if (existingUser) {
@@ -113,22 +125,46 @@ export default function Connexion() {
         address: "",
         city: "",
         postalCode: "",
-        userType: "client" as const,
+        userType: registerUserType,
         isEmailVerified: false,
         createdAt: "", // Sera généré automatiquement par StorageService
+        // Ajouter les données professionnelles pour les réparateurs
+        ...(registerUserType === "reparateur" && {
+          professional: {
+            companyName: registerCompanyName,
+            siret: "",
+            experience: "",
+            specialties: registerSpecialties.split(",").map((s) => s.trim()),
+            description: "",
+            website: "",
+            companyPhotos: [],
+            socialMedia: {},
+            notificationPreferences: {
+              maxDistance: 25,
+              categories: registerSpecialties.split(",").map((s) => s.trim()),
+              enableNotifications: true,
+              urgencyLevels: ["urgent", "same-day", "this-week", "flexible"],
+            },
+          },
+        }),
       }
 
       // Sauvegarder l'utilisateur avec StorageService
       const savedUser = StorageService.saveUser(newUser)
 
       if (savedUser) {
-        setSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
+        setSuccess(
+          `Inscription réussie en tant que ${registerUserType === "client" ? "client" : "réparateur"} ! Vous pouvez maintenant vous connecter.`,
+        )
 
         // Réinitialiser le formulaire
         setRegisterName("")
         setRegisterEmail("")
         setRegisterPassword("")
         setRegisterPhone("")
+        setRegisterCompanyName("")
+        setRegisterSpecialties("")
+        setRegisterUserType("client")
       } else {
         setError("Erreur lors de la création du compte")
       }
@@ -301,6 +337,38 @@ export default function Connexion() {
 
             <TabsContent value="register" className="space-y-4">
               <form onSubmit={handleRegister} className="space-y-4">
+                {/* Sélecteur de type d'utilisateur */}
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Type de compte *</Label>
+                  <RadioGroup
+                    value={registerUserType}
+                    onValueChange={(value: "client" | "reparateur") => setRegisterUserType(value)}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                      <RadioGroupItem value="client" id="client" />
+                      <Label htmlFor="client" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Users className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <div className="font-medium">Client</div>
+                          <div className="text-sm text-gray-500">Je cherche des réparateurs</div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-gray-50">
+                      <RadioGroupItem value="reparateur" id="reparateur" />
+                      <Label htmlFor="reparateur" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Wrench className="h-4 w-4 text-green-600" />
+                        <div>
+                          <div className="font-medium">Réparateur</div>
+                          <div className="text-sm text-gray-500">Je propose mes services</div>
+                        </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Champs communs */}
                 <div className="space-y-2">
                   <Label htmlFor="register-name">Nom complet *</Label>
                   <Input
@@ -344,9 +412,39 @@ export default function Connexion() {
                     onChange={(e) => setRegisterPhone(e.target.value)}
                   />
                 </div>
+
+                {/* Champs spécifiques aux réparateurs */}
+                {registerUserType === "reparateur" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-company">Nom de l'entreprise *</Label>
+                      <Input
+                        id="register-company"
+                        type="text"
+                        placeholder="Mon Entreprise SARL"
+                        value={registerCompanyName}
+                        onChange={(e) => setRegisterCompanyName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="register-specialties">Spécialités *</Label>
+                      <Input
+                        id="register-specialties"
+                        type="text"
+                        placeholder="électroménager, plomberie, électricité"
+                        value={registerSpecialties}
+                        onChange={(e) => setRegisterSpecialties(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs text-gray-500">Séparez les spécialités par des virgules</p>
+                    </div>
+                  </>
+                )}
+
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Créer un compte
+                  Créer un compte {registerUserType === "client" ? "client" : "réparateur"}
                 </Button>
               </form>
             </TabsContent>
