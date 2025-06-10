@@ -9,8 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Configuration pour l'export statique
-  output: 'export',
+  // Retirons output: export pour éviter les problèmes avec les routes dynamiques
+  // output: 'export',
   trailingSlash: true,
   
   // Configuration pour éviter les erreurs 404 sur les routes admin
