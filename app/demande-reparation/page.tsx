@@ -66,14 +66,20 @@ interface FormData {
   quoteOnly: boolean
 }
 
-// Utiliser TOUTES les catégories, pas seulement les activées
+// Forcer la réinitialisation et charger toutes les catégories
+CategoriesService.resetCategories()
 const categories = CategoriesService.getCategories().map((cat) => ({
   id: cat.id,
   name: cat.name,
-  icon: cat.icon, // Utilise l'emoji de la catégorie
+  icon: cat.icon,
   subCategories: cat.subCategories.map((sub) => sub.name),
   enabled: cat.enabled,
 }))
+
+console.log(
+  "Catégories disponibles pour demande:",
+  categories.map((c) => c.name),
+)
 
 const urgencyOptions = [
   {
@@ -134,18 +140,6 @@ export default function DemandeReparationPage() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [isGeolocated, setIsGeolocated] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
-
-  // Forcer la réinitialisation du localStorage pour les catégories
-  useEffect(() => {
-    // Vérifier si nous sommes dans un environnement navigateur
-    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
-      // Supprimer les catégories stockées pour forcer le rechargement
-      localStorage.removeItem("fixeopro_categories")
-      // Recharger les catégories par défaut
-      const defaultCategories = CategoriesService.getDefaultCategories()
-      CategoriesService.saveCategories(defaultCategories)
-    }
-  }, [])
 
   useEffect(() => {
     // Charger les données sauvegardées

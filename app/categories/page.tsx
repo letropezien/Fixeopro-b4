@@ -128,8 +128,15 @@ export default function CategoriesPage() {
     // Charger les catégories depuis le service
     const loadCategories = () => {
       try {
-        // Utiliser toutes les catégories, pas seulement les activées
+        // Forcer la réinitialisation des catégories pour s'assurer que Multimédia est présent
+        CategoriesService.resetCategories()
+
+        // Charger toutes les catégories
         const allCategories = CategoriesService.getCategories()
+        console.log(
+          "Catégories chargées:",
+          allCategories.map((c) => c.name),
+        )
         setCategories(allCategories)
       } catch (error) {
         console.error("Erreur lors du chargement des catégories:", error)

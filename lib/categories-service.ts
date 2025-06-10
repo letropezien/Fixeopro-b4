@@ -346,12 +346,24 @@ export class CategoriesService {
       }
 
       const storedCategories = localStorage.getItem(this.STORAGE_KEY)
+      let categories: Category[] = []
+
       if (!storedCategories) {
-        const defaultCategories = this.getDefaultCategories()
-        this.saveCategories(defaultCategories)
-        return defaultCategories
+        categories = this.getDefaultCategories()
+        this.saveCategories(categories)
+      } else {
+        categories = JSON.parse(storedCategories)
+
+        // Vérifier si la catégorie Multimédia existe
+        const hasMultimedia = categories.some((cat) => cat.id === "multimedia")
+        if (!hasMultimedia) {
+          console.log("Catégorie Multimédia manquante, rechargement des catégories par défaut")
+          categories = this.getDefaultCategories()
+          this.saveCategories(categories)
+        }
       }
-      return JSON.parse(storedCategories)
+
+      return categories
     } catch (error) {
       console.error("Error loading categories:", error)
       return this.getDefaultCategories()
@@ -476,6 +488,19 @@ export class CategoriesService {
       }
     } catch (error) {
       console.error("Error updating category image:", error)
+    }
+  }
+
+  static resetCategories(): void {
+    try {
+      if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+        localStorage.removeItem(this.STORAGE_KEY)
+        const defaultCategories = this.getDefaultCategories()
+        this.saveCategories(defaultCategories)
+        console.log("Catégories réinitialisées avec succès")
+      }
+    } catch (error) {
+      console.error("Error resetting categories:", error)
     }
   }
 }
