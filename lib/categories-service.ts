@@ -238,6 +238,23 @@ export class CategoriesService {
         ],
       },
       {
+        id: "multimedia",
+        name: "Multimédia",
+        icon: "📻",
+        description: "Réparation d'équipements multimédia",
+        enabled: true,
+        image: "/placeholder.svg?height=200&width=300",
+        subCategories: [
+          { id: "television", name: "Télévision", description: "Réparation de téléviseurs" },
+          { id: "chaine-hifi", name: "Chaîne Hi-Fi", description: "Réparation de chaînes Hi-Fi" },
+          { id: "console-jeux", name: "Console de jeux", description: "Réparation de consoles de jeux" },
+          { id: "box-internet", name: "Box internet", description: "Réparation de box internet" },
+          { id: "antenne", name: "Antenne", description: "Installation et réparation d'antennes" },
+          { id: "home-cinema", name: "Home cinéma", description: "Installation et réparation de home cinéma" },
+          { id: "autre-multimedia", name: "Autre multimédia", description: "Autres équipements multimédia" },
+        ],
+      },
+      {
         id: "jardinage",
         name: "Jardinage",
         icon: "🌱",
