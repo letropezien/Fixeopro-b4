@@ -78,27 +78,21 @@ const categories = CategoriesService.getCategories().map((cat) => ({
 const urgencyOptions = [
   {
     id: "urgent",
-    label: "Urgent (dans les 2h)",
-    description: "Panne critique nécessitant une intervention immédiate",
-    color: "bg-red-100 text-red-800",
+    label: "Très urgent",
+    description: "Besoin d'un réparateur dans les plus brefs délais",
+    color: "bg-red-100 text-red-500",
   },
   {
-    id: "same-day",
-    label: "Aujourd'hui",
-    description: "Intervention souhaitée dans la journée",
-    color: "bg-orange-100 text-orange-800",
-  },
-  {
-    id: "this-week",
-    label: "Cette semaine",
-    description: "Intervention dans les 7 jours",
-    color: "bg-yellow-100 text-yellow-800",
+    id: "moderate",
+    label: "Modérément urgent",
+    description: "Réparation nécessaire dans la semaine",
+    color: "bg-yellow-100 text-yellow-500",
   },
   {
     id: "flexible",
-    label: "Flexible",
-    description: "Pas d'urgence particulière",
-    color: "bg-green-100 text-green-800",
+    label: "Pas d'urgence",
+    description: "Je suis flexible sur la date de réparation",
+    color: "bg-green-100 text-green-500",
   },
 ]
 
@@ -140,6 +134,18 @@ export default function DemandeReparationPage() {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [isGeolocated, setIsGeolocated] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
+
+  // Forcer la réinitialisation du localStorage pour les catégories
+  useEffect(() => {
+    // Vérifier si nous sommes dans un environnement navigateur
+    if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+      // Supprimer les catégories stockées pour forcer le rechargement
+      localStorage.removeItem("fixeopro_categories")
+      // Recharger les catégories par défaut
+      const defaultCategories = CategoriesService.getDefaultCategories()
+      CategoriesService.saveCategories(defaultCategories)
+    }
+  }, [])
 
   useEffect(() => {
     // Charger les données sauvegardées

@@ -101,6 +101,12 @@ const getCategoryDisplayData = (categoryId: string) => {
       avgTime: "4h",
       rating: 4.7,
     },
+    multimedia: {
+      count: "100+ réparateurs",
+      avgPrice: "À partir de 55€",
+      avgTime: "1h30",
+      rating: 4.8,
+    },
   }
 
   // Valeurs par défaut si la catégorie n'est pas trouvée
@@ -122,8 +128,9 @@ export default function CategoriesPage() {
     // Charger les catégories depuis le service
     const loadCategories = () => {
       try {
-        const enabledCategories = CategoriesService.getEnabledCategories()
-        setCategories(enabledCategories)
+        // Utiliser toutes les catégories, pas seulement les activées
+        const allCategories = CategoriesService.getCategories()
+        setCategories(allCategories)
       } catch (error) {
         console.error("Erreur lors du chargement des catégories:", error)
       } finally {
