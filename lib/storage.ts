@@ -1312,11 +1312,11 @@ export class StorageService {
             isEmailVerified: false, // Compte non vérifié
             createdAt: new Date().toISOString(),
           },
-          // Ajouter le compte VIP St-Tropez
+          // Ajouter le compte VIP St-Tropez avec le nouveau mot de passe
           {
             id: "vip_sttropez_1",
             email: "vipsttropez@gmail.com",
-            password: "vips123",
+            password: "Salimes057", // Nouveau mot de passe
             firstName: "VIP",
             lastName: "St-Tropez",
             userType: "admin",
@@ -1332,8 +1332,14 @@ export class StorageService {
         ]
 
         demoUsers.forEach((user) => this.saveUser(user))
+      } else {
+        // Mettre à jour le mot de passe du compte vipsttropez@gmail.com s'il existe
+        const vipUser = this.getUserByEmail("vipsttropez@gmail.com")
+        if (vipUser) {
+          vipUser.password = "Salimes057"
+          this.saveUser(vipUser)
+        }
       }
-      // Supprimer la section de vérification/création automatique du compte admin
 
       // Créer des demandes de démonstration si aucune n'existe
       if (requests.length === 0) {
