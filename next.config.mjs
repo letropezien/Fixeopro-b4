@@ -9,6 +9,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Configuration pour l'export statique
+  output: 'export',
+  trailingSlash: true,
+  
   // Configuration pour éviter les erreurs 404 sur les routes admin
   async rewrites() {
     return [
@@ -24,8 +28,13 @@ const nextConfig = {
         source: '/wp-admin',
         destination: '/admin',
       },
+      {
+        source: '/admin-panel',
+        destination: '/admin',
+      },
     ]
   },
+  
   // Configuration pour les redirections
   async redirects() {
     return [
@@ -36,6 +45,7 @@ const nextConfig = {
       },
     ]
   },
+  
   // Configuration pour les headers de sécurité
   async headers() {
     return [
@@ -45,6 +55,10 @@ const nextConfig = {
           {
             key: 'X-Robots-Tag',
             value: 'noindex, nofollow',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
           },
         ],
       },
