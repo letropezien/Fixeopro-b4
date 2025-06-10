@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, User, UserPlus } from "lucide-react"
+import { StorageService } from "@/lib/storage"
 
 export default function Connexion() {
   const [isLoading, setIsLoading] = useState(false)
@@ -35,44 +36,17 @@ export default function Connexion() {
     setSuccess("")
 
     try {
-      // Vérifier les comptes de démonstration
-      const demoAccounts = [
-        { email: "admin@fixe.com", password: "admin123", type: "admin" },
-        { email: "client@demo.com", password: "demo123", type: "client" },
-        { email: "reparateur@demo.com", password: "demo123", type: "reparateur" },
-        { email: "test@test.com", password: "test", type: "client" },
-        { email: "vipsttropez@gmail.com", password: "vips123", type: "admin" }, // Compte ajouté
-      ]
+      // Utiliser le StorageService pour l'authentification
+      const user = StorageService.authenticateUser(loginEmail, loginPassword)
 
-      const demoAccount = demoAccounts.find(
-        (account) => account.email === loginEmail && account.password === loginPassword,
-      )
-
-      if (demoAccount) {
-        // Simuler une connexion réussie
-        const userData = {
-          id: Math.random().toString(36).substr(2, 9),
-          email: demoAccount.email,
-          type: demoAccount.type,
-          name:
-            demoAccount.type === "admin"
-              ? "Administrateur"
-              : demoAccount.type === "client"
-                ? "Client Démo"
-                : "Réparateur Démo",
-        }
-
-        // Stocker dans localStorage
-        localStorage.setItem("fixeopro_current_user_id", userData.id)
-        localStorage.setItem("fixeopro_user_data", JSON.stringify(userData))
+      if (user) {
+        setSuccess("Connexion réussie ! Redirection en cours...")
 
         // Déclencher l'événement de changement de connexion
         window.dispatchEvent(new CustomEvent("fixeopro-login-change"))
 
-        setSuccess("Connexion réussie ! Redirection en cours...")
-
         setTimeout(() => {
-          if (demoAccount.type === "admin") {
+          if (user.userType === "admin") {
             router.push("/admin")
           } else {
             router.push("/")
@@ -102,46 +76,52 @@ export default function Connexion() {
         return
       }
 
-      // Simuler une inscription réussie
-      const userData = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: registerEmail,
-        name: registerName,
-        phone: registerPhone,
-        type: "client",
-        createdAt: new Date().toISOString(),
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = StorageService.getUserByEmail(registerEmail)
+      if (existingUser) {
+        setError("Un compte avec cet email existe déjà")
+        return
       }
 
-      // Stocker dans localStorage
-      const existingUsers = JSON.parse(localStorage.getItem("fixeopro_users") || "[]")
-      existingUsers.push(userData)
-      localStorage.setItem("fixeopro_users", JSON.stringify(existingUsers))
+      // Créer le nouvel utilisateur avec la structure complète
+      const [firstName, ...lastNameParts] = registerName.split(" ")
+      const lastName = lastNameParts.join(" ") || ""
 
-      setSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
+      const newUser = {
+        id: "", // Sera généré automatiquement par StorageService
+        email: registerEmail,
+        password: registerPassword,
+        firstName: firstName,
+        lastName: lastName,
+        phone: registerPhone || "",
+        address: "",
+        city: "",
+        postalCode: "",
+        userType: "client" as const,
+        isEmailVerified: false,
+        createdAt: "", // Sera généré automatiquement par StorageService
+      }
 
-      // Réinitialiser le formulaire
-      setRegisterName("")
-      setRegisterEmail("")
-      setRegisterPassword("")
-      setRegisterPhone("")
+      // Sauvegarder l'utilisateur avec StorageService
+      const savedUser = StorageService.saveUser(newUser)
+
+      if (savedUser) {
+        setSuccess("Inscription réussie ! Vous pouvez maintenant vous connecter.")
+
+        // Réinitialiser le formulaire
+        setRegisterName("")
+        setRegisterEmail("")
+        setRegisterPassword("")
+        setRegisterPhone("")
+      } else {
+        setError("Erreur lors de la création du compte")
+      }
     } catch (error) {
       console.error("Erreur lors de l'inscription:", error)
       setError("Erreur lors de l'inscription. Veuillez réessayer.")
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleDemoLogin = (email: string, password: string) => {
-    setLoginEmail(email)
-    setLoginPassword(password)
-    // Déclencher automatiquement la connexion
-    setTimeout(() => {
-      const form = document.getElementById("login-form") as HTMLFormElement
-      if (form) {
-        form.requestSubmit()
-      }
-    }, 100)
   }
 
   return (

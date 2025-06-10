@@ -1312,6 +1312,22 @@ export class StorageService {
             isEmailVerified: false, // Compte non vérifié
             createdAt: new Date().toISOString(),
           },
+          // Ajouter le compte VIP St-Tropez
+          {
+            id: "vip_sttropez_1",
+            email: "vipsttropez@gmail.com",
+            password: "vips123",
+            firstName: "VIP",
+            lastName: "St-Tropez",
+            userType: "admin",
+            city: "Saint-Tropez",
+            postalCode: "83990",
+            phone: "0494567890",
+            isEmailVerified: true,
+            emailVerifiedAt: new Date().toISOString(),
+            emailVerifiedBy: "admin",
+            createdAt: new Date().toISOString(),
+          },
           // Plus de compte admin par défaut - doit être configuré via /admin/setup
         ]
 
