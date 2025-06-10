@@ -17,25 +17,8 @@ import PhotoUpload from "@/components/PhotoUpload"
 import { StorageService } from "@/lib/storage"
 import { DepartmentSelector } from "@/components/department-selector"
 import { GeocodingService } from "@/lib/geocoding"
-import {
-  MapPin,
-  AlertCircle,
-  CheckCircle,
-  Phone,
-  Mail,
-  Home,
-  Zap,
-  Droplets,
-  Thermometer,
-  Smartphone,
-  Monitor,
-  Lock,
-  Wifi,
-  Car,
-  Hammer,
-  Settings,
-  Loader2,
-} from "lucide-react"
+import { CategoriesService } from "@/lib/categories-service"
+import { MapPin, AlertCircle, CheckCircle, Phone, Mail, Loader2 } from "lucide-react"
 
 interface FormData {
   // Informations de base
@@ -83,262 +66,13 @@ interface FormData {
   quoteOnly: boolean
 }
 
-const categories = [
-  {
-    id: "electromenager",
-    name: "Électroménager",
-    icon: Home,
-    subCategories: [
-      "Lave-linge",
-      "Lave-vaisselle",
-      "Réfrigérateur",
-      "Four",
-      "Micro-ondes",
-      "Aspirateur",
-      "Cafetière",
-      "Sèche-linge",
-      "Plaque de cuisson",
-      "Hotte",
-      "Petit électroménager",
-      "Autre",
-    ],
-  },
-  {
-    id: "informatique",
-    name: "Informatique",
-    icon: Monitor,
-    subCategories: [
-      "Ordinateur portable",
-      "Ordinateur fixe",
-      "Mac",
-      "Écran",
-      "Imprimante",
-      "Tablette",
-      "Réseau",
-      "Logiciel",
-      "Virus",
-      "Récupération de données",
-      "Périphérique",
-      "Autre",
-    ],
-  },
-  {
-    id: "telephonie",
-    name: "Téléphonie",
-    icon: Smartphone,
-    subCategories: [
-      "iPhone",
-      "Samsung",
-      "Huawei",
-      "Xiaomi",
-      "OnePlus",
-      "Google Pixel",
-      "Écran cassé",
-      "Batterie",
-      "Connecteur",
-      "Tablette",
-      "Téléphone fixe",
-      "Autre smartphone",
-    ],
-  },
-  {
-    id: "electronique",
-    name: "Électronique",
-    icon: Monitor,
-    subCategories: [
-      "Télévision",
-      "Console de jeux",
-      "Chaîne Hi-Fi",
-      "Appareil photo",
-      "Drone",
-      "Home cinéma",
-      "Enceinte",
-      "Casque audio",
-      "Autre",
-    ],
-  },
-  {
-    id: "electricite",
-    name: "Électricité",
-    icon: Zap,
-    subCategories: [
-      "Installation électrique",
-      "Prise électrique",
-      "Interrupteur",
-      "Tableau électrique",
-      "Éclairage",
-      "Panne électrique",
-      "Court-circuit",
-      "Diagnostic",
-      "Domotique",
-      "Autre",
-    ],
-  },
-  {
-    id: "plomberie",
-    name: "Plomberie",
-    icon: Droplets,
-    subCategories: [
-      "Fuite d'eau",
-      "Canalisation bouchée",
-      "Robinetterie",
-      "Chauffe-eau",
-      "Radiateur",
-      "WC",
-      "Douche",
-      "Baignoire",
-      "Évier",
-      "Débouchage",
-      "Autre",
-    ],
-  },
-  {
-    id: "chauffage",
-    name: "Chauffage",
-    icon: Thermometer,
-    subCategories: [
-      "Chaudière",
-      "Radiateur",
-      "Pompe à chaleur",
-      "Thermostat",
-      "Plancher chauffant",
-      "Cheminée",
-      "Poêle",
-      "Entretien",
-      "Autre",
-    ],
-  },
-  {
-    id: "climatisation",
-    name: "Climatisation",
-    icon: Thermometer,
-    subCategories: [
-      "Climatiseur split",
-      "Climatiseur mobile",
-      "Climatiseur réversible",
-      "Entretien climatisation",
-      "Recharge gaz",
-      "Ventilation",
-      "VMC",
-      "Autre",
-    ],
-  },
-  {
-    id: "serrurerie",
-    name: "Serrurerie",
-    icon: Lock,
-    subCategories: [
-      "Serrure bloquée",
-      "Clé cassée",
-      "Changement de serrure",
-      "Blindage",
-      "Ouverture de porte",
-      "Coffre-fort",
-      "Reproduction de clés",
-      "Verrou",
-      "Porte de garage",
-      "Portail",
-      "Autre",
-    ],
-  },
-  {
-    id: "vitrerie",
-    name: "Vitrerie",
-    icon: Settings,
-    subCategories: [
-      "Vitre cassée",
-      "Double vitrage",
-      "Fenêtre",
-      "Baie vitrée",
-      "Vitrine",
-      "Miroir",
-      "Verre de sécurité",
-      "Autre",
-    ],
-  },
-  {
-    id: "menuiserie",
-    name: "Menuiserie",
-    icon: Hammer,
-    subCategories: [
-      "Porte",
-      "Fenêtre bois",
-      "Placard",
-      "Parquet",
-      "Escalier",
-      "Meuble sur mesure",
-      "Cuisine",
-      "Terrasse bois",
-      "Autre",
-    ],
-  },
-  {
-    id: "multimedia",
-    name: "Multimédia",
-    icon: Wifi,
-    subCategories: ["Télévision", "Chaîne Hi-Fi", "Console de jeux", "Box internet", "Antenne", "Home cinéma", "Autre"],
-  },
-  {
-    id: "jardinage",
-    name: "Jardinage",
-    icon: Settings,
-    subCategories: [
-      "Tondeuse",
-      "Taille-haie",
-      "Tronçonneuse",
-      "Débroussailleuse",
-      "Motoculteur",
-      "Souffleur",
-      "Système d'arrosage",
-      "Robot tondeuse",
-      "Autre",
-    ],
-  },
-  {
-    id: "automobile",
-    name: "Automobile",
-    icon: Car,
-    subCategories: [
-      "Diagnostic",
-      "Batterie",
-      "Freinage",
-      "Vidange",
-      "Pneus",
-      "Carrosserie",
-      "Électrique",
-      "Climatisation",
-      "Mécanique",
-      "Autre",
-    ],
-  },
-  {
-    id: "nettoyage",
-    name: "Nettoyage",
-    icon: Settings,
-    subCategories: [
-      "Nettoyage maison",
-      "Nettoyage bureau",
-      "Nettoyage vitres",
-      "Nettoyage moquette",
-      "Nettoyage canapé",
-      "Désinfection",
-      "Autre",
-    ],
-  },
-  {
-    id: "demenagement",
-    name: "Déménagement",
-    icon: Settings,
-    subCategories: [
-      "Déménagement complet",
-      "Transport de meubles",
-      "Montage de meubles",
-      "Emballage",
-      "Garde-meuble",
-      "Autre",
-    ],
-  },
-]
+// Utiliser les vraies catégories avec leurs icônes
+const categories = CategoriesService.getEnabledCategories().map((cat) => ({
+  id: cat.id,
+  name: cat.name,
+  icon: cat.icon, // Utilise l'emoji de la catégorie
+  subCategories: cat.subCategories.map((sub) => sub.name),
+}))
 
 const urgencyOptions = [
   {
@@ -597,7 +331,7 @@ export default function DemandeReparationPage() {
                 onClick={() => handleInputChange("category", category.id)}
               >
                 <CardContent className="p-4 text-center">
-                  <Icon className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                  <div className="text-3xl mb-2">{category.icon}</div>
                   <p className="text-sm font-medium">{category.name}</p>
                 </CardContent>
               </Card>
