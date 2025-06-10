@@ -66,12 +66,13 @@ interface FormData {
   quoteOnly: boolean
 }
 
-// Utiliser les vraies catégories avec leurs icônes
-const categories = CategoriesService.getEnabledCategories().map((cat) => ({
+// Utiliser TOUTES les catégories, pas seulement les activées
+const categories = CategoriesService.getCategories().map((cat) => ({
   id: cat.id,
   name: cat.name,
   icon: cat.icon, // Utilise l'emoji de la catégorie
   subCategories: cat.subCategories.map((sub) => sub.name),
+  enabled: cat.enabled,
 }))
 
 const urgencyOptions = [
@@ -320,23 +321,20 @@ export default function DemandeReparationPage() {
 
         {/* Sélection de catégorie */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-          {categories.map((category) => {
-            const Icon = category.icon
-            return (
-              <Card
-                key={category.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  formData.category === category.id ? "ring-2 ring-blue-500 bg-blue-50" : ""
-                }`}
-                onClick={() => handleInputChange("category", category.id)}
-              >
-                <CardContent className="p-4 text-center">
-                  <div className="text-3xl mb-2">{category.icon}</div>
-                  <p className="text-sm font-medium">{category.name}</p>
-                </CardContent>
-              </Card>
-            )
-          })}
+          {categories.map((category) => (
+            <Card
+              key={category.id}
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                formData.category === category.id ? "ring-2 ring-blue-500 bg-blue-50" : ""
+              }`}
+              onClick={() => handleInputChange("category", category.id)}
+            >
+              <CardContent className="p-4 text-center">
+                <div className="text-3xl mb-2">{category.icon}</div>
+                <p className="text-sm font-medium">{category.name}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
         {errors.category && <p className="text-red-500 text-sm">{errors.category}</p>}
 
