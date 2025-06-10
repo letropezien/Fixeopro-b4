@@ -125,8 +125,8 @@ export default function ProfilPublicReparateur() {
               <Avatar className="w-32 h-32">
                 <AvatarImage src={reparateur.avatar || "/placeholder.svg"} alt={reparateur.firstName} />
                 <AvatarFallback className="text-2xl">
-                  {reparateur.firstName?.[0]}
-                  {reparateur.lastName?.[0]}
+                  {reparateur.professional?.companyName?.[0] ||
+                    `${reparateur.firstName?.[0]}${reparateur.lastName?.[0]}`}
                 </AvatarFallback>
               </Avatar>
 
@@ -135,11 +135,12 @@ export default function ProfilPublicReparateur() {
                   {reparateur.professional?.companyName || `${reparateur.firstName} ${reparateur.lastName}`}
                 </h1>
 
-                {reparateur.professional?.companyName && (
+                {/* Supprimer cette section qui affichait le nom personnel même avec une entreprise */}
+                {/* {reparateur.professional?.companyName && (
                   <p className="text-xl text-gray-600 mb-2">
                     {reparateur.firstName} {reparateur.lastName}
                   </p>
-                )}
+                )} */}
 
                 <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
                   <MapPin className="h-4 w-4 text-gray-500" />
