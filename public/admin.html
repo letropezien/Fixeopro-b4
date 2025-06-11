@@ -5,26 +5,156 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administration - Fixeo.Pro</title>
     <meta name="robots" content="noindex, nofollow">
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            background-color: #f9fafb;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+            line-height: 1.5;
         }
-        .tab-active {
-            color: #ef4444;
-            border-bottom: 2px solid #ef4444;
-        }
-        .tab-inactive {
-            color: #6b7280;
-            border-bottom: 2px solid transparent;
-        }
+        
+        .min-h-screen { min-height: 100vh; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .space-x-4 > * + * { margin-left: 1rem; }
+        .space-x-8 > * + * { margin-left: 2rem; }
+        .space-y-3 > * + * { margin-top: 0.75rem; }
+        .space-y-4 > * + * { margin-top: 1rem; }
+        .space-y-6 > * + * { margin-top: 1.5rem; }
+        
+        .bg-white { background-color: white; }
+        .bg-gray-50 { background-color: #f9fafb; }
+        .bg-gray-100 { background-color: #f3f4f6; }
+        .bg-red-50 { background-color: #fef2f2; }
+        .bg-red-100 { background-color: #fee2e2; }
+        .bg-red-600 { background-color: #dc2626; }
+        .bg-red-700 { background-color: #b91c1c; }
+        .bg-blue-50 { background-color: #eff6ff; }
+        .bg-blue-100 { background-color: #dbeafe; }
+        .bg-green-50 { background-color: #f0fdf4; }
+        .bg-green-100 { background-color: #dcfce7; }
+        .bg-purple-100 { background-color: #f3e8ff; }
+        .bg-yellow-100 { background-color: #fef3c7; }
+        
+        .text-white { color: white; }
+        .text-gray-600 { color: #4b5563; }
+        .text-gray-900 { color: #111827; }
+        .text-red-600 { color: #dc2626; }
+        .text-red-700 { color: #b91c1c; }
+        .text-blue-600 { color: #2563eb; }
+        .text-green-600 { color: #16a34a; }
+        .text-purple-600 { color: #9333ea; }
+        .text-yellow-600 { color: #ca8a04; }
+        
+        .border { border: 1px solid #e5e7eb; }
+        .border-b { border-bottom: 1px solid #e5e7eb; }
+        .border-red-600 { border-color: #dc2626; }
+        .border-gray-200 { border-color: #e5e7eb; }
+        .border-gray-300 { border-color: #d1d5db; }
+        
+        .rounded { border-radius: 0.25rem; }
+        .rounded-md { border-radius: 0.375rem; }
+        .rounded-lg { border-radius: 0.5rem; }
+        .rounded-full { border-radius: 9999px; }
+        
+        .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        
+        .p-4 { padding: 1rem; }
+        .p-6 { padding: 1.5rem; }
+        .p-8 { padding: 2rem; }
+        .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+        
+        .m-2 { margin: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-1 { margin-top: 0.25rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-6 { margin-top: 1.5rem; }
+        .mt-8 { margin-top: 2rem; }
+        .mr-2 { margin-right: 0.5rem; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        
+        .w-full { width: 100%; }
+        .w-10 { width: 2.5rem; }
+        .w-16 { width: 4rem; }
+        .h-10 { height: 2.5rem; }
+        .h-16 { height: 4rem; }
+        .max-w-md { max-width: 28rem; }
+        .max-w-7xl { max-width: 80rem; }
+        
+        .text-sm { font-size: 0.875rem; }
+        .text-lg { font-size: 1.125rem; }
+        .text-xl { font-size: 1.25rem; }
+        .text-2xl { font-size: 1.5rem; }
+        .text-3xl { font-size: 1.875rem; }
+        .font-medium { font-weight: 500; }
+        .font-bold { font-weight: 700; }
+        
+        .grid { display: grid; }
+        .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+        .gap-6 { gap: 1.5rem; }
+        .gap-8 { gap: 2rem; }
+        
+        .hidden { display: none; }
+        .block { display: block; }
+        
+        .text-center { text-align: center; }
+        
+        .cursor-pointer { cursor: pointer; }
+        
+        .hover\:bg-red-700:hover { background-color: #b91c1c; }
+        .hover\:bg-red-50:hover { background-color: #fef2f2; }
+        .hover\:bg-gray-50:hover { background-color: #f9fafb; }
+        
+        .focus\:outline-none:focus { outline: none; }
+        .focus\:ring-2:focus { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        .focus\:ring-red-500:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5); }
+        .focus\:border-red-500:focus { border-color: #ef4444; }
+        
+        /* Styles spécifiques */
         .stat-card {
             background-color: white;
             border-radius: 0.5rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             padding: 1.5rem;
         }
+        
+        .tab-button {
+            padding: 1rem 0.25rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab-active {
+            color: #ef4444;
+            border-bottom-color: #ef4444;
+        }
+        
+        .tab-inactive {
+            color: #6b7280;
+        }
+        
+        .tab-inactive:hover {
+            color: #374151;
+        }
+        
         .action-button {
             background-color: white;
             border: 1px solid #e5e7eb;
@@ -34,9 +164,41 @@
             width: 100%;
             margin-bottom: 0.5rem;
             transition: background-color 0.2s;
+            cursor: pointer;
         }
+        
         .action-button:hover {
             background-color: #f9fafb;
+        }
+        
+        .icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        
+        /* Responsive */
+        @media (min-width: 768px) {
+            .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        
+        @media (min-width: 1024px) {
+            .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        
+        /* Animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
         }
     </style>
 </head>
@@ -47,8 +209,8 @@
             <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
                 <div class="text-center mb-6">
                     <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        <svg class="icon text-red-600" viewBox="0 0 24 24">
+                            <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
                     </div>
                     <h1 class="text-2xl font-bold text-gray-900">Administration Fixeo.Pro</h1>
@@ -83,8 +245,8 @@
                 <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                     <div class="flex items-center space-x-4">
                         <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            <svg class="icon text-red-600" viewBox="0 0 24 24">
+                                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                             </svg>
                         </div>
                         <div>
@@ -111,8 +273,8 @@
                                 <p class="text-green-600 text-sm mt-1">+12%</p>
                             </div>
                             <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                <svg class="icon text-blue-600" viewBox="0 0 24 24">
+                                    <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                 </svg>
                             </div>
                         </div>
@@ -127,9 +289,9 @@
                                 <p class="text-green-600 text-sm mt-1">+8%</p>
                             </div>
                             <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <svg class="icon text-green-600" viewBox="0 0 24 24">
+                                    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
                             </div>
                         </div>
@@ -144,8 +306,8 @@
                                 <p class="text-green-600 text-sm mt-1">+23%</p>
                             </div>
                             <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                <svg class="icon text-purple-600" viewBox="0 0 24 24">
+                                    <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
                             </div>
                         </div>
@@ -169,16 +331,16 @@
                 <!-- Tabs -->
                 <div class="border-b border-gray-200 mb-6">
                     <nav class="flex space-x-8">
-                        <button onclick="showTab('overview')" class="tab-button py-4 px-1 tab-active">
+                        <button onclick="showTab('overview')" class="tab-button tab-active">
                             Vue d'ensemble
                         </button>
-                        <button onclick="showTab('users')" class="tab-button py-4 px-1 tab-inactive">
+                        <button onclick="showTab('users')" class="tab-button tab-inactive">
                             Utilisateurs
                         </button>
-                        <button onclick="showTab('requests')" class="tab-button py-4 px-1 tab-inactive">
+                        <button onclick="showTab('requests')" class="tab-button tab-inactive">
                             Demandes
                         </button>
-                        <button onclick="showTab('settings')" class="tab-button py-4 px-1 tab-inactive">
+                        <button onclick="showTab('settings')" class="tab-button tab-inactive">
                             Paramètres
                         </button>
                     </nav>
@@ -233,119 +395,23 @@
                         </div>
                     </div>
                     
-                    <!-- Utilisateurs -->
+                    <!-- Autres onglets -->
                     <div id="tab-users" class="tab-content hidden">
                         <h2 class="text-xl font-bold mb-4">Utilisateurs</h2>
-                        <p class="text-gray-600 mb-4">Gestion des utilisateurs et réparateurs.</p>
-                        
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-6">
-                                <h3 class="text-lg font-medium">Liste des utilisateurs</h3>
-                                <div class="flex space-x-2">
-                                    <input type="text" placeholder="Rechercher..." class="border rounded-md px-3 py-2 text-sm">
-                                    <button class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm">Filtrer</button>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p class="text-blue-800 text-sm">
-                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
-                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
-                                </p>
-                            </div>
-                        </div>
+                        <p class="text-gray-600">Gestion des utilisateurs et réparateurs.</p>
                     </div>
                     
-                    <!-- Demandes -->
                     <div id="tab-requests" class="tab-content hidden">
                         <h2 class="text-xl font-bold mb-4">Demandes</h2>
-                        <p class="text-gray-600 mb-4">Gestion et modération des demandes de réparation.</p>
-                        
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-6">
-                                <h3 class="text-lg font-medium">Liste des demandes</h3>
-                                <div class="flex space-x-2">
-                                    <select class="border rounded-md px-3 py-2 text-sm">
-                                        <option>Toutes les demandes</option>
-                                        <option>En attente</option>
-                                        <option>En cours</option>
-                                        <option>Terminées</option>
-                                    </select>
-                                    <button class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm">Appliquer</button>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p class="text-blue-800 text-sm">
-                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
-                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
-                                </p>
-                            </div>
-                        </div>
+                        <p class="text-gray-600">Gestion des demandes de réparation.</p>
                     </div>
                     
-                    <!-- Paramètres -->
                     <div id="tab-settings" class="tab-content hidden">
                         <h2 class="text-xl font-bold mb-4">Paramètres</h2>
-                        <p class="text-gray-600 mb-4">Configuration générale de la plateforme.</p>
-                        
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="space-y-6">
-                                <div>
-                                    <h3 class="text-lg font-medium mb-4">Paramètres généraux</h3>
-                                    <div class="space-y-4">
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <span class="font-medium">Maintenance programmée</span>
-                                                <p class="text-sm text-gray-600">Planifier les maintenances système</p>
-                                            </div>
-                                            <button class="border px-3 py-1 rounded text-sm">
-                                                Configurer
-                                            </button>
-                                        </div>
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <span class="font-medium">Notifications email</span>
-                                                <p class="text-sm text-gray-600">Gérer les alertes automatiques</p>
-                                            </div>
-                                            <button class="border px-3 py-1 rounded text-sm">
-                                                Gérer
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <p class="text-blue-800 text-sm">
-                                        <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
-                                        Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        <p class="text-gray-600">Configuration de la plateforme.</p>
                     </div>
                 </div>
             </main>
-        </div>
-
-        <!-- Diagnostic -->
-        <div id="diagnosticScreen" class="hidden min-h-screen bg-gray-50 py-8">
-            <div class="max-w-4xl mx-auto px-4">
-                <div class="text-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Diagnostic Fixeo.Pro</h1>
-                    <p class="text-gray-600">Outil de diagnostic pour identifier les problèmes d'accès</p>
-                </div>
-                
-                <div id="diagnosticResults" class="space-y-4">
-                    <!-- Les résultats seront ajoutés ici -->
-                </div>
-                
-                <div class="text-center mt-8">
-                    <button onclick="backToLogin()" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
-                        Retour à la connexion
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -415,74 +481,6 @@
             // Activer le bouton sélectionné
             event.target.classList.remove('tab-inactive');
             event.target.classList.add('tab-active');
-        }
-
-        function showDiagnostic() {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('diagnosticScreen').classList.remove('hidden');
-            runDiagnostic();
-        }
-
-        function backToLogin() {
-            document.getElementById('diagnosticScreen').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-        }
-
-        function runDiagnostic() {
-            const resultsDiv = document.getElementById('diagnosticResults');
-            resultsDiv.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div><p class="mt-2 text-gray-600">Diagnostic en cours...</p></div>';
-            
-            setTimeout(() => {
-                const results = [
-                    {
-                        name: 'URL actuelle',
-                        status: 'success',
-                        message: window.location.href,
-                        solution: null
-                    },
-                    {
-                        name: 'LocalStorage',
-                        status: typeof(Storage) !== "undefined" ? 'success' : 'error',
-                        message: typeof(Storage) !== "undefined" ? 'LocalStorage disponible' : 'LocalStorage non supporté',
-                        solution: typeof(Storage) === "undefined" ? 'Activez les cookies dans votre navigateur' : null
-                    },
-                    {
-                        name: 'JavaScript',
-                        status: 'success',
-                        message: 'JavaScript activé et fonctionnel',
-                        solution: null
-                    },
-                    {
-                        name: 'Hébergement',
-                        status: 'warning',
-                        message: 'Page admin statique chargée (hébergement basique détecté)',
-                        solution: 'Pour toutes les fonctionnalités, utilisez un hébergement compatible Next.js'
-                    }
-                ];
-                
-                let html = '';
-                results.forEach(result => {
-                    const statusColor = result.status === 'success' ? 'green' : result.status === 'error' ? 'red' : 'yellow';
-                    const statusIcon = result.status === 'success' ? '✓' : result.status === 'error' ? '✗' : '⚠';
-                    
-                    html += `
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="flex items-start space-x-3">
-                                <div class="w-6 h-6 rounded-full bg-${statusColor}-100 flex items-center justify-center text-${statusColor}-600 font-bold">
-                                    ${statusIcon}
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="font-medium text-gray-900">${result.name}</h3>
-                                    <p class="text-gray-600 text-sm mt-1">${result.message}</p>
-                                    ${result.solution ? `<div class="mt-2 bg-blue-50 border border-blue-200 rounded p-2"><p class="text-blue-800 text-sm"><strong>Solution:</strong> ${result.solution}</p></div>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                resultsDiv.innerHTML = html;
-            }, 2000);
         }
     </script>
 </body>
