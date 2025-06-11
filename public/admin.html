@@ -7,16 +7,40 @@
     <meta name="robots" content="noindex, nofollow">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .animate-spin {
-            animation: spin 1s linear infinite;
+        body {
+            background-color: #f9fafb;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        .tab-active {
+            color: #ef4444;
+            border-bottom: 2px solid #ef4444;
+        }
+        .tab-inactive {
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+        }
+        .stat-card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+        }
+        .action-button {
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #f9fafb;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
     <div id="app">
         <!-- Écran de connexion -->
         <div id="loginScreen" class="min-h-screen flex items-center justify-center">
@@ -49,68 +73,61 @@
                         Se connecter
                     </button>
                 </form>
-                
-                <div class="mt-6 text-center">
-                    <p class="text-sm text-gray-500">
-                        Problème d'accès ? 
-                        <a href="#" onclick="showDiagnostic()" class="text-red-600 hover:text-red-700">
-                            Lancer le diagnostic
-                        </a>
-                    </p>
-                </div>
             </div>
         </div>
 
         <!-- Dashboard Admin -->
         <div id="adminDashboard" class="hidden">
-            <div class="bg-white shadow-sm border-b">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex justify-between items-center py-4">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <h1 class="text-2xl font-bold text-gray-900">Administration Fixeo.Pro</h1>
-                                <p class="text-gray-600">Tableau de bord administrateur</p>
-                            </div>
+            <!-- Header -->
+            <header class="bg-white border-b">
+                <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.031 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
                         </div>
-                        <button onclick="logout()" class="border border-red-600 text-red-600 px-4 py-2 rounded-md hover:bg-red-50">
-                            Déconnexion
-                        </button>
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Administration Fixeo.Pro</h1>
+                            <p class="text-gray-600">Tableau de bord administrateur</p>
+                        </div>
                     </div>
+                    <button onclick="logout()" class="border border-red-600 text-red-600 px-4 py-2 rounded-md hover:bg-red-50">
+                        Déconnexion
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <!-- Statistiques -->
+            <!-- Main Content -->
+            <main class="max-w-7xl mx-auto px-4 py-8">
+                <!-- Stats Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between">
+                    <!-- Utilisateurs actifs -->
+                    <div class="stat-card">
+                        <div class="flex justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Utilisateurs actifs</p>
-                                <p class="text-2xl font-bold text-gray-900">2,847</p>
-                                <p class="text-sm text-green-600">+12%</p>
+                                <p class="text-gray-600 text-sm font-medium">Utilisateurs actifs</p>
+                                <p class="text-3xl font-bold mt-1">2,847</p>
+                                <p class="text-green-600 text-sm mt-1">+12%</p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                                 </svg>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between">
+                    <!-- Réparateurs -->
+                    <div class="stat-card">
+                        <div class="flex justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Réparateurs</p>
-                                <p class="text-2xl font-bold text-gray-900">1,234</p>
-                                <p class="text-sm text-green-600">+8%</p>
+                                <p class="text-gray-600 text-sm font-medium">Réparateurs</p>
+                                <p class="text-3xl font-bold mt-1">1,234</p>
+                                <p class="text-green-600 text-sm mt-1">+8%</p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
-                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
@@ -118,139 +135,197 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between">
+                    <!-- Demandes ce mois -->
+                    <div class="stat-card">
+                        <div class="flex justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">Demandes ce mois</p>
-                                <p class="text-2xl font-bold text-gray-900">856</p>
-                                <p class="text-sm text-green-600">+23%</p>
+                                <p class="text-gray-600 text-sm font-medium">Demandes ce mois</p>
+                                <p class="text-3xl font-bold mt-1">856</p>
+                                <p class="text-green-600 text-sm mt-1">+23%</p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
-                                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                 </svg>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="bg-white p-6 rounded-lg shadow">
-                        <div class="flex items-center justify-between">
+                    <!-- CA mensuel -->
+                    <div class="stat-card">
+                        <div class="flex justify-between">
                             <div>
-                                <p class="text-sm font-medium text-gray-600">CA mensuel</p>
-                                <p class="text-2xl font-bold text-gray-900">45,230€</p>
-                                <p class="text-sm text-green-600">+15%</p>
+                                <p class="text-gray-600 text-sm font-medium">CA mensuel</p>
+                                <p class="text-3xl font-bold mt-1">45,230€</p>
+                                <p class="text-green-600 text-sm mt-1">+15%</p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
-                                <svg class="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                                </svg>
+                            <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                <span class="text-yellow-600 font-bold text-lg">$</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Onglets -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="border-b border-gray-200">
-                        <nav class="-mb-px flex space-x-8 px-6">
-                            <button onclick="showTab('overview')" class="tab-button py-4 px-1 border-b-2 border-red-500 font-medium text-sm text-red-600">
-                                Vue d'ensemble
-                            </button>
-                            <button onclick="showTab('users')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
-                                Utilisateurs
-                            </button>
-                            <button onclick="showTab('requests')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
-                                Demandes
-                            </button>
-                            <button onclick="showTab('settings')" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700">
-                                Paramètres
-                            </button>
-                        </nav>
-                    </div>
-                    
-                    <div class="p-6">
-                        <div id="tab-overview" class="tab-content">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Vue d'ensemble</h3>
-                            <p class="text-gray-600">Tableau de bord principal avec les statistiques générales de la plateforme Fixeo.Pro.</p>
+                <!-- Tabs -->
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="flex space-x-8">
+                        <button onclick="showTab('overview')" class="tab-button py-4 px-1 tab-active">
+                            Vue d'ensemble
+                        </button>
+                        <button onclick="showTab('users')" class="tab-button py-4 px-1 tab-inactive">
+                            Utilisateurs
+                        </button>
+                        <button onclick="showTab('requests')" class="tab-button py-4 px-1 tab-inactive">
+                            Demandes
+                        </button>
+                        <button onclick="showTab('settings')" class="tab-button py-4 px-1 tab-inactive">
+                            Paramètres
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Tab Contents -->
+                <div class="tab-contents">
+                    <!-- Vue d'ensemble -->
+                    <div id="tab-overview" class="tab-content">
+                        <h2 class="text-xl font-bold mb-4">Vue d'ensemble</h2>
+                        <p class="text-gray-600 mb-8">Tableau de bord principal avec les statistiques générales de la plateforme Fixeo.Pro.</p>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Activité récente -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-4">Activité récente</h3>
+                                <ul class="space-y-3 text-gray-600">
+                                    <li class="flex items-start">
+                                        <span class="mr-2">•</span>
+                                        <span>15 nouvelles inscriptions aujourd'hui</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="mr-2">•</span>
+                                        <span>32 demandes de réparation créées</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="mr-2">•</span>
+                                        <span>28 interventions terminées</span>
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="mr-2">•</span>
+                                        <span>12 nouveaux avis clients</span>
+                                    </li>
+                                </ul>
+                            </div>
                             
-                            <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <h4 class="font-medium text-gray-900 mb-2">Activité récente</h4>
-                                    <ul class="space-y-2 text-sm text-gray-600">
-                                        <li>• 15 nouvelles inscriptions aujourd'hui</li>
-                                        <li>• 32 demandes de réparation créées</li>
-                                        <li>• 28 interventions terminées</li>
-                                        <li>• 12 nouveaux avis clients</li>
-                                    </ul>
-                                </div>
-                                
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <h4 class="font-medium text-gray-900 mb-2">Actions rapides</h4>
-                                    <div class="space-y-2">
-                                        <button class="w-full text-left px-3 py-2 text-sm bg-white rounded border hover:bg-gray-50">
-                                            Gérer les utilisateurs
-                                        </button>
-                                        <button class="w-full text-left px-3 py-2 text-sm bg-white rounded border hover:bg-gray-50">
-                                            Modérer les demandes
-                                        </button>
-                                        <button class="w-full text-left px-3 py-2 text-sm bg-white rounded border hover:bg-gray-50">
-                                            Configurer les paramètres
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="tab-users" class="tab-content hidden">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Gestion des utilisateurs</h3>
-                            <p class="text-gray-600 mb-4">Interface de gestion des utilisateurs et réparateurs.</p>
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p class="text-blue-800 text-sm">
-                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
-                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div id="tab-requests" class="tab-content hidden">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Gestion des demandes</h3>
-                            <p class="text-gray-600 mb-4">Modération et suivi des demandes de réparation.</p>
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p class="text-blue-800 text-sm">
-                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
-                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div id="tab-settings" class="tab-content hidden">
-                            <h3 class="text-lg font-medium text-gray-900 mb-4">Paramètres</h3>
-                            <p class="text-gray-600 mb-4">Configuration générale de la plateforme.</p>
-                            
-                            <div class="space-y-4">
-                                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                    <h4 class="font-medium text-yellow-800 mb-2">Diagnostic de l'hébergement</h4>
-                                    <p class="text-yellow-700 text-sm mb-3">
-                                        Si vous voyez cette page, cela signifie que votre hébergement ne supporte pas complètement Next.js.
-                                    </p>
-                                    <button onclick="runDiagnostic()" class="bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700">
-                                        Lancer le diagnostic
+                            <!-- Actions rapides -->
+                            <div>
+                                <h3 class="text-lg font-medium mb-4">Actions rapides</h3>
+                                <div class="space-y-2">
+                                    <button class="action-button">
+                                        Gérer les utilisateurs
+                                    </button>
+                                    <button class="action-button">
+                                        Modérer les demandes
+                                    </button>
+                                    <button class="action-button">
+                                        Configurer les paramètres
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Utilisateurs -->
+                    <div id="tab-users" class="tab-content hidden">
+                        <h2 class="text-xl font-bold mb-4">Utilisateurs</h2>
+                        <p class="text-gray-600 mb-4">Gestion des utilisateurs et réparateurs.</p>
+                        
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-medium">Liste des utilisateurs</h3>
+                                <div class="flex space-x-2">
+                                    <input type="text" placeholder="Rechercher..." class="border rounded-md px-3 py-2 text-sm">
+                                    <button class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm">Filtrer</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-blue-800 text-sm">
+                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
+                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Demandes -->
+                    <div id="tab-requests" class="tab-content hidden">
+                        <h2 class="text-xl font-bold mb-4">Demandes</h2>
+                        <p class="text-gray-600 mb-4">Gestion et modération des demandes de réparation.</p>
+                        
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-lg font-medium">Liste des demandes</h3>
+                                <div class="flex space-x-2">
+                                    <select class="border rounded-md px-3 py-2 text-sm">
+                                        <option>Toutes les demandes</option>
+                                        <option>En attente</option>
+                                        <option>En cours</option>
+                                        <option>Terminées</option>
+                                    </select>
+                                    <button class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm">Appliquer</button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p class="text-blue-800 text-sm">
+                                    <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
+                                    Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Paramètres -->
+                    <div id="tab-settings" class="tab-content hidden">
+                        <h2 class="text-xl font-bold mb-4">Paramètres</h2>
+                        <p class="text-gray-600 mb-4">Configuration générale de la plateforme.</p>
+                        
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="space-y-6">
+                                <div>
+                                    <h3 class="text-lg font-medium mb-4">Paramètres généraux</h3>
+                                    <div class="space-y-4">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">Maintenance programmée</span>
+                                                <p class="text-sm text-gray-600">Planifier les maintenances système</p>
+                                            </div>
+                                            <button class="border px-3 py-1 rounded text-sm">
+                                                Configurer
+                                            </button>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <span class="font-medium">Notifications email</span>
+                                                <p class="text-sm text-gray-600">Gérer les alertes automatiques</p>
+                                            </div>
+                                            <button class="border px-3 py-1 rounded text-sm">
+                                                Gérer
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                                 
-                                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <h4 class="font-medium text-green-800 mb-2">Solutions recommandées</h4>
-                                    <ul class="text-green-700 text-sm space-y-1">
-                                        <li>• Utilisez un hébergement compatible Next.js (Vercel, Netlify)</li>
-                                        <li>• Ou configurez votre serveur pour supporter les SPA</li>
-                                        <li>• Vérifiez que le fichier .htaccess est présent</li>
-                                    </ul>
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p class="text-blue-800 text-sm">
+                                        <strong>Note :</strong> Cette version simplifiée de l'admin fonctionne sur tous les hébergements. 
+                                        Pour accéder à toutes les fonctionnalités, utilisez l'application Next.js complète.
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
 
         <!-- Diagnostic -->
@@ -330,16 +405,16 @@
             // Réinitialiser tous les boutons d'onglets
             const tabButtons = document.querySelectorAll('.tab-button');
             tabButtons.forEach(button => {
-                button.classList.remove('border-red-500', 'text-red-600');
-                button.classList.add('border-transparent', 'text-gray-500');
+                button.classList.remove('tab-active');
+                button.classList.add('tab-inactive');
             });
             
             // Afficher le contenu sélectionné
             document.getElementById('tab-' + tabName).classList.remove('hidden');
             
             // Activer le bouton sélectionné
-            event.target.classList.remove('border-transparent', 'text-gray-500');
-            event.target.classList.add('border-red-500', 'text-red-600');
+            event.target.classList.remove('tab-inactive');
+            event.target.classList.add('tab-active');
         }
 
         function showDiagnostic() {
