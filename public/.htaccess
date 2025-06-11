@@ -1,50 +1,43 @@
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  
-  # Redirection vers HTTPS
-  RewriteCond %{HTTPS} off
-  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-  
-  # Si le fichier demandé existe, servir directement
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
-  
-  # Redirection spéciale pour /admin
-  RewriteRule ^admin$ /admin/ [L,R=301]
-  
-  # Redirection pour les routes dynamiques
-  RewriteRule ^admin/(.*)$ /admin/$1 [L]
-  RewriteRule ^categories/(.*)$ /categories/$1 [L]
-  RewriteRule ^profil-pro/(.*)$ /profil-pro/$1 [L]
-  RewriteRule ^demande/(.*)$ /demande/$1 [L]
-  
-  # Redirection vers index.html pour toutes les autres routes
-  RewriteRule ^ /index.html [L]
-</IfModule>
+RewriteEngine On
 
-# Compression GZIP
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Redirection admin vers la page statique
+RewriteRule ^admin/?$ /admin.html [L]
+RewriteRule ^admin-panel/?$ /admin.html [L]
+RewriteRule ^administration/?$ /admin.html [L]
+RewriteRule ^admin\.php$ /admin.html [R=301,L]
+RewriteRule ^wp-admin/?$ /admin.html [R=301,L]
+RewriteRule ^administrator/?$ /admin.html [R=301,L]
+
+# Support des routes Next.js pour le reste
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/admin\.html$
+RewriteRule . /index.html [L]
+
+# Headers de sécurité pour admin
+<FilesMatch "admin\.html">
+    Header set X-Robots-Tag "noindex, nofollow"
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set X-Frame-Options "DENY"
+</FilesMatch>
+
+# Compression
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json
 </IfModule>
 
-# Cache-Control
+# Cache pour les assets
 <IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType image/jpg "access plus 1 year"
-  ExpiresByType image/jpeg "access plus 1 year"
-  ExpiresByType image/gif "access plus 1 year"
-  ExpiresByType image/png "access plus 1 year"
-  ExpiresByType image/svg+xml "access plus 1 year"
-  ExpiresByType text/css "access plus 1 month"
-  ExpiresByType application/javascript "access plus 1 month"
-  ExpiresByType application/json "access plus 0 seconds"
-</IfModule>
-
-# Sécurité
-<IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-XSS-Protection "1; mode=block"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set Referrer-Policy "strict-origin-when-cross-origin"
+    ExpiresActive on
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
