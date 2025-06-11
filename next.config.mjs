@@ -1,43 +1,56 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Désactiver l'export statique pour permettre les routes dynamiques
+  // output: 'export',
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Activer les images optimisées
   images: {
+    domains: ['placeholder.com', 'via.placeholder.com'],
     unoptimized: true,
   },
-  // Retirons output: export pour éviter les problèmes avec les routes dynamiques
-  // output: 'export',
-  trailingSlash: true,
   
-  // Configuration pour éviter les erreurs 404 sur les routes admin
+  // Redirections et rewrites
   async rewrites() {
     return [
+      {
+        source: '/admin',
+        destination: '/admin',
+      },
+      {
+        source: '/admin/:path*',
+        destination: '/admin/:path*',
+      },
       {
         source: '/administration',
         destination: '/admin',
       },
       {
-        source: '/admin.php',
-        destination: '/admin',
-      },
-      {
-        source: '/wp-admin',
-        destination: '/admin',
-      },
-      {
-        source: '/admin-panel',
-        destination: '/admin',
+        source: '/administration/:path*',
+        destination: '/admin/:path*',
       },
     ]
   },
   
-  // Configuration pour les redirections
+  // Redirections permanentes
   async redirects() {
     return [
+      {
+        source: '/admin.php',
+        destination: '/admin',
+        permanent: true,
+      },
+      {
+        source: '/wp-admin',
+        destination: '/admin',
+        permanent: true,
+      },
       {
         source: '/administrator',
         destination: '/admin',
@@ -46,19 +59,23 @@ const nextConfig = {
     ]
   },
   
-  // Configuration pour les headers de sécurité
+  // Headers de sécurité
   async headers() {
     return [
       {
-        source: '/admin/:path*',
+        source: '/(.*)',
         headers: [
           {
-            key: 'X-Robots-Tag',
-            value: 'noindex, nofollow',
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
           },
           {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
           },
         ],
       },

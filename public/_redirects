@@ -1,0 +1,7 @@
+# Redirects pour Netlify
+/admin    /admin    200
+/admin/*  /admin/:splat  200
+/categories/*  /categories/:splat  200
+/profil-pro/*  /profil-pro/:splat  200
+/demande/*  /demande/:splat  200
+/*    /index.html   200
